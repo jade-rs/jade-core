@@ -223,6 +223,115 @@ fn docx_export_matches_word_autofit_grids_on_both_sides_of_page_break() {
     }
 }
 
+#[cfg(windows)]
+#[test]
+fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let (_, manifest) = load_word_capture("nested-autofit-batch-resize");
+    let cases = manifest["documents"].as_array().unwrap();
+    assert_eq!(cases.len(), 36);
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        let before = case["before_fixture"].as_str().unwrap();
+        let source = std::fs::read(repo_path(&format!("public/fixtures/{before}.docx"))).unwrap();
+        let saved = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        assert_eq!(
+            case["before_input_sha256"],
+            format!("{:x}", Sha256::digest(&source))
+        );
+        assert_eq!(
+            case["input_sha256"],
+            format!("{:x}", Sha256::digest(&saved))
+        );
+        let word = open_with_windows_fonts(&saved);
+        let mut jade = open_with_windows_fonts(&source);
+        let actions = case["actions"].as_array().unwrap();
+        assert_eq!(actions.len(), 2);
+        let commands: Vec<_> = actions
+            .iter()
+            .map(|action| {
+                if let Some(width) = action["resize_pt"].as_f64() {
+                    HeadlessCommand::ResizeTableColumnRightEdge {
+                        table_order_index: 1,
+                        column_index: 1,
+                        new_width: width as f32,
+                    }
+                } else {
+                    let length = action["parent_word_length"].as_u64().unwrap() as usize;
+                    assert_eq!(action["delete_text"], "W");
+                    let original = "W".repeat(length);
+                    let paragraph = (0..jade.word_document().paragraph_count())
+                        .find(|&index| {
+                            jade.word_document().rendered_paragraph_text(index) == original
+                        })
+                        .unwrap();
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph: paragraph,
+                        start_offset: 0,
+                        end_paragraph: paragraph,
+                        end_offset: 1,
+                        text: String::new(),
+                    }
+                }
+            })
+            .collect();
+        let original = jade.export_docx().unwrap();
+        let check_saved = |document: &NativeDocument, expected: &NativeDocument| {
+            let reopened = open_with_windows_fonts(&document.export_docx().unwrap());
+            for order in 0..2 {
+                assert_eq!(
+                    widths_at(reopened.word_document(), order),
+                    widths_at(expected.word_document(), order),
+                    "{name}: saved table {order}"
+                );
+            }
+            assert_eq!(reopened.page_count(), expected.page_count(), "{name}");
+            if let HeadlessCommand::ReplaceRange {
+                start_paragraph, ..
+            } = commands[0]
+            {
+                assert_eq!(
+                    reopened
+                        .word_document()
+                        .rendered_paragraph_text(start_paragraph),
+                    expected
+                        .word_document()
+                        .rendered_paragraph_text(start_paragraph),
+                    "{name}: parent text"
+                );
+            }
+        };
+        jade.apply_commands(commands.clone(), false).unwrap();
+        check_saved(&jade, &word);
+        jade.undo().unwrap();
+        assert!(
+            !jade.can_undo(),
+            "{name}: undo the entire batch in one step"
+        );
+        let original = open_with_windows_fonts(&original);
+        check_saved(&jade, &original);
+        jade.redo().unwrap();
+        check_saved(&jade, &word);
+
+        if name.ends_with("shorten-n24-rightedge-compat15") {
+            jade.undo().unwrap();
+            let mut invalid = commands.clone();
+            invalid.push(HeadlessCommand::ResizeTableColumnRightEdge {
+                table_order_index: 1,
+                column_index: 99,
+                new_width: 65.0,
+            });
+            let error = jade.apply_commands(invalid, false).unwrap_err();
+            assert!(error.contains("index: 2"), "{error}");
+            assert!(
+                !jade.can_undo(),
+                "a failed batch must not enter the history"
+            );
+            check_saved(&jade, &original);
+        }
+    }
+}
+
 fn load_word_capture(capture: &str) -> (ZipArchive<Cursor<Vec<u8>>>, serde_json::Value) {
     let archive = std::fs::read(repo_path(&format!(
         "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",
@@ -264,15 +373,17 @@ fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> Nativ
             let saved = jade.export_docx().unwrap();
             widths(open(&saved).word_document())
         });
-        jade.apply_command(
-            HeadlessCommand::ResizeTableColumnRightEdge {
-                table_order_index: 1,
-                column_index: 1,
-                new_width: case["new_width_pt"].as_f64().unwrap_or(65.0) as f32,
-            },
-            false,
-        )
-        .unwrap_or_else(|error| panic!("{after}: {error}"));
+        let resize = HeadlessCommand::ResizeTableColumnRightEdge {
+            table_order_index: 1,
+            column_index: 1,
+            new_width: case["new_width_pt"].as_f64().unwrap_or(65.0) as f32,
+        };
+        let result = if compare_parent {
+            jade.apply_commands(vec![resize], false)
+        } else {
+            jade.apply_command(resize, false)
+        };
+        result.unwrap_or_else(|error| panic!("{after}: {error}"));
         assert_eq!(
             widths(jade.word_document()),
             expected,

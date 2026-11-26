@@ -46720,6 +46720,16 @@ where
             .resize_geometry
             .clone()
     }
+
+    pub fn nested_column_resize_geometry_for_node(
+        &self,
+        id: XmlNodeId,
+    ) -> Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>> {
+        self.table_layouts
+            .iter()
+            .filter(|info| info.node_id == Some(id.raw()) && info.save_autofit_grid)
+            .find_map(|info| info.resize_geometry.clone())
+    }
 }
 
 /// Constructors that name a browser host, and so only exist for the canvas

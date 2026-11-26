@@ -108,6 +108,11 @@ def nested_autofit_parent_save_cases():
     return {'same-run', 'separate-run', 'separate-paragraph', 'grid-change'}
 
 
+def nested_autofit_batch_resize_cases():
+    return {f'{kind}-n{length}-{position}' for kind in ('repeat', 'shorten')
+            for length in (22, 23, 24) for position in ('edge', 'rightedge')}
+
+
 def nested_fixed_parent_width_cases():
     widths = (2500, 2823, 2954, 2963, 3023, 3043)
     return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
@@ -159,6 +164,8 @@ CAPTURES = (
      'word-windows-edge-nested-autofit-twip-', nested_autofit_twip_cases, ('--unclipped-tables',)),
     ('nested-autofit-parent-save', '20baa90e1c64349caa5e4f62d176c79ae90d7613b52d7ada1714fa53a7992587',
      'word-windows-edge-nested-autofit-parent-save-', nested_autofit_parent_save_cases, ('--unclipped-tables',)),
+    ('nested-autofit-batch-resize', 'e5b5025d5a739bb0d0600b7f8480e4445dfd6e9bbebe5d326094ab22e986165b',
+     'word-windows-edge-nested-autofit-batch-', nested_autofit_batch_resize_cases, ('--unclipped-tables',)),
     ('nested-fixed-advances', '842bd436081f746899214dc718aa4371d16ae5d0ab7049a61c5742960f3e0920',
      'word-windows-edge-nested-fixed-advance-', nested_table_advance_cases, ('--unclipped-tables',)),
     ('nested-fixed-parent-widths', '88c2b573ec528d89c9797815aef9c6b1373b1b4f53985fc2420cc02f4d379595',
@@ -199,7 +206,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-table-resize', 'table-cell-border-content', 'nested-table-percent-resize',
         'spaced-table-border-content',
         'nested-autofit-advances', 'nested-autofit-resize', 'nested-autofit-floors',
-        'nested-autofit-twip-rounding', 'nested-autofit-parent-save',
+        'nested-autofit-twip-rounding', 'nested-autofit-parent-save', 'nested-autofit-batch-resize',
         'nested-fixed-advances', 'nested-fixed-parent-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
