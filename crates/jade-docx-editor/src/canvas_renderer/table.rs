@@ -11776,6 +11776,14 @@ fn preferred_width_px(value: &str, percentage_reference: f64) -> Option<f64> {
             .filter(|percent| percent.is_finite() && *percent >= 0.0)
             .map(|percent| percentage_reference * percent / 100.0);
     }
+    if let Some(points) = value.strip_suffix("pt") {
+        return points
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .filter(|points| points.is_finite() && *points >= 0.0)
+            .map(|points| points * 4.0 / 3.0);
+    }
     parse_length_to_px(value).filter(|width| width.is_finite() && *width >= 0.0)
 }
 
@@ -12513,7 +12521,7 @@ fn absolute_fixed_row_widths(row: &TableRow, column_count: usize) -> Option<Vec<
             if cell.span.unwrap_or(1) != 1 || !cell_has_absolute_preferred_width(cell) {
                 return None;
             }
-            parse_length_to_px(cell.style.get("width")?).filter(|width| *width > 0.0)
+            preferred_width_px(cell.style.get("width")?, 1.0).filter(|width| *width > 0.0)
         })
         .collect()
 }
@@ -12592,7 +12600,7 @@ fn absolute_table_width(table: &Table) -> Option<f64> {
     if !width.trim().ends_with("pt") {
         return None;
     }
-    parse_length_to_px(width).filter(|width| *width > 0.0)
+    preferred_width_px(width, 1.0).filter(|width| *width > 0.0)
 }
 
 fn word_adjacent_fixed_grid(

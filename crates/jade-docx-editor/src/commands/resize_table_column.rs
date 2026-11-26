@@ -18,27 +18,30 @@ pub(crate) fn fit_nested_columns_to_content(
     floors: &[f64],
     twips_per_unit: f64,
 ) {
-    let budget: f64 = widths.iter().sum();
+    let measured_budget: f64 = widths.iter().sum();
     let preferred_total: f64 = preferred.iter().sum();
     let nearest_twip = |value: f64| (value * twips_per_unit).round() / twips_per_unit;
-    let budget = nearest_twip(budget);
+    let budget = nearest_twip(measured_budget);
     if budget >= preferred_total - 1e-8
         && widths
             .iter()
             .zip(floors)
             .all(|(width, floor)| width + 1e-8 >= *floor)
     {
-        // When a scaled grid divides a whole twip, the trailing column
-        // receives the remainder.
+        // Snap each boundary to the nearest twip. For an exact half, the
+        // trailing column receives the remainder.
         let mut ideal_boundary = 0.0;
         let mut previous_boundary = 0.0;
         let last = widths.len() - 1;
+        // A stored percentage can describe a fractional twip even when
+        // Word's resolved grid has the same width as its cell preferences.
+        let scale = budget / measured_budget;
         for (index, width) in widths.iter_mut().enumerate() {
-            ideal_boundary += *width;
+            ideal_boundary += *width * scale;
             let boundary = if index == last {
                 budget
             } else {
-                ((ideal_boundary * twips_per_unit + 1e-8).floor() / twips_per_unit)
+                ((ideal_boundary * twips_per_unit - 0.5 - 1e-8).ceil() / twips_per_unit)
                     .max(previous_boundary + floors[index])
             };
             *width = boundary - previous_boundary;

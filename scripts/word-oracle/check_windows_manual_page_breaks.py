@@ -98,6 +98,12 @@ def nested_autofit_floor_cases():
     return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
 
 
+def nested_autofit_twip_cases():
+    widths = {'absolute': range(1496, 1500), 'percentage': range(4644, 4647)}
+    return {f'{kind}-{sample}-{width}' for kind, values in widths.items()
+            for sample in ('edge', 'rightedge') for width in values}
+
+
 def nested_fixed_parent_width_cases():
     widths = (2500, 2823, 2954, 2963, 3023, 3043)
     return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
@@ -145,6 +151,8 @@ CAPTURES = (
      'word-windows-edge-nested-autofit-resize-', nested_autofit_resize_cases, ('--unclipped-tables',)),
     ('nested-autofit-floors', '1cee360c6106b320e55b1bee7305b65690d451635396683b3d28b346ba4ce173',
      'word-windows-edge-nested-autofit-floor-', nested_autofit_floor_cases, ('--unclipped-tables',)),
+    ('nested-autofit-twip-rounding', '9d245fc3f85d693bf8ebe5ba8d0e68f0f135e0ad4f2a874f3129e228f6bac3cc',
+     'word-windows-edge-nested-autofit-twip-', nested_autofit_twip_cases, ('--unclipped-tables',)),
     ('nested-fixed-advances', '842bd436081f746899214dc718aa4371d16ae5d0ab7049a61c5742960f3e0920',
      'word-windows-edge-nested-fixed-advance-', nested_table_advance_cases, ('--unclipped-tables',)),
     ('nested-fixed-parent-widths', '88c2b573ec528d89c9797815aef9c6b1373b1b4f53985fc2420cc02f4d379595',
@@ -185,6 +193,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-table-resize', 'table-cell-border-content', 'nested-table-percent-resize',
         'spaced-table-border-content',
         'nested-autofit-advances', 'nested-autofit-resize', 'nested-autofit-floors',
+        'nested-autofit-twip-rounding',
         'nested-fixed-advances', 'nested-fixed-parent-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',

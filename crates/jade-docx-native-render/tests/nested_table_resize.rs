@@ -9,6 +9,8 @@ use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatfor
 use jade_docx_native_render::NativeDocument;
 use sha2::{Digest, Sha256};
 use std::io::Cursor;
+#[cfg(windows)]
+use std::io::Read;
 use zip::ZipArchive;
 
 #[derive(Debug, PartialEq)]
@@ -61,21 +63,68 @@ fn nested_right_edge_resize_matches_word_and_round_trips() {
 #[test]
 fn autofit_nested_resize_matches_word_font_metrics_and_round_trips() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    let open = |bytes: &[u8]| {
-        let faces = jade_docx_native_render::system_fonts::word_document_faces(bytes, &[]);
-        NativeDocument::open_with_font_faces(
-            bytes,
-            common::PAGE_WIDTH_PX,
-            common::PAGE_HEIGHT_PX,
-            &faces,
-        )
-        .expect("open the document with Windows fonts")
-    };
-    verify_resizes("nested-autofit-advances", 36, open);
-    verify_resizes("nested-autofit-resize", 72, open);
+    verify_resizes("nested-autofit-advances", 36, open_with_windows_fonts);
+    verify_resizes("nested-autofit-resize", 72, open_with_windows_fonts);
 }
 
-fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> NativeDocument) {
+#[cfg(windows)]
+fn open_with_windows_fonts(bytes: &[u8]) -> NativeDocument {
+    let faces = jade_docx_native_render::system_fonts::word_document_faces(bytes, &[]);
+    NativeDocument::open_with_font_faces(
+        bytes,
+        common::PAGE_WIDTH_PX,
+        common::PAGE_HEIGHT_PX,
+        &faces,
+    )
+    .expect("open the document with Windows fonts")
+}
+
+#[cfg(windows)]
+#[test]
+fn autofit_nested_grids_match_windows_word_at_twip_boundaries() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let (mut archive, manifest) = load_word_capture("nested-autofit-twip-rounding");
+    let cases = manifest["documents"].as_array().unwrap();
+    assert_eq!(cases.len(), 42);
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        let source = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+        assert_eq!(
+            case["input_sha256"],
+            format!("{:x}", Sha256::digest(&source))
+        );
+        let mut saved = Vec::new();
+        archive
+            .by_name(&format!("word/saved/{name}.docx"))
+            .unwrap()
+            .read_to_end(&mut saved)
+            .unwrap();
+        assert_eq!(
+            case["word_save_sha256"],
+            format!("{:x}", Sha256::digest(&saved))
+        );
+        let word = open_with_windows_fonts(&saved);
+        let jade = open_with_windows_fonts(&source);
+        let layout = jade.renderer().table_resize_metadata();
+        assert_eq!(layout.tables.len(), 2, "{name}");
+        for info in layout.tables {
+            let expected = word.word_document().table_by_order(info.order).unwrap();
+            let expected_grid = expected
+                .columns
+                .iter()
+                .map(|column| (f64::from(column.width.unwrap()) * 20.0).round() as i32)
+                .collect::<Vec<_>>();
+            let rendered_grid = info
+                .column_widths
+                .iter()
+                .map(|width| (width * 15.0).round() as i32)
+                .collect::<Vec<_>>();
+            assert_eq!(rendered_grid, expected_grid, "{name}: table {}", info.order);
+        }
+    }
+}
+
+fn load_word_capture(capture: &str) -> (ZipArchive<Cursor<Vec<u8>>>, serde_json::Value) {
     let archive = std::fs::read(repo_path(&format!(
         "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",
     )))
@@ -84,6 +133,11 @@ fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> Nativ
     let manifest = archive.by_name("word/capture.json").unwrap();
     let manifest: serde_json::Value = serde_json::from_reader(manifest).unwrap();
     assert_eq!(manifest["product_version"], "16.0.19127.20936");
+    (archive, manifest)
+}
+
+fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> NativeDocument) {
+    let (_, manifest) = load_word_capture(capture);
     let cases = manifest["documents"]
         .as_array()
         .unwrap()
