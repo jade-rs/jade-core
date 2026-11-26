@@ -9,9 +9,12 @@ from zipfile import ZipFile
 import pymupdf
 
 from check_platform_coordinates import (
-    ROOT, assert_pending_pdf_text, compare, extract_fonts, pdf_origins, require,
+    ROOT, assert_pending_pdf_text, compare, emf_glyphs, extract_fonts, pdf_origins, require,
 )
 from check_windows_font_coordinates import require_original_font_programs_registered
+from generate_windows_floating_table_break_cases import (
+    PREFIX as FLOATING_PREFIX, cases as floating_cases,
+)
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
@@ -31,6 +34,8 @@ CAPTURES = (
      TABLE_PREFIX, table_cases, ('--painted-table-headers',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
+    ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
+     FLOATING_PREFIX, floating_cases, ('--painted-table-headers',)),
 )
 
 
@@ -48,6 +53,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     require(sha256(capture_path.read_bytes()) == capture_hash, f'{capture_path}: Word capture changed')
     failures = []
     fixtures = pages = glyphs = 0
+    check_screen = capture_path.parent.name == 'floating-table-breaks'
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
         require(capture['product_version'] == WORD_VERSION, 'Incorrect Word version')
@@ -67,6 +73,17 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
             word = pdf_origins(word_pdf)
             require(word['page_count'] == original['page_count'],
                     f'{name}: Word PDF and Word page counts differ')
+            if check_screen:
+                metafiles = original['metafiles']
+                require([page['page'] for page in metafiles] == list(range(1, word['page_count'] + 1)),
+                        f'{name}: incomplete Word print layout capture')
+                screen = {'page_count': word['page_count'], 'glyphs': []}
+                for page in metafiles:
+                    data = bundle.read(f'word/{page["file"]}')
+                    require(sha256(data) == page['sha256'], f'{name}: Word drawing changed')
+                    screen['glyphs'].extend(emf_glyphs(
+                        data, page['page'], original['width_pt'], original['height_pt'],
+                    ))
             fixtures += 1
             pages += word['page_count']
             glyphs += len(word['glyphs'])
@@ -106,7 +123,12 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
                     compare(full_word, full_painted, f'{name} unclipped vector PDF')
                 else:
                     compare(word, snapshot, f'{name} layout origins')
-                assert_pending_pdf_text(word, painted, f'{name} vector PDF')
+                if check_screen:
+                    # Body text and floating content are painted separately.
+                    # Preserve every glyph's position and page on both surfaces.
+                    compare(screen, snapshot, f'{name} Word print layout')
+                else:
+                    assert_pending_pdf_text(word, painted, f'{name} vector PDF')
                 compare(word, painted, f'{name} vector PDF')
             except (ValueError, subprocess.SubprocessError) as error:
                 failures.append(str(error))

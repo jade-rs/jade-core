@@ -3770,6 +3770,32 @@ where
         let header_heights_snapshot: Vec<f64> =
             row_heights[..header_row_count.min(row_heights.len())].to_vec();
 
+        let styles = self.styles_part.clone();
+        let honor_row_page_breaks = !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && !self.measuring_keep_next
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+        let row_page_break_before = |row_index: usize| {
+            honor_row_page_breaks
+                && jade_docx_layout::text_extract::windows_table_row_page_break_before(
+                    &table.rows[row_index],
+                    row_index,
+                    header_row_count,
+                    compatibility_mode,
+                    styles.as_deref(),
+                )
+        };
+        let modern = compatibility_mode.is_some_and(|mode| mode >= 15);
+        let first_body_row_breaks = header_row_count != 0
+            && hidden_rows
+                .iter()
+                .enumerate()
+                .skip(header_row_count)
+                .find_map(|(index, &hidden)| (!hidden).then_some(index))
+                .is_some_and(row_page_break_before);
+
         // Floating tables retain a logical position in the body but paint at
         // their tblpPr frame. Until paragraph wrapping around that frame is
         // available, keep a flow floor at the logical anchor so positioning a
@@ -3779,19 +3805,43 @@ where
         // Resolve that rectangle collision here, after exact row heights are
         // known, without deriving any independent paragraph wrap boundaries.
         let is_floating_table = !self.pageless_mode && table_floats(table);
+        let floating_breaks = is_floating_table && honor_row_page_breaks;
+        let floating_first_row_breaks =
+            floating_breaks && first_visible_row.is_some_and(row_page_break_before);
+        let floating_fragments = if floating_breaks {
+            floating_table_break_fragments(&hidden_rows, row_page_break_before)
+        } else {
+            Vec::new()
+        };
+        let repeated_floating_rows = (floating_fragments.len() > 1).then(|| prepared_rows.clone());
         let floating_table_frame = if is_floating_table {
             let table_height = row_heights.iter().sum::<f64>();
             let margin_height = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
+            let requested_y = |renderer: &Self| {
+                compute_floating_table_y(
+                    renderer.margin_top,
+                    margin_height,
+                    renderer.page_height,
+                    renderer.current_y,
+                    table_height,
+                    table,
+                )
+                .unwrap_or(renderer.current_y)
+            };
+            let before_anchor = requested_y(self) + ROW_SPLIT_EPSILON < self.current_y;
+            let move_anchor = floating_first_row_breaks
+                || modern
+                    && (first_body_row_breaks || before_anchor && repeated_floating_rows.is_some());
+            if floating_breaks
+                && move_anchor
+                && (self.column_index != 0 || !at_table_frame_top(self))
+            {
+                self.force_table_page_break()?;
+                (table_x, _, _) = table_segment_edges(self, None, true);
+                self.configure_table_context();
+            }
             let logical_y = self.current_y;
-            let requested_y = compute_floating_table_y(
-                self.margin_top,
-                margin_height,
-                self.page_height,
-                logical_y,
-                table_height,
-                table,
-            )
-            .unwrap_or(logical_y);
+            let requested_y = requested_y(self);
             let prevents_overlap = table
                 .style
                 .get("table-overlap")
@@ -3806,7 +3856,11 @@ where
             };
             let resolved_y = resolve_floating_table_overlap_y(
                 requested_frame,
-                logical_y,
+                if modern && floating_breaks && move_anchor {
+                    requested_y
+                } else {
+                    logical_y
+                },
                 &self.floating_table_frames,
             );
             self.current_y = resolved_y;
@@ -3825,36 +3879,13 @@ where
             None
         };
 
-        let styles = self.styles_part.clone();
-        let honor_row_page_breaks = !self.pageless_mode
-            && !self.rendering_header_footer_story
-            && !self.rendering_note_story
-            && !self.measuring_keep_next
-            && !is_floating_table
-            && jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
-        let row_page_break_before = |row_index: usize| {
-            honor_row_page_breaks
-                && jade_docx_layout::text_extract::windows_table_row_page_break_before(
-                    &table.rows[row_index],
-                    row_index,
-                    header_row_count,
-                    compatibility_mode,
-                    styles.as_deref(),
-                )
-        };
         // Modern Word moves the leading header block to a fresh page when
         // the first body row starts a new page. The body row still advances
         // again and gets its repeated header on that page.
-        if header_row_count != 0
-            && compatibility_mode.is_some_and(|mode| mode >= 15)
+        if !is_floating_table
+            && modern
             && (self.column_index != 0 || !at_table_frame_top(self))
-            && hidden_rows
-                .iter()
-                .enumerate()
-                .skip(header_row_count)
-                .find_map(|(index, &hidden)| (!hidden).then_some(index))
-                .is_some_and(row_page_break_before)
+            && first_body_row_breaks
         {
             self.force_table_page_break()?;
             self.configure_table_context();
@@ -4082,6 +4113,7 @@ where
             Ok(())
         };
         let last_visible_row = hidden_rows.iter().rposition(|hidden| !hidden);
+        let table_paragraph_start = self.paragraph_counter;
         let mut last_visible_row_index = None;
         let mut previous_spaced_frame: Option<(usize, usize, f64)> = None;
         for row_index in 0..prepared_rows.len() {
@@ -4125,6 +4157,7 @@ where
             let mut row_start = true;
             let mut fresh_page_segment = None;
             let mut row_requires_page_break = row_page_break_before(row_index)
+                && (!is_floating_table || first_visible_row != Some(row_index))
                 && (self.column_index != 0 || !at_table_frame_top(self));
             let mut row_notes_registered = (!options.render_footnotes && !options.render_endnotes)
                 || !table_row_has_note_references(row);
@@ -4791,7 +4824,45 @@ where
         }
 
         if let Some((frame, logical_floor)) = floating_table_frame {
-            if self.current_page_number == frame.page_number {
+            if let Some(rows) = repeated_floating_rows.filter(|_| {
+                self.current_page_number == frame.page_number + floating_fragments.len() - 1
+            }) {
+                self.record_repeated_header_paragraphs(
+                    table_paragraph_start..self.paragraph_counter,
+                );
+                self.floating_table_frames
+                    .extend(floating_table_page_frames(
+                        frame,
+                        self.current_page_number,
+                        table_end_y,
+                        self.margin_top,
+                        self.page_height - self.margin_bottom,
+                    ));
+                self.current_y = table_end_y;
+                let final_frame = self.draw_floating_table_break_copies(
+                    table,
+                    frame,
+                    &rows,
+                    &row_heights,
+                    &floating_fragments,
+                    header_row_count,
+                    TableVisualGrid {
+                        table_x,
+                        column_positions: &col_positions,
+                        column_widths: &column_widths,
+                        content_width: None,
+                        bidi_visual: table.bidi_visual,
+                    },
+                    line_height,
+                    modern,
+                )?;
+                self.current_y = self.margin_top;
+                self.active_float_exclusions.push(PageFloatExclusion {
+                    is_table: true,
+                    page_number: final_frame.page_number,
+                    bounds: windows_floating_table_text_exclusion(table, final_frame),
+                });
+            } else if self.current_page_number == frame.page_number {
                 // A floating table paints at its absolute frame but does not
                 // consume the body cursor. Following paragraphs use the shared
                 // jade-docx-layout exclusion plan to flow beside/below it.
@@ -4799,7 +4870,11 @@ where
                 self.active_float_exclusions.push(PageFloatExclusion {
                     is_table: true,
                     page_number: frame.page_number,
-                    bounds: floating_table_text_exclusion(table, frame),
+                    bounds: if floating_breaks {
+                        windows_floating_table_text_exclusion(table, frame)
+                    } else {
+                        floating_table_text_exclusion(table, frame)
+                    },
                 });
                 self.floating_table_frames.push(frame);
             } else if self.current_page_number > frame.page_number {
@@ -4819,6 +4894,71 @@ where
         }
 
         Ok(())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_floating_table_break_copies(
+        &mut self,
+        table: &Table,
+        frame: FloatingTableFrame,
+        rows: &[Vec<PreparedCell>],
+        row_heights: &[f64],
+        fragments: &[Range<usize>],
+        header_row_count: usize,
+        grid: TableVisualGrid<'_>,
+        line_height: f64,
+        modern: bool,
+    ) -> Result<FloatingTableFrame, JsValue> {
+        let mut final_frame = frame;
+        for _ in 1..fragments.len() {
+            for (fragment_index, range) in fragments.iter().enumerate() {
+                // Word lays out another instance for each internal break.
+                // Legacy modes start a copy on the previous instance's
+                // last page, immediately below its last fragment.
+                if modern || fragment_index != 0 {
+                    self.force_table_page_break()?;
+                    self.configure_table_context();
+                    if fragment_index == 0 {
+                        let height = row_heights[range.clone()].iter().sum();
+                        self.current_y = compute_floating_table_y(
+                            self.margin_top,
+                            self.page_height - self.margin_top - self.margin_bottom,
+                            self.page_height,
+                            self.current_y,
+                            height,
+                            table,
+                        )
+                        .unwrap_or(self.current_y);
+                    }
+                }
+                let top = self.current_y;
+                if fragment_index != 0 && range.start >= header_row_count {
+                    self.draw_repeated_header_rows(
+                        &rows[..header_row_count],
+                        &row_heights[..header_row_count],
+                        table,
+                        grid,
+                        line_height,
+                    )?;
+                }
+                self.draw_table_rows_visual_only(
+                    &rows[range.clone()],
+                    &row_heights[range.clone()],
+                    table,
+                    grid,
+                    line_height,
+                    range.start,
+                )?;
+                final_frame = FloatingTableFrame {
+                    page_number: self.current_page_number,
+                    top,
+                    bottom: self.current_y,
+                    ..frame
+                };
+                self.floating_table_frames.push(final_frame);
+            }
+        }
+        Ok(final_frame)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -6432,11 +6572,30 @@ where
         grid: TableVisualGrid<'_>,
         line_height: f64,
     ) -> Result<(), JsValue> {
-        for (row_index, (row_cells, &row_height)) in header_rows
-            .iter()
-            .zip(header_row_heights.iter())
-            .enumerate()
-        {
+        self.draw_table_rows_visual_only(
+            header_rows,
+            header_row_heights,
+            table,
+            grid,
+            line_height,
+            0,
+        )
+    }
+
+    fn draw_table_rows_visual_only(
+        &mut self,
+        rows: &[Vec<PreparedCell>],
+        row_heights: &[f64],
+        table: &Table,
+        grid: TableVisualGrid<'_>,
+        line_height: f64,
+        first_row_index: usize,
+    ) -> Result<(), JsValue> {
+        for (row_index, (row_cells, &row_height)) in rows.iter().zip(row_heights).enumerate() {
+            let row_index = first_row_index + row_index;
+            if row_height <= 0.0 {
+                continue;
+            }
             let reserve_bottom = table.rows.get(row_index).is_some_and(row_grows_for_borders);
             let bands = HorizontalBorderBands::for_row(row_cells, reserve_bottom);
             let spacing_background = table
@@ -10963,6 +11122,38 @@ fn floating_table_text_exclusion(table: &Table, frame: FloatingTableFrame) -> Fl
         wrap_text: WrapTextSide::BothSides,
         polygon: None,
     }
+}
+
+fn windows_floating_table_text_exclusion(
+    table: &Table,
+    frame: FloatingTableFrame,
+) -> FloatExclusion {
+    let mut bounds = floating_table_text_exclusion(table, frame);
+    // Word adds clearance to the authored horizontal wrap distance and
+    // retains a minimum gap even when the distance is zero or omitted.
+    let clearance = |distance: f64| (distance + points_to_px(0.85)).max(points_to_px(1.25));
+    bounds.left = frame.left - clearance(frame.left - bounds.left);
+    bounds.right = frame.right + clearance(bounds.right - frame.right);
+    bounds
+}
+
+fn floating_table_break_fragments(
+    hidden_rows: &[bool],
+    page_break_before: impl Fn(usize) -> bool,
+) -> Vec<Range<usize>> {
+    let Some(first) = hidden_rows.iter().position(|hidden| !hidden) else {
+        return Vec::new();
+    };
+    let mut ranges = Vec::new();
+    let mut start = first;
+    for (index, &hidden) in hidden_rows.iter().enumerate().skip(first + 1) {
+        if !hidden && page_break_before(index) {
+            ranges.push(start..index);
+            start = index;
+        }
+    }
+    ranges.push(start..hidden_rows.len());
+    ranges
 }
 
 /// Splits a floating table that broke across pages into the frame it occupies
