@@ -22,3 +22,16 @@ fn formatting_mark_keystrokes_are_measured() {
     jade_docx_perf::run("keystroke-marks", &fixture)
         .expect("typing with visible formatting marks must be a measured scenario");
 }
+
+#[test]
+fn band_redraw_keystrokes_run_on_every_ci_fixture() {
+    // The workflow's diagnostic step types into each of these; see
+    // `.github/workflows/perf.yml`.
+    for name in ["contract.docx", "nda.docx", "yokohama.docx"] {
+        let fixture = jade_docx_perf::repo_root()
+            .join("public/fixtures")
+            .join(name);
+        jade_docx_perf::run("keystroke-band", &fixture)
+            .unwrap_or_else(|err| panic!("keystroke-band@{name}: {err}"));
+    }
+}

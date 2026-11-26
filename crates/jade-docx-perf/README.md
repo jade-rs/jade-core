@@ -10,6 +10,26 @@ initial layout and the input repaint, with the hidden-marks case as a control.
 That observation is compiled only for tests and adds no counters to the
 Callgrind binary.
 
+`keystroke-band` types the same 20 insertions with band redraw on, as
+`NativeDocument::apply_and_repaint_grouped` does for every keystroke: once the
+recorded command proves a single-paragraph edit, it enables band redraw,
+restores the text-edit cache and calls `prepare_completed_pagination_edit`
+with the paragraph's height from before the edit. The renderer then repaints
+only the edited paragraph's band when `compute_band_redraw_plan` accepts it.
+`keystroke` and `keystroke-marks` never enable it and measure the full-page
+fallback, so changes to the band plan, the band clip or the geometry stability
+check only show up in `keystroke-band`. Unit tests check that every keystroke
+takes a band on all three CI fixtures (no gate rejects any of them), that
+`keystroke` takes none, and that the edited paragraph's text reaches the
+painter in a band repaint that draws less than the page repaint does.
+
+`keystroke-band` is a diagnostic, outside the frozen 18-case gate
+(`scripts/perf/check_regressions.py`). The workflow measures it in its own step
+on base and head, into `perf/band/`, and appends that table, with the gated
+`keystroke` rows copied beside it, to the pull-request comment. The
+`run-callgrind.sh` default scenario list leaves it out; select it with
+`PERF_SCENARIOS=keystroke-band`.
+
 The CI grafts the same harness onto the base and head commits. Instruction
 counts measure engine work; they do not measure browser rasterization,
 composition previews, frame latency, or native macOS IME latency. They

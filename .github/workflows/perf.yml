@@ -150,6 +150,32 @@ jobs:
           BASE_SHA: ${{ steps.comparison.outputs.base_sha || github.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
+      # Keep the frozen 18-case gate unchanged. Native typing turns band
+      # redraw on for each keystroke (`apply_and_repaint_grouped`), which the
+      # gated `keystroke` cases never reach: they measure the full-page
+      # fallback. Measure the band path apart and report it beside
+      # `keystroke`, whose outputs are copied from the gated run rather than
+      # measured twice. Its own directories keep it out of the gate's
+      # exact-set check.
+      - name: Profile band redraw typing
+        run: |
+          head/scripts/perf/run-callgrind.sh head/target/perf-ci/jade-docx-perf \
+            perf/band/head $FIXTURES
+          cp perf/head/keystroke@*.out perf/band/head/
+          if [ "${{ steps.base.outcome }}" = "success" ]; then
+            head/scripts/perf/run-callgrind.sh base/target/perf-ci/jade-docx-perf \
+              perf/band/base $FIXTURES
+            cp perf/base/keystroke@*.out perf/band/base/
+          fi
+          python3 head/scripts/perf/compare.py perf/band/base perf/band/head \
+            --base-label "base ${BASE_SHA::8}" --head-label "head ${HEAD_SHA::8}" > perf/band/summary.md
+          cat perf/band/summary.md >> perf/summary.md
+          cat perf/band/summary.md >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PERF_SCENARIOS: keystroke-band
+          BASE_SHA: ${{ steps.comparison.outputs.base_sha || github.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
       # Keep the frozen 18-case gate unchanged. This diagnostic pair
       # exercises positive float answers, absent from the standard fixtures.
       - name: Profile a wrapping shape near the end of a long document
