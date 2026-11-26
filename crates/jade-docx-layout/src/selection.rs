@@ -7,6 +7,10 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[path = "selection/paragraph_registry.rs"]
+mod paragraph_registry;
+use paragraph_registry::ParagraphRegistry;
+
 #[derive(Clone, Debug, Default)]
 pub struct GlyphBox {
     pub start: usize,
@@ -381,13 +385,18 @@ pub enum CaretAffinity {
 /// whose lifetime must match the saved line layouts.
 pub struct SelectionSuffix {
     paragraphs: Vec<ParagraphLayout>,
+    /// Set when the paragraphs were parked in the manager's registry instead
+    /// ([`SelectionManager::park_selection_suffix`]); `paragraphs` is then
+    /// empty.
+    parked: Option<u64>,
     caret_x_overrides: HashMap<(usize, usize), f64>,
     non_selectable_paragraphs: HashSet<usize>,
 }
 
 impl SelectionSuffix {
     /// The saved paragraph layouts, the first one at the index the suffix
-    /// was taken from.
+    /// was taken from. Empty for a parked suffix until it is detached
+    /// ([`SelectionManager::detach_selection_suffix`]).
     pub fn paragraphs(&self) -> &[ParagraphLayout] {
         &self.paragraphs
     }
@@ -408,7 +417,7 @@ impl CellRegistry {
 
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
-    paragraphs: Vec<ParagraphLayout>,
+    paragraphs: ParagraphRegistry,
     selection: Option<SelectionRange>,
     /// The line a collapsed caret on a soft wrap is drawn on.
     caret_affinity: CaretAffinity,
@@ -587,6 +596,33 @@ impl SelectionManager {
     /// registration. Cell layouts are saved separately by the caller.
     pub fn take_selection_suffix(&mut self, from: usize) -> SelectionSuffix {
         let paragraphs = self.take_paragraph_suffix(from);
+        self.take_selection_suffix_metadata(from, paragraphs, None)
+    }
+
+    /// [`Self::take_selection_suffix`] without moving the paragraphs: they
+    /// are parked out of sight in the registry, which reads exactly as if
+    /// they had been taken. A stable edit sets the tail after the edited
+    /// paragraph aside on every keystroke; moving it out and back copies the
+    /// rest of the document each time.
+    ///
+    /// Hand the suffix back to [`Self::restore_selection_suffix`], or to
+    /// [`Self::detach_selection_suffix`] for one that owns its paragraphs, or
+    /// to [`Self::discard_selection_suffix`]. Parking another tail, or taking
+    /// one, drops a tail still parked.
+    pub fn park_selection_suffix(&mut self, from: usize) -> SelectionSuffix {
+        let parked = self.paragraphs.park(from);
+        if parked.is_some() {
+            *self.paragraph_bounds_index.get_mut() = None;
+        }
+        self.take_selection_suffix_metadata(from, Vec::new(), parked)
+    }
+
+    fn take_selection_suffix_metadata(
+        &mut self,
+        from: usize,
+        paragraphs: Vec<ParagraphLayout>,
+        parked: Option<u64>,
+    ) -> SelectionSuffix {
         let mut caret_x_overrides = HashMap::new();
         self.caret_x_overrides.retain(|&(paragraph, line), x| {
             if paragraph < from {
@@ -607,13 +643,41 @@ impl SelectionManager {
         });
         SelectionSuffix {
             paragraphs,
+            parked,
             caret_x_overrides,
             non_selectable_paragraphs,
         }
     }
 
+    /// A suffix that owns its paragraphs: a parked one's are moved out of the
+    /// registry, which reads the same as before.
+    pub fn detach_selection_suffix(&mut self, mut suffix: SelectionSuffix) -> SelectionSuffix {
+        if let Some(id) = suffix.parked.take() {
+            suffix.paragraphs = self.paragraphs.detach_parked(id);
+        }
+        suffix
+    }
+
+    /// Drops `suffix`, and the paragraphs it parked.
+    pub fn discard_selection_suffix(&mut self, suffix: SelectionSuffix) {
+        if let Some(id) = suffix.parked {
+            self.paragraphs.discard_parked(id);
+        }
+    }
+
+    /// Drops a parked tail whose suffix is gone, as after a failed pass.
+    pub fn discard_parked_selection_suffix(&mut self) {
+        self.paragraphs.drop_parked();
+    }
+
     pub fn restore_selection_suffix(&mut self, from: usize, suffix: SelectionSuffix) {
-        self.restore_paragraph_suffix(from, suffix.paragraphs);
+        match suffix.parked {
+            Some(id) => {
+                *self.paragraph_bounds_index.get_mut() = None;
+                self.paragraphs.restore_parked(id, from);
+            }
+            None => self.restore_paragraph_suffix(from, suffix.paragraphs),
+        }
         self.caret_x_overrides
             .retain(|&(paragraph, _), _| paragraph < from);
         self.caret_x_overrides.extend(suffix.caret_x_overrides);
