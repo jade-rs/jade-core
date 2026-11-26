@@ -195,6 +195,16 @@ def nested_fixed_grid_fit_cases():
                for kind in ('full', 'percentage', 'absolute') for budget in (2800, 2904, 3000, 3104)})
 
 
+def nested_fixed_variable_row_cases():
+    rows = ('crossed', 'crossed-first', 'diff-margins', 'diff-margins-first',
+            'left-first', 'margins-first-only', 'margins-second-only', 'one-column',
+            'right-first', 'rotated', 'rotated-first', 'same', 'same-margins',
+            'split-equal', 'wide-first', 'wide-second', 'widest-opposite-padding',
+            'width-and-margins', 'width-and-margins-first')
+    return {f'{row}-{width}-{budget}' for row in rows for width in ('full', 'absolute')
+            for budget in (2701, 2903, 3103, 3701)}
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -277,6 +287,8 @@ CAPTURES = (
      'word-windows-edge-nested-fixed-floor-', nested_fixed_parent_width_cases, ('--unclipped-tables',)),
     ('nested-fixed-grid-fit', 'dd83a184031b57208324f102eb1797f37a7e2d4dcdd54bb1c416514d0045a756',
      'word-windows-edge-nested-fixed-grid-fit-', nested_fixed_grid_fit_cases, ('--unclipped-tables',)),
+    ('nested-fixed-variable-rows', 'f11e49bd496af8243ed8edf17c689392af4b6df6b71c8354243d1d88ac98b7f2',
+     'word-windows-edge-nested-fixed-variable-rows-', nested_fixed_variable_row_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -321,7 +333,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-autofit-cell-margin-weights', 'nested-autofit-three-column-clamp',
         'nested-autofit-host-first', 'nested-autofit-child-margins',
         'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
-        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit',
+        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )

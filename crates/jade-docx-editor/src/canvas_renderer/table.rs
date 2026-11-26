@@ -18454,7 +18454,7 @@ fn word_windows_nested_grid(
         && !table.bidi_visual
         && resolve_table_layout_mode(table) == TableLayoutMode::Fixed
     {
-        if let Some(widths) = round_windows_fixed_nested_grid(table, first, column_count, budget) {
+        if let Some(widths) = round_windows_fixed_nested_grid(table, column_count, budget) {
             return Some(WindowsNestedGrid {
                 widths,
                 rounded_fixed: true,
@@ -18488,11 +18488,9 @@ fn word_windows_nested_grid(
 
 fn round_windows_fixed_nested_grid(
     table: &Table,
-    first: &TableRow,
     column_count: usize,
     budget: f64,
 ) -> Option<Vec<f64>> {
-    let preferences = absolute_fixed_row_widths(first, column_count)?;
     let default_padding = points_to_px(UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
     let reserved_padding = |row: &TableRow, cell: &TableCell| {
         let padding = resolve_cell_padding(
@@ -18507,31 +18505,26 @@ fn round_windows_fixed_nested_grid(
         // addition to that cell's own margins when it shrinks a fixed grid.
         ((padding.horizontal() + 2.0 * default_padding) * 15.0).round()
     };
-    let padding: Vec<_> = first
-        .cells
-        .iter()
-        .map(|cell| reserved_padding(first, cell))
-        .collect();
+    let mut widths = vec![0.0_f64; column_count];
+    let mut padding = vec![0.0_f64; column_count];
     for row in table.rows.iter().filter(|row| !table_row_is_hidden(row)) {
-        if row_uses_separate_cell_borders(row, table)
-            || absolute_fixed_row_widths(row, column_count).as_deref()
-                != Some(preferences.as_slice())
-            || row
-                .cells
-                .iter()
-                .zip(&padding)
-                .any(|(cell, &inset)| reserved_padding(row, cell) != inset)
-        {
+        if row_uses_separate_cell_borders(row, table) {
             return None;
+        }
+        let row_widths = absolute_fixed_row_widths(row, column_count)?;
+        // The widest preference and greatest horizontal inset can come from
+        // different rows in the same column.
+        for (index, (cell, width)) in row.cells.iter().zip(row_widths).enumerate() {
+            widths[index] = widths[index].max((width * 15.0).round());
+            padding[index] = padding[index].max(reserved_padding(row, cell));
         }
     }
 
-    let mut widths: Vec<_> = preferences
-        .iter()
-        .map(|width| (width * 15.0).round())
-        .collect();
     let total: f64 = widths.iter().sum();
     let budget = (budget * 15.0).round();
+    if !total.is_finite() || widths.iter().any(|width| *width <= 0.0) || !budget.is_finite() {
+        return None;
+    }
     if budget < total {
         let total_padding: f64 = padding.iter().sum();
         if budget <= total_padding
@@ -18758,7 +18751,12 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             }
             autofit.layouts.clone()
         } else {
-            NaturalParagraphLayoutCache::default()
+            NaturalParagraphLayoutCache {
+                // Word fits text by glyph advance after resolving a fixed
+                // nested grid, including tables with percentage widths.
+                fit_on_glyph_advances: windows_fixed_grid_rounded,
+                ..Default::default()
+            }
         }
     } else {
         apply_table_layout_width_for_table_with_content(

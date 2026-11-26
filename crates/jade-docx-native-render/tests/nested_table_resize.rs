@@ -413,14 +413,25 @@ fn autofit_nested_grid_saves_within_the_windows_word_text_frame() {
 #[cfg(windows)]
 #[test]
 fn fixed_nested_grids_match_windows_word_on_render_and_export() {
+    verify_fixed_nested_grids("nested-fixed-grid-fit", 252);
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_nested_grids_match_windows_word_when_rows_differ() {
+    verify_fixed_nested_grids("nested-fixed-variable-rows", 456);
+}
+
+#[cfg(windows)]
+fn verify_fixed_nested_grids(cohort: &str, count: usize) {
     use futures::executor::block_on;
     use jade_docx_editor::Options;
 
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    let (mut archive, manifest) = load_word_capture("nested-fixed-grid-fit");
+    let (mut archive, manifest) = load_word_capture(cohort);
     let cases = manifest["documents"].as_array().unwrap();
     let options = Options::default();
-    assert_eq!(cases.len(), 252);
+    assert_eq!(cases.len(), count);
     for case in cases {
         let name = case["name"].as_str().unwrap();
         let (input, expected) = read_word_save(&mut archive, case);
