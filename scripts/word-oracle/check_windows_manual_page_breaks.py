@@ -138,6 +138,32 @@ def nested_autofit_text_overflow_cases():
             for width in (8240, 8280, 8320)}
 
 
+def nested_autofit_cell_margin_weight_cases():
+    margins = ('0-0-25-45', '10-10-10-20', '20-25-15-5', '60-0-0-0')
+    return {f'{position}-{page}-{margin}' for position in ('edge', 'rightedge')
+            for page in (612, 720) for margin in margins}
+
+
+def nested_autofit_three_column_cases(hosts=(1, 2)):
+    return {f'{host}-{length}-{margins}-{page}' for host in hosts for length in (10, 22)
+            for margins in ('table', 'individual') for page in (612, 650, 690, 900)}
+
+
+def nested_autofit_host_first_cases():
+    return nested_autofit_three_column_cases((0,))
+
+
+def nested_autofit_child_margin_cases():
+    margins = ('0-0-20-40', '40-5-0-0', '2-9-3-8', '10-30-10-30')
+    return {f'{margin}-{page}' for margin in margins for page in (612, 900)}
+
+
+def nested_autofit_four_column_cases():
+    return {f'{host}-{order}-{margin}-{page}' for host in (0, 2, 3)
+            for order in ('mn', 'nm') for margin in ('10-30', '30-10')
+            for page in (700, 755, 820, 1000)}
+
+
 def nested_fixed_parent_width_cases():
     widths = (2500, 2823, 2954, 2963, 3023, 3043)
     return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
@@ -203,6 +229,16 @@ CAPTURES = (
      'word-windows-edge-nested-autofit-text-resize-', nested_autofit_text_frame_cases, ('--unclipped-tables',)),
     ('nested-autofit-text-overflow', '45f6f45cbda73e9fdd2462dd398c22974d1c9790ceb05e296df70943d161aedb',
      'word-windows-edge-nested-autofit-text-overflow-', nested_autofit_text_overflow_cases, ('--unclipped-tables',)),
+    ('nested-autofit-cell-margin-weights', '52c4b8ea80dbb19c3b2174760d9b6cbcc2fb0d27685b1965be2e36b39216d267',
+     'word-windows-edge-nested-autofit-cell-margin-weights-', nested_autofit_cell_margin_weight_cases, ('--unclipped-tables',)),
+    ('nested-autofit-three-column-clamp', 'c1985e68cd9297ebed48609bd889a20a0ecf2963020ebb5b4dc1eda1cd3c914f',
+     'word-windows-edge-nested-autofit-three-column-clamp-', nested_autofit_three_column_cases, ('--unclipped-tables',)),
+    ('nested-autofit-host-first', '7fd77c7a3c99418d65ad6850a704e2b03e95fab0361267cb5faa64f1e636df3f',
+     'word-windows-edge-nested-autofit-host-first-', nested_autofit_host_first_cases, ('--unclipped-tables',)),
+    ('nested-autofit-child-margins', '8a647aa23411efd0f5df637c95dec1aff219aae1b33da83837f05ca17fca28be',
+     'word-windows-edge-nested-autofit-child-margins-', nested_autofit_child_margin_cases, ('--unclipped-tables',)),
+    ('nested-autofit-four-column-margins', '4f16a90d49bf5630f8d5526d1d98667a23b48f9369d66acd1db4703d8c72aba6',
+     'word-windows-edge-nested-autofit-four-column-margins-', nested_autofit_four_column_cases, ('--unclipped-tables',)),
     ('nested-fixed-advances', '842bd436081f746899214dc718aa4371d16ae5d0ab7049a61c5742960f3e0920',
      'word-windows-edge-nested-fixed-advance-', nested_table_advance_cases, ('--unclipped-tables',)),
     ('nested-fixed-parent-widths', '88c2b573ec528d89c9797815aef9c6b1373b1b4f53985fc2420cc02f4d379595',
@@ -247,6 +283,9 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-autofit-text-content', 'nested-autofit-text-frame',
         'nested-autofit-text-margins', 'nested-autofit-text-indents',
         'nested-autofit-text-resize', 'nested-autofit-text-overflow',
+        'nested-autofit-cell-margin-weights', 'nested-autofit-three-column-clamp',
+        'nested-autofit-host-first', 'nested-autofit-child-margins',
+        'nested-autofit-four-column-margins',
         'nested-fixed-advances', 'nested-fixed-parent-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',

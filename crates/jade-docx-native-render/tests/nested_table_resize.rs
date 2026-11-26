@@ -386,6 +386,58 @@ fn autofit_nested_grid_saves_within_the_windows_word_text_frame() {
     }
 }
 
+#[cfg(windows)]
+#[test]
+fn capped_autofit_grids_preserve_windows_word_cell_margins() {
+    use futures::executor::block_on;
+    use jade_docx_editor::Options;
+
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let options = Options::default();
+    let twips = |width: Option<f32>| (f64::from(width.unwrap()) * 20.0).round() as i32;
+    for (cohort, count) in [
+        ("nested-autofit-cell-margin-weights", 48),
+        ("nested-autofit-three-column-clamp", 96),
+        ("nested-autofit-host-first", 48),
+        ("nested-autofit-child-margins", 24),
+        ("nested-autofit-four-column-margins", 144),
+    ] {
+        let (mut archive, manifest) = load_word_capture(cohort);
+        let cases = manifest["documents"].as_array().unwrap();
+        assert_eq!(cases.len(), count);
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let (input, expected) = read_word_save(&mut archive, case);
+            let word = block_on(WordDocument::load(&expected, &options)).unwrap();
+            let jade = open_with_windows_fonts(&input);
+            let exported = jade.export_docx().unwrap();
+            let saved = block_on(WordDocument::load(&exported, &options)).unwrap();
+            let layout = jade.renderer().table_resize_metadata();
+            assert_eq!(layout.tables.len(), 2, "{name}");
+            for table in layout.tables {
+                let expected = widths_at(&word, table.order);
+                let authored = widths_at(jade.word_document(), table.order);
+                let saved = widths_at(&saved, table.order);
+                let measured: Vec<_> = table
+                    .column_widths
+                    .iter()
+                    .map(|width| (width * 15.0).round() as i32)
+                    .collect();
+                let saved_grid: Vec<_> = saved.grid.into_iter().map(twips).collect();
+                let word_grid: Vec<_> = expected.grid.into_iter().map(twips).collect();
+                assert_eq!(saved_grid, measured, "{name}: table {}", table.order);
+                assert_eq!(saved.preferred_width, authored.preferred_width, "{name}");
+                assert_eq!(saved.cells, authored.cells, "{name}");
+                assert_eq!(
+                    saved_grid, word_grid,
+                    "{name}: Word and exported grids for table {}",
+                    table.order
+                );
+            }
+        }
+    }
+}
+
 fn load_word_capture(capture: &str) -> (ZipArchive<Cursor<Vec<u8>>>, serde_json::Value) {
     let archive = std::fs::read(repo_path(&format!(
         "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",
