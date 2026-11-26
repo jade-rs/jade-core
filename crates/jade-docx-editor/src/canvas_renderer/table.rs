@@ -11723,13 +11723,23 @@ fn windows_floating_table_text_exclusion(
         .flatten()
     {
         let leading = leading_cell_border_half_px(table, false);
-        let trailing = trailing_cell_border_half_px(table);
+        let mut trailing = trailing_cell_border_half_px(table);
+        let centered_default_rule = leading == 0.0
+            && trailing == 0.0
+            && alignment == FloatingCellTextAlignment::Center
+            && compatibility_mode.is_some_and(|mode| mode >= 15)
+            && !floating_trailing_rule_is_hidden(table);
+        if centered_default_rule {
+            // Modern Word uses the default trailing setback for both text
+            // placement and wrapping around a centered table without rules.
+            trailing = points_to_px(0.75);
+        }
         if leading > 0.0 || trailing > 0.0 {
             let offset = windows_floating_cell_text_offset(table, compatibility_mode, alignment);
             // Word measures the authored gap from the outer rule of the
             // text frame and preserves half a point of clearance.
             let gap = |distance: f64, half_rule: f64| {
-                if half_rule > 0.0 {
+                if half_rule > 0.0 || centered_default_rule {
                     distance.max(points_to_px(0.5)) + half_rule
                 } else {
                     (distance + points_to_px(0.85)).max(points_to_px(1.25))

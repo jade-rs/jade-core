@@ -38872,6 +38872,126 @@
       "docx_sha256": "fcd1fbbe4bdff5a645da8e0e78265f30302b11f6956d8b1f6f8914beedab7cad"
     },
     {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-0-compat12",
+      "docx_sha256": "a6f8e73d3ecbaf16769f225e802acf98bf27a8af518666ed2cbb4d4d51459acc"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-0-compat14",
+      "docx_sha256": "7bc9e465752b4814fdc846e93a0fb7754f30d1558e7bd847a9f589350cb5002f"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-0-compat15",
+      "docx_sha256": "2cd178a9e212284d0d6eb3a0b716515097b523d4678f3e7fad79c8f77664644c"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-10-compat12",
+      "docx_sha256": "cabca437e9ff4d20cacb63b45c04b7514c365420948827ed8ca63740c438656f"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-10-compat14",
+      "docx_sha256": "39b621cd65b185cd12f3654bcd367b3943082bcd7bdd6e93f0b5abd7d96ed33c"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-10-compat15",
+      "docx_sha256": "6717ee4cd05162870397823ff202e01b161fbbb6ba3e27e9ad090dbdc17e7e70"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-180-compat12",
+      "docx_sha256": "d830f303656d21929615b2e4dae6ecba3850cf2e5a01c1fb5e33b0c683dd95a7"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-180-compat14",
+      "docx_sha256": "e76c615581cd9a9bb22d4b18ec1bae1707eef212b8e80b2a5cc145f1a01d3abc"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-180-compat15",
+      "docx_sha256": "decd841e6f816ddb76ea58f67bbeb2cf5211840a5595882bdbe9dbcbe25b398c"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-20-compat12",
+      "docx_sha256": "985aa8a6590b26bfa52e232b04e3215c1b311d7368015164ebd15d588a3fcd35"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-20-compat14",
+      "docx_sha256": "bae4a0e1f5f5612b4542acc48e5fac78d7bd90d0d5369de04d2214f092c9f9f4"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-20-compat15",
+      "docx_sha256": "7a7f1e26989caac8b1635c78fab753a5859580e30cd3217824d358877a61ed68"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-80-compat12",
+      "docx_sha256": "534730fe8103e7e603fbdf5241ad42c8928679315f32c984946df22fcf61099b"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-80-compat14",
+      "docx_sha256": "5b1fa3afeb45ead6e2e50face0c2f857cdcf36c7a7b4eb4ac64381a38ae3625e"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-left-gap-80-compat15",
+      "docx_sha256": "44b88560437d75a5a9dcd32123a7515e2a77f35420f3ae64d300d54e09a6682a"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-0-compat12",
+      "docx_sha256": "2538241c9d17e1e6e807a1ab36c49126bd8d4e280f5294ee62b4017784b5cab0"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-0-compat14",
+      "docx_sha256": "b1dd76d6baef1b247ffdfb45396d083dda87945224b774f03c27c18a7eb600a9"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-0-compat15",
+      "docx_sha256": "fafa296919c8be45bc1e8fe6ea12f6a8e395ef4d04a5b3afb47dbff5a4675327"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-10-compat12",
+      "docx_sha256": "c9d33924e1cefacbe44086b8c1c971879896c5847303630258ad8a8cc09d6fe2"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-10-compat14",
+      "docx_sha256": "1d010f846a5550a23d22772cfd1c06edd57769750faa3d9a3fd36ca3dfa5a0e9"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-10-compat15",
+      "docx_sha256": "29f27511c26b8b1fc5fc7096fd8f89b26d8220e2df44cde5421586e53bcdb573"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-180-compat12",
+      "docx_sha256": "8fe80e5ce47d1b137a1ea31e3e361c714302b8958f589d4c3b941e411111f494"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-180-compat14",
+      "docx_sha256": "badc3b01e630a32c01ff47b150ea7d4e7d07fbb4bdb19a9f88d3ef2840468894"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-180-compat15",
+      "docx_sha256": "662c1e0c224aa5b54c0d096a961b3304b13e2689cd63c093944b1e02885c41c9"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-20-compat12",
+      "docx_sha256": "7a4f0d67aa268d767f15891e023bf014f2451f6fe441529054bb2dffd121272b"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-20-compat14",
+      "docx_sha256": "95bffaa9db7a5cc7c16aa2013dd31f7036b8ae5c1a6ec569c1625ca0c34a5e8b"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-20-compat15",
+      "docx_sha256": "031bb92c0983689f5d3562e31443933d5791c2cace201da9f40a5ac6b006e1cb"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-80-compat12",
+      "docx_sha256": "2c1fb9ce5d28862e0bf0f6506f73a5ec9ddff9080eee93d3aca5e6a4ac1178b5"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-80-compat14",
+      "docx_sha256": "c2ece47361ff2bca71c2ddaf08e00c69357451f0245c50553d66c5c7348df331"
+    },
+    {
+      "fixture": "word-windows-edge-floating-table-default-frame-right-gap-80-compat15",
+      "docx_sha256": "d982b827fb681ede8ff6812fa789fd26604ef919ed67ede8c871bf56a8ef8e2e"
+    },
+    {
       "fixture": "watermark-per-section",
       "docx_sha256": "bb9cb6f9ab0b1555406ff8f9a0d9172a55d8d9cefe2dc7ab4b5451fc2cc31e34"
     }
