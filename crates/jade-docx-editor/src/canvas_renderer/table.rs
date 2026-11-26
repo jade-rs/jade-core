@@ -13471,7 +13471,8 @@ fn autofit_content_widths<C: TableAutofitContext>(
     config: Option<&LayoutConfig>,
     fit_nested_cell_text: bool,
 ) -> Result<AutofitContentWidths, C::Error> {
-    let fit_on_glyph_advances = windows_autofit_uses_shaped_minimum(table);
+    let fit_on_glyph_advances = windows_absolute_width_table(table)
+        && matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit);
     let mut minimums = no_wrap_absolute_minimum_widths(table, column_widths);
     let mut preferred = vec![0.0_f64; column_widths.len()];
     let mut explicit_width_columns = vec![false; column_widths.len()];
@@ -13799,10 +13800,9 @@ fn longest_unbreakable_width<C: LineWrapContext>(
     Ok(widest)
 }
 
-fn windows_autofit_uses_shaped_minimum(table: &Table) -> bool {
+fn windows_absolute_width_table(table: &Table) -> bool {
     jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        && matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit)
         && absolute_table_width(table).is_some()
 }
 
@@ -17265,8 +17265,8 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
     let cell_spacing = resolve_cell_spacing_px(row, table);
     let separated = row_uses_separate_cell_borders(row, table);
     let total_columns = column_widths.len();
-    let fit_on_glyph_advances = windows_autofit_uses_shaped_minimum(table)
-        || natural_paragraph_layouts.fit_on_glyph_advances;
+    let fit_on_glyph_advances =
+        windows_absolute_width_table(table) || natural_paragraph_layouts.fit_on_glyph_advances;
     let slot_scale = table_row_slot_scale(table, row, row_index, row_count, column_widths);
     if column_index > total_columns {
         column_index = total_columns;
