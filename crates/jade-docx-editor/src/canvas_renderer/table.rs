@@ -1,6 +1,6 @@
 use super::*;
 use crate::commands::resize_table_column::{
-    fit_nested_columns_to_content, NestedColumnResizeGeometry,
+    fit_nested_columns_to_content, shrink_nested_text_to_frame, NestedColumnResizeGeometry,
 };
 use crate::document::{
     resolve_cell_margin_edge_points, TableStyleCellFormat, TableStyleCellPosition, TextDirection,
@@ -1682,6 +1682,7 @@ struct NestedTableLayout {
     rows: Vec<NestedRowLayout>,
     width: f64,
     windows_preferred_grid: bool,
+    windows_fixed_grid_rounded: bool,
     height: f64,
     margin_top: f64,
     margin_bottom: f64,
@@ -3535,7 +3536,7 @@ where
             node_id: table.node_id.map(|id| id.raw()),
             column_widths: column_widths.clone(),
             resize_geometry: None,
-            save_autofit_grid: body_element_index != usize::MAX
+            save_resolved_grid: body_element_index != usize::MAX
                 && !self.pageless_mode
                 && !self.rendering_header_footer_story
                 && !self.rendering_note_story
@@ -9353,7 +9354,8 @@ where
                     node_id: layout.table.node_id.map(|id| id.raw()),
                     column_widths: layout.column_widths.clone(),
                     resize_geometry: layout.resize_geometry.clone(),
-                    save_autofit_grid: layout.resize_geometry.is_some()
+                    save_resolved_grid: (layout.resize_geometry.is_some()
+                        || layout.windows_fixed_grid_rounded)
                         && !self.pageless_mode
                         && !self.rendering_header_footer_story
                         && !self.rendering_note_story,
@@ -12993,21 +12995,33 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
                 .map(|(minimum, word)| minimum.max(*word))
                 .collect();
             let minimum_width: f64 = floors.iter().sum();
-            let indent = table_leading_indent(table).0.unwrap_or(0.0);
+            let indent = table_leading_indent(table).0;
             let limit = if config.is_some_and(|config| !config.word_modern_border_insets) {
                 // The legacy grid is constrained at the cell text edges.
                 let leading = pre_2013_table_text_inset_px(table, Some(14), false);
                 let trailing = pre_2013_table_trailing_text_inset_px(table);
+                // Without an indent from the document or table style, Word
+                // deducts the default leading inset from the available grid.
+                let indent = indent.unwrap_or(if table.resolved_style.is_none() {
+                    leading
+                } else {
+                    0.0
+                });
                 (available_width + leading + trailing - indent).max(1.0)
             } else {
-                (available_width - indent).max(1.0)
+                (available_width - indent.unwrap_or(0.0)).max(1.0)
             };
             if minimum_width > limit && declared <= limit + 1e-8 {
                 // Windows Word caps the grid at the text area when all
                 // columns cannot fit their unbreakable text at once. An
                 // authored table width past that edge may grow beyond it.
                 column_widths.copy_from_slice(&floors);
-                let table_width = clamp_windows_autofit_grid(column_widths, limit);
+                let table_width = shrink_windows_nested_parent_grid(
+                    column_widths,
+                    limit,
+                    &content_widths.frame_columns,
+                )
+                .unwrap_or_else(|| clamp_windows_autofit_grid(column_widths, limit));
                 for child in content_widths.natural_paragraph_layouts.nested.values_mut() {
                     child.limit_to_cell = true;
                 }
@@ -13223,12 +13237,19 @@ struct AutofitContentWidths {
     /// Widest unbreakable piece of each column's content, with the cell
     /// chrome: the narrowest the column gets without breaking a word.
     unbreakable: Vec<f64>,
+    frame_columns: Vec<WindowsAutofitFrameColumn>,
     /// Full natural layouts produced while measuring preferred widths. Row
     /// preparation can reuse these in the final table when the resolved cell
     /// width still fits them, avoiding an identical second wrap pass. Values
     /// are shared across cache hits; the final row layout clones only the
     /// paragraphs it can reuse.
     natural_paragraph_layouts: NaturalParagraphLayoutCache,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct WindowsAutofitFrameColumn {
+    padding: f64,
+    nested_padding: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -13533,6 +13554,11 @@ fn autofit_content_widths<C: TableAutofitContext>(
     let mut unbreakable_widths = vec![0.0_f64; column_widths.len()];
     let mut natural_paragraph_layouts = Vec::new();
     let mut nested = FxHashMap::default();
+    let mut frame_columns = if fit_on_glyph_advances || fit_nested_cell_text {
+        vec![WindowsAutofitFrameColumn::default(); column_widths.len()]
+    } else {
+        Vec::new()
+    };
     let row_count = table
         .rows
         .iter()
@@ -13576,6 +13602,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
             let math_config = config.filter(|_| context.math_enabled());
             let mut natural_content_width = 0.0_f64;
             let mut unbreakable_content_width = 0.0_f64;
+            let mut nested_padding = 0.0;
             for block in &cell.blocks {
                 if let BodyElement::Table(child) = block {
                     if shaped_minimum && resolve_cell_spacing_px(row, table) == 0.0 {
@@ -13589,7 +13616,14 @@ fn autofit_content_widths<C: TableAutofitContext>(
                         )? {
                             let floor = measured.minimum_width(child);
                             natural_content_width = natural_content_width.max(floor);
-                            unbreakable_content_width = unbreakable_content_width.max(floor);
+                            if floor > unbreakable_content_width {
+                                unbreakable_content_width = floor;
+                                nested_padding = measured
+                                    .frame_columns
+                                    .iter()
+                                    .map(|column| column.padding + column.nested_padding)
+                                    .sum();
+                            }
                             nested.insert(child.as_ref() as *const Table, measured);
                         }
                     }
@@ -13598,7 +13632,10 @@ fn autofit_content_widths<C: TableAutofitContext>(
                 if let (BodyElement::Math(math), Some(config)) = (block, math_config) {
                     let (natural, minimum) = context.measure_display_math(math, config)?;
                     natural_content_width = natural_content_width.max(natural);
-                    unbreakable_content_width = unbreakable_content_width.max(minimum);
+                    if minimum > unbreakable_content_width {
+                        unbreakable_content_width = minimum;
+                        nested_padding = 0.0;
+                    }
                     continue;
                 }
                 let BodyElement::Paragraph(paragraph) = block else {
@@ -13665,15 +13702,18 @@ fn autofit_content_widths<C: TableAutofitContext>(
                 };
                 let required_width = content_width + overhang;
                 natural_content_width = natural_content_width.max(required_width);
-                unbreakable_content_width =
-                    unbreakable_content_width.max(longest_unbreakable_width(
-                        context,
-                        &natural,
-                        &text,
-                        &run_styles,
-                        &styled_runs,
-                        !shaped_minimum,
-                    )?);
+                let minimum = longest_unbreakable_width(
+                    context,
+                    &natural,
+                    &text,
+                    &run_styles,
+                    &styled_runs,
+                    !shaped_minimum,
+                )?;
+                if minimum > unbreakable_content_width {
+                    unbreakable_content_width = minimum;
+                    nested_padding = 0.0;
+                }
                 natural_paragraph_layouts.push(NaturalParagraphLayout {
                     layout: natural,
                     required_width,
@@ -13710,11 +13750,22 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     1.0 / (end - start) as f64
                 };
                 let share = required_width * span_share;
+                let previous_floor = unbreakable_widths[index].max(minimums[index]);
                 preferred[index] = preferred[index].max(share);
                 unbreakable_widths[index] =
                     unbreakable_widths[index].max(unbreakable_width * span_share);
                 if no_wrap {
                     minimums[index] = minimums[index].max(share);
+                }
+                if let Some(column) = frame_columns.get_mut(index) {
+                    if unbreakable_widths[index].max(minimums[index]) > previous_floor {
+                        column.padding = padding.horizontal() * span_share;
+                        column.nested_padding = if unbreakable_widths[index] >= minimums[index] {
+                            nested_padding * span_share
+                        } else {
+                            0.0
+                        };
+                    }
                 }
             }
         }
@@ -13747,6 +13798,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
         .map(Rc::new),
         minimums,
         unbreakable: unbreakable_widths.clone(),
+        frame_columns,
         preferred,
         natural_paragraph_layouts: NaturalParagraphLayoutCache {
             paragraphs: Rc::new(natural_paragraph_layouts),
@@ -18246,7 +18298,8 @@ pub(crate) fn windows_nested_resize_grid(
         let mut widths = if depth == 0 {
             compute_column_widths(table, count, available)
         } else {
-            word_windows_nested_grid(table, count, available)
+            word_windows_nested_grid(table, count, available, true)
+                .map(|grid| grid.widths)
                 .unwrap_or_else(|| compute_column_widths(table, count, available))
         };
         let default_x = table_default_horizontal_padding_px(table, WordLayoutPlatform::Windows);
@@ -18316,9 +18369,10 @@ pub(crate) fn windows_nested_resize_grid(
         let slot_scale = table_row_slot_scale(table, row, row_index, table.rows.len(), &widths);
         available = (cell_width * slot_scale - 2.0 * spacing - padding.horizontal()).max(1.0);
     }
-    let widths = word_windows_nested_grid(target, compute_column_count(target).max(1), available)?;
+    let grid =
+        word_windows_nested_grid(target, compute_column_count(target).max(1), available, true)?;
     Some((
-        widths
+        grid.widths
             .into_iter()
             .map(|width| (width * 0.75) as f32)
             .collect(),
@@ -18326,11 +18380,17 @@ pub(crate) fn windows_nested_resize_grid(
     ))
 }
 
+struct WindowsNestedGrid {
+    widths: Vec<f64>,
+    rounded_fixed: bool,
+}
+
 fn word_windows_nested_grid(
     table: &Table,
     column_count: usize,
     available_width: f64,
-) -> Option<Vec<f64>> {
+    round_fixed_grid: bool,
+) -> Option<WindowsNestedGrid> {
     use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
     if word_layout_platform() != WordLayoutPlatform::Windows || table_floats(table) {
         return None;
@@ -18377,14 +18437,29 @@ fn word_windows_nested_grid(
         .filter(|(_, fraction)| *fraction == 0.0)
         .map(|(absolute, _)| absolute)
         .sum();
-    let budget = table
+    let declared_budget = table
         .style
         .get("width")
-        .and_then(|width| preferred_width_px(width, available_width))
+        .and_then(|width| preferred_width_px(width, available_width));
+    let budget = declared_budget
         .or_else(|| (fraction_total > 0.0).then_some(available_width))
         .unwrap_or(absolute_total);
     if !budget.is_finite() || budget <= 0.0 || (fraction_total >= 1.0 && absolute_total > 0.0) {
         return None;
+    }
+    if round_fixed_grid
+        && declared_budget.is_some()
+        && fraction_total == 0.0
+        && column_count > 1
+        && !table.bidi_visual
+        && resolve_table_layout_mode(table) == TableLayoutMode::Fixed
+    {
+        if let Some(widths) = round_windows_fixed_nested_grid(table, first, column_count, budget) {
+            return Some(WindowsNestedGrid {
+                widths,
+                rounded_fixed: true,
+            });
+        }
     }
     let fraction_scale = if absolute_total == 0.0 {
         budget / fraction_total
@@ -18396,8 +18471,8 @@ fn word_windows_nested_grid(
     } else {
         budget * (1.0 - fraction_total) / absolute_total
     };
-    Some(
-        preferences
+    Some(WindowsNestedGrid {
+        widths: preferences
             .into_iter()
             .map(|(absolute, fraction)| {
                 if fraction > 0.0 {
@@ -18407,13 +18482,89 @@ fn word_windows_nested_grid(
                 }
             })
             .collect(),
-    )
+        rounded_fixed: false,
+    })
+}
+
+fn round_windows_fixed_nested_grid(
+    table: &Table,
+    first: &TableRow,
+    column_count: usize,
+    budget: f64,
+) -> Option<Vec<f64>> {
+    let preferences = absolute_fixed_row_widths(first, column_count)?;
+    let default_padding = points_to_px(UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
+    let reserved_padding = |row: &TableRow, cell: &TableCell| {
+        let padding = resolve_cell_padding(
+            cell.margins.as_ref(),
+            row.cell_margins.as_ref(),
+            table.effective_cell_margins(),
+            false,
+            default_padding,
+            0.0,
+        );
+        // Word reserves the default horizontal padding in each column in
+        // addition to that cell's own margins when it shrinks a fixed grid.
+        ((padding.horizontal() + 2.0 * default_padding) * 15.0).round()
+    };
+    let padding: Vec<_> = first
+        .cells
+        .iter()
+        .map(|cell| reserved_padding(first, cell))
+        .collect();
+    for row in table.rows.iter().filter(|row| !table_row_is_hidden(row)) {
+        if row_uses_separate_cell_borders(row, table)
+            || absolute_fixed_row_widths(row, column_count).as_deref()
+                != Some(preferences.as_slice())
+            || row
+                .cells
+                .iter()
+                .zip(&padding)
+                .any(|(cell, &inset)| reserved_padding(row, cell) != inset)
+        {
+            return None;
+        }
+    }
+
+    let mut widths: Vec<_> = preferences
+        .iter()
+        .map(|width| (width * 15.0).round())
+        .collect();
+    let total: f64 = widths.iter().sum();
+    let budget = (budget * 15.0).round();
+    if budget < total {
+        let total_padding: f64 = padding.iter().sum();
+        if budget <= total_padding
+            || widths
+                .iter()
+                .zip(&padding)
+                .any(|(width, inset)| width <= inset)
+        {
+            return None;
+        }
+        let reduction = (total - budget) / (total - total_padding);
+        for (width, inset) in widths.iter_mut().zip(padding).skip(1) {
+            *width -= ((*width - inset) * reduction + 0.5 + 1e-8).floor();
+        }
+    } else {
+        let scale = budget / total;
+        for width in widths.iter_mut().skip(1) {
+            *width = (*width * scale + 0.5 + 1e-8).floor();
+        }
+    }
+    widths[0] = budget - widths[1..].iter().sum::<f64>();
+    if widths.iter().any(|width| *width <= 0.0) {
+        return None;
+    }
+    widths.iter_mut().for_each(|width| *width /= 15.0);
+    Some(widths)
 }
 
 #[derive(Clone, Debug)]
 struct WindowsNestedAutofit {
     preferred: Vec<f64>,
     floors: Vec<f64>,
+    frame_columns: Vec<WindowsAutofitFrameColumn>,
     layouts: NaturalParagraphLayoutCache,
     limit_to_cell: bool,
 }
@@ -18435,6 +18586,48 @@ fn clamp_windows_autofit_grid(widths: &mut [f64], limit: f64) -> f64 {
         previous = snapped;
     }
     budget / 15.0
+}
+
+fn shrink_windows_nested_parent_grid(
+    widths: &mut [f64],
+    limit: f64,
+    columns: &[WindowsAutofitFrameColumn],
+) -> Option<f64> {
+    debug_assert_eq!(widths.len(), columns.len());
+    let full_width: f64 = widths.iter().sum();
+    let padding: f64 = columns
+        .iter()
+        .map(|column| column.padding + column.nested_padding)
+        .sum();
+    let text_width = full_width - padding;
+    if text_width <= f64::EPSILON {
+        return None;
+    }
+    let budget = (limit * 15.0).round();
+    let reduction = (full_width * 15.0 - budget) / text_width;
+    // Base the reduction on the text area, including the nested text area.
+    // Word puts the rounding remainder into the first grid column.
+    let mut resolved: Vec<_> = widths
+        .iter()
+        .zip(columns)
+        .enumerate()
+        .map(|(index, (width, column))| {
+            if index == 0 {
+                0.0
+            } else {
+                let weight = (width - column.padding - column.nested_padding).max(0.0);
+                (width * 15.0).round() - (weight * reduction).round()
+            }
+        })
+        .collect();
+    resolved[0] = budget - resolved.iter().sum::<f64>();
+    if resolved.iter().any(|width| *width <= 0.0) {
+        return None;
+    }
+    for (width, twips) in widths.iter_mut().zip(resolved) {
+        *width = twips / 15.0;
+    }
+    Some(budget / 15.0)
 }
 
 impl WindowsNestedAutofit {
@@ -18494,6 +18687,7 @@ fn measure_windows_nested_autofit<C: TableAutofitContext>(
     Ok(Some(WindowsNestedAutofit {
         preferred,
         floors,
+        frame_columns: measured.frame_columns,
         layouts: measured.natural_paragraph_layouts,
         limit_to_cell: false,
     }))
@@ -18508,9 +18702,14 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
     autofit: Option<&WindowsNestedAutofit>,
 ) -> Result<NestedTableLayout, JsValue> {
     let column_count = compute_column_count(table).max(1);
-    let preferred_grid = word_windows_nested_grid(table, column_count, available_width);
+    let preferred_grid =
+        word_windows_nested_grid(table, column_count, available_width, autofit.is_none());
     let windows_preferred_grid = preferred_grid.is_some();
+    let windows_fixed_grid_rounded = preferred_grid
+        .as_ref()
+        .is_some_and(|grid| grid.rounded_fixed);
     let mut column_widths = preferred_grid
+        .map(|grid| grid.widths)
         .unwrap_or_else(|| compute_column_widths(table, column_count, available_width));
     // Word for Mac keeps the authored grid width of a single-column auto-width
     // nested table even when its parent cell is narrower.
@@ -18548,7 +18747,14 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             {
                 // A requested absolute width that can fit the text takes
                 // precedence over the frame of the capped parent.
-                clamp_windows_autofit_grid(&mut column_widths, available_width);
+                if !shrink_nested_text_to_frame(
+                    &mut column_widths,
+                    available_width,
+                    autofit.frame_columns.iter().map(|column| column.padding),
+                    15.0,
+                ) {
+                    clamp_windows_autofit_grid(&mut column_widths, available_width);
+                }
             }
             autofit.layouts.clone()
         } else {
@@ -18715,6 +18921,11 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
                     .map(|width| (width * 0.75) as f32)
                     .collect(),
                 minimum_widths: autofit.floors.iter().map(|width| width * 0.75).collect(),
+                horizontal_padding: autofit
+                    .frame_columns
+                    .iter()
+                    .map(|column| column.padding * 0.75)
+                    .collect(),
                 frame_width: (available_width * 0.75) as f32,
             })
         }),
@@ -18723,6 +18934,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         rows,
         width: table_width,
         windows_preferred_grid,
+        windows_fixed_grid_rounded,
         height: total_height.max(config.line_height),
         margin_top,
         margin_bottom,
@@ -23343,6 +23555,7 @@ mod tests {
             minimums: vec![0.0],
             preferred: vec![50.0],
             unbreakable: vec![0.0],
+            frame_columns: Vec::new(),
             natural_paragraph_layouts: NaturalParagraphLayoutCache {
                 paragraphs: Rc::new(vec![NaturalParagraphLayout {
                     layout: empty_cell_paragraph(16.0),
@@ -26869,6 +27082,7 @@ mod tests {
             rows: Vec::new(),
             width: 0.0,
             windows_preferred_grid: false,
+            windows_fixed_grid_rounded: false,
             height: 0.0,
             margin_top: 0.0,
             margin_bottom: 0.0,

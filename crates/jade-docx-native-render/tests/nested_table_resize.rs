@@ -227,26 +227,42 @@ fn docx_export_matches_word_autofit_grids_on_both_sides_of_page_break() {
 #[test]
 fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    let (_, manifest) = load_word_capture("nested-autofit-batch-resize");
+    verify_word_resize_batches("nested-autofit-batch-resize");
+    verify_word_resize_batches("nested-autofit-insert-then-resize");
+}
+
+#[cfg(windows)]
+fn verify_word_resize_batches(cohort: &str) {
+    let (mut archive, manifest) = load_word_capture(cohort);
     let cases = manifest["documents"].as_array().unwrap();
     assert_eq!(cases.len(), 36);
     for case in cases {
         let name = case["name"].as_str().unwrap();
         let before = case["before_fixture"].as_str().unwrap();
         let source = std::fs::read(repo_path(&format!("public/fixtures/{before}.docx"))).unwrap();
-        let saved = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
         assert_eq!(
             case["before_input_sha256"],
             format!("{:x}", Sha256::digest(&source))
         );
-        assert_eq!(
-            case["input_sha256"],
-            format!("{:x}", Sha256::digest(&saved))
-        );
+        let saved = if case["word_save_sha256"].is_string() {
+            read_word_save(&mut archive, case).1
+        } else {
+            let saved = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+            assert_eq!(
+                case["input_sha256"],
+                format!("{:x}", Sha256::digest(&saved))
+            );
+            saved
+        };
         let word = open_with_windows_fonts(&saved);
         let mut jade = open_with_windows_fonts(&source);
         let actions = case["actions"].as_array().unwrap();
         assert_eq!(actions.len(), 2);
+        let paragraph_with_text = |text: &str| {
+            (0..jade.word_document().paragraph_count())
+                .find(|&index| jade.word_document().rendered_paragraph_text(index) == text)
+                .unwrap()
+        };
         let commands: Vec<_> = actions
             .iter()
             .map(|action| {
@@ -256,15 +272,17 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
                         column_index: 1,
                         new_width: width as f32,
                     }
+                } else if let Some(text) = action["insert_text"].as_str() {
+                    HeadlessCommand::InsertText {
+                        paragraph: paragraph_with_text("FIRST"),
+                        offset: 0,
+                        text: text.to_owned(),
+                    }
                 } else {
                     let length = action["parent_word_length"].as_u64().unwrap() as usize;
                     assert_eq!(action["delete_text"], "W");
                     let original = "W".repeat(length);
-                    let paragraph = (0..jade.word_document().paragraph_count())
-                        .find(|&index| {
-                            jade.word_document().rendered_paragraph_text(index) == original
-                        })
-                        .unwrap();
+                    let paragraph = paragraph_with_text(&original);
                     HeadlessCommand::ReplaceRange {
                         start_paragraph: paragraph,
                         start_offset: 0,
@@ -288,6 +306,10 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
             assert_eq!(reopened.page_count(), expected.page_count(), "{name}");
             if let HeadlessCommand::ReplaceRange {
                 start_paragraph, ..
+            }
+            | HeadlessCommand::InsertText {
+                paragraph: start_paragraph,
+                ..
             } = commands[0]
             {
                 assert_eq!(
@@ -297,7 +319,7 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
                     expected
                         .word_document()
                         .rendered_paragraph_text(start_paragraph),
-                    "{name}: parent text"
+                    "{name}: edited text"
                 );
             }
         };
@@ -313,7 +335,9 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
         jade.redo().unwrap();
         check_saved(&jade, &word);
 
-        if name.ends_with("shorten-n24-rightedge-compat15") {
+        if name.ends_with("shorten-n24-rightedge-compat15")
+            || name.ends_with("-edge-w65-insert12-compat15")
+        {
             jade.undo().unwrap();
             let mut invalid = commands.clone();
             invalid.push(HeadlessCommand::ResizeTableColumnRightEdge {
@@ -386,6 +410,106 @@ fn autofit_nested_grid_saves_within_the_windows_word_text_frame() {
     }
 }
 
+#[cfg(windows)]
+#[test]
+fn fixed_nested_grids_match_windows_word_on_render_and_export() {
+    use futures::executor::block_on;
+    use jade_docx_editor::Options;
+
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let (mut archive, manifest) = load_word_capture("nested-fixed-grid-fit");
+    let cases = manifest["documents"].as_array().unwrap();
+    let options = Options::default();
+    assert_eq!(cases.len(), 252);
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        let (input, expected) = read_word_save(&mut archive, case);
+        let word = block_on(WordDocument::load(&expected, &options)).unwrap();
+        let jade = open_with_windows_fonts(&input);
+        let exported = jade.export_docx().unwrap();
+        let saved = block_on(WordDocument::load(&exported, &options)).unwrap();
+
+        let layout = jade.renderer().table_resize_metadata();
+        assert_eq!(layout.tables.len(), 2, "{name}");
+        let expected_child = widths_at(&word, 1);
+        let expected_grid: Vec<_> = expected_child
+            .grid
+            .iter()
+            .map(|width| (f64::from(width.unwrap()) * 20.0).round() as i32)
+            .collect();
+        let child = layout.tables.iter().find(|table| table.order == 1).unwrap();
+        let rendered_grid: Vec<_> = child
+            .column_widths
+            .iter()
+            .map(|width| (width * 15.0).round() as i32)
+            .collect();
+        assert_eq!(rendered_grid, expected_grid, "{name}: rendered child grid");
+        assert_eq!(
+            widths_at(&saved, 1),
+            expected_child,
+            "{name}: exported child"
+        );
+        assert_eq!(
+            widths_at(&saved, 0),
+            widths_at(&word, 0),
+            "{name}: exported parent"
+        );
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn capped_autofit_grids_preserve_windows_word_cell_margins() {
+    use futures::executor::block_on;
+    use jade_docx_editor::Options;
+
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let options = Options::default();
+    let twips = |width: Option<f32>| (f64::from(width.unwrap()) * 20.0).round() as i32;
+    for (cohort, count, table_count) in [
+        ("nested-autofit-cell-margin-weights", 48, 2),
+        ("nested-autofit-three-column-clamp", 96, 2),
+        ("nested-autofit-host-first", 48, 2),
+        ("nested-autofit-child-margins", 24, 2),
+        ("nested-autofit-four-column-margins", 144, 2),
+        ("nested-autofit-two-nested-hosts", 36, 3),
+    ] {
+        let (mut archive, manifest) = load_word_capture(cohort);
+        let cases = manifest["documents"].as_array().unwrap();
+        assert_eq!(cases.len(), count);
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let (input, expected) = read_word_save(&mut archive, case);
+            let word = block_on(WordDocument::load(&expected, &options)).unwrap();
+            let jade = open_with_windows_fonts(&input);
+            let exported = jade.export_docx().unwrap();
+            let saved = block_on(WordDocument::load(&exported, &options)).unwrap();
+            let layout = jade.renderer().table_resize_metadata();
+            assert_eq!(layout.tables.len(), table_count, "{name}");
+            for table in layout.tables {
+                let expected = widths_at(&word, table.order);
+                let authored = widths_at(jade.word_document(), table.order);
+                let saved = widths_at(&saved, table.order);
+                let measured: Vec<_> = table
+                    .column_widths
+                    .iter()
+                    .map(|width| (width * 15.0).round() as i32)
+                    .collect();
+                let saved_grid: Vec<_> = saved.grid.into_iter().map(twips).collect();
+                let word_grid: Vec<_> = expected.grid.into_iter().map(twips).collect();
+                assert_eq!(saved_grid, measured, "{name}: table {}", table.order);
+                assert_eq!(saved.preferred_width, authored.preferred_width, "{name}");
+                assert_eq!(saved.cells, authored.cells, "{name}");
+                assert_eq!(
+                    saved_grid, word_grid,
+                    "{name}: Word and exported grids for table {}",
+                    table.order
+                );
+            }
+        }
+    }
+}
+
 fn load_word_capture(capture: &str) -> (ZipArchive<Cursor<Vec<u8>>>, serde_json::Value) {
     let archive = std::fs::read(repo_path(&format!(
         "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",
@@ -423,10 +547,10 @@ fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> Nativ
         let compare_parent = capture.starts_with("nested-autofit-");
         let mut jade = open(&source);
         let original = widths(jade.word_document());
-        let original_saved = compare_parent.then(|| {
+        let original_saved = {
             let saved = jade.export_docx().unwrap();
             widths(open(&saved).word_document())
-        });
+        };
         let resize = HeadlessCommand::ResizeTableColumnRightEdge {
             table_order_index: 1,
             column_index: 1,
@@ -467,7 +591,7 @@ fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> Nativ
         let saved = jade.export_docx().unwrap();
         assert_eq!(
             widths(open(&saved).word_document()),
-            original_saved.unwrap_or(original),
+            original_saved,
             "{after}: undo"
         );
         jade.redo().unwrap();
