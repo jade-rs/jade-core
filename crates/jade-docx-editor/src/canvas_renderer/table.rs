@@ -10562,7 +10562,15 @@ fn table_default_horizontal_padding_px(
     use jade_docx_layout::line_metrics::WordLayoutPlatform;
     let authored = match platform {
         WordLayoutPlatform::Mac => table.node_id.is_some(),
-        WordLayoutPlatform::Windows => table.style.contains_key("ooxml-table"),
+        WordLayoutPlatform::Windows => {
+            // The Windows percentage-grid path measures against a text frame
+            // that includes the original fallback margins.
+            table.style.contains_key("ooxml-table")
+                && !table
+                    .style
+                    .get("width")
+                    .is_some_and(|width| width.trim().ends_with('%'))
+        }
     };
     if table.resolved_style.is_none() && authored {
         return points_to_px(UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
@@ -24800,7 +24808,12 @@ mod tests {
 
     #[test]
     fn upright_latin_cells_keep_ink_width_with_font_or_fallback_pitch_in_both_directions() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
         use jade_painter::recording::Op;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
         let text = "iiii";
         for (font_advance, pitch) in [(None, 32.0), (Some(24.0), 24.0)] {
             for direction in [TextDirection::TbRlV, TextDirection::TbLrV] {
@@ -24886,6 +24899,7 @@ mod tests {
                 }
             }
         }
+        set_word_layout_platform(previous);
     }
 
     #[test]
@@ -25130,7 +25144,7 @@ mod tests {
                                 );
                                 assert_eq!(*x, 40.0);
                                 assert_eq!(*y, lines[0].top);
-                                assert_eq!(*width, 24.0);
+                                assert_eq!(*width, lines[0].cursor_end_x - lines[0].start_x);
                                 assert_eq!(*height, lines[0].height);
                                 rectangles += 1;
                             }
@@ -30035,9 +30049,12 @@ mod tests {
                 cells: vec![TableCell::default()],
                 ..Default::default()
             }],
-            style: [("table-position".into(), "floating".into())]
-                .into_iter()
-                .collect(),
+            style: [
+                ("table-position".into(), "floating".into()),
+                ("ooxml-table".into(), "true".into()),
+            ]
+            .into_iter()
+            .collect(),
             ..Default::default()
         };
         // Word 16.114.2, same 108pt table in mode-14/mode-15 documents:
