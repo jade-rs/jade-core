@@ -16384,6 +16384,150 @@
       "docx_sha256": "81d1381c5bcc0153b818d3031d0ed85f9c3234dfc84f2b8975f446e218efa461"
     },
     {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-612-compat12",
+      "docx_sha256": "b31b64ecd586a4c40c455f0656554b0f3fef879104c8a43faade2f1f05356993"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-612-compat14",
+      "docx_sha256": "383fdbc5c2bfa3f74862b7febdc695fb5ac9bf7a699e16c28ff0af739ede0a94"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-612-compat15",
+      "docx_sha256": "bf8a8e9da1e02793c1ff1c06f2d62ca6f69ee76b7157973580f17029c5400082"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-690-compat12",
+      "docx_sha256": "3215a8405c9956da557232e60474b254fe6d8aca4dae1028aefda1922d6a2f11"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-690-compat14",
+      "docx_sha256": "785baba116f9847d2e846a8d80aaafba1df6ac09c1f6461af21c26e403eaaf1a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-690-compat15",
+      "docx_sha256": "f1fe4c3240f45f410159383f4c6719b053aaf3f24df8988aa6ba2f02c00e59bb"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-770-compat12",
+      "docx_sha256": "10c44d3e060c3b85308cdd2edd863033402f70daee3c688ae4c3b577909543c0"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-770-compat14",
+      "docx_sha256": "769b205a2faf726b00a50d67d0871ccdf2e014bfc856005f450d055736c6f626"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-770-compat15",
+      "docx_sha256": "8d97baa387392fac14304f8ac5a06bb3e88f24111387c34175ab155eb836d9a3"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-900-compat12",
+      "docx_sha256": "4a74a78453fa9b275fda9af1a47c4ed52dca85b9071a3c9bee4ac8fcd6be396f"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-900-compat14",
+      "docx_sha256": "160d4e8752fd905d284d5b029826c0f562d966df429609948fa0052733e8442c"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-0-900-compat15",
+      "docx_sha256": "217d264de8ebbea6f177760ca686b6d8f9bf2c12068055a0131d3b7ac64e894a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-612-compat12",
+      "docx_sha256": "e563f3d713e21b6c8c6ac6f06355be681347c5fc666adf0e1ff97c00f27da796"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-612-compat14",
+      "docx_sha256": "9b5189f0c0c71eba1684c9a316acda2af69393fdfd7f97195939bf72582796dd"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-612-compat15",
+      "docx_sha256": "92c7a5f27ba8d8908914ac3bad714a1c68d1a5079d0ea23029ae4147a7d3f79a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-690-compat12",
+      "docx_sha256": "e5088972220df8c65ac5b0fc702638bf492dbce876b200a0859386daabb7ffd5"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-690-compat14",
+      "docx_sha256": "ba8d4addd44c50e364e4428b22f041584a91df26b66d10a344a45b196265f758"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-690-compat15",
+      "docx_sha256": "c394a6edbe5411ed9df4e27af69afdea5f87eeea4e9e59d45221f0561a3fdd60"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-770-compat12",
+      "docx_sha256": "615cfd9c48fe7702de70ac6a9b4315210d13b2a655e5fec38726a05bd1072289"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-770-compat14",
+      "docx_sha256": "130c89d3f59ccc89b889993fed1161d67ff821b430c79c6185dbc0b930a07ac8"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-770-compat15",
+      "docx_sha256": "4ef4cb14719efa725e59ec941ff3cd00fc47112b32243492f39b2ad390facb3f"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-900-compat12",
+      "docx_sha256": "2d6557aa8655da9e436b6786e85d61e9607bb07975c58af68268d66d52591d34"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-900-compat14",
+      "docx_sha256": "e0502d73d3462dc782134e81ba0a29d2e80152fb04300105b5bd5390e90c92a9"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-1-900-compat15",
+      "docx_sha256": "662739aea3a7244c0588f02e9cb16e2fd9ca69ab5acb68288d18bae73c568fe3"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-612-compat12",
+      "docx_sha256": "f4ed9ca53a9c1198fc3b6f8b17efa88f389d5c2972668df0a7c12c4eb43543e5"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-612-compat14",
+      "docx_sha256": "86c6591241a09c07b1891eeb619c06ef4ce358bf2400877bc1ebfbacdc3a1357"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-612-compat15",
+      "docx_sha256": "1a2c54b166f665399b8d8c1be51dc87a11320300bc60727a22fe6e75d92925f0"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-690-compat12",
+      "docx_sha256": "5fc66e4a03d169afb77a464c82e84f5bf993839a7f21794060b3d5a959e0e97a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-690-compat14",
+      "docx_sha256": "4eb35d451b3e31f46b7ba0260c3c8908dd174dc3b9f552b9b698afe9cd33081e"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-690-compat15",
+      "docx_sha256": "5cf1e88cc92cfe80e7d4cbc3303d2b8f70ccc72828b8b7b6c37be13a71131c35"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-770-compat12",
+      "docx_sha256": "b02eb950fbe7fed73d4556e4f61049ecb987be2f81b38647b99d9b3e584b6f10"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-770-compat14",
+      "docx_sha256": "506d26f368cc09532d94ef6edc0d3e513e74a919c29bfbf400a198542dbed52a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-770-compat15",
+      "docx_sha256": "a513da83f46c7336e9cec459347db2c7e9722df945262a9d11b26c6cf1303396"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-900-compat12",
+      "docx_sha256": "f6b41360a426bc8d16c606e25b17d35f197101556ece67be6f055b91c236bbd1"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-900-compat14",
+      "docx_sha256": "94d0fb822123d037273a6df8e4319efccc6afca273c376f257c2b4a0ca0fe892"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-two-nested-hosts-2-900-compat15",
+      "docx_sha256": "16dbd6ea72f13ab6876287411fd5628e94d570625c827987f767a6ff0122dc9d"
+    },
+    {
       "fixture": "word-windows-edge-nested-fixed-advance-arial-a-italic-compat12",
       "docx_sha256": "662fb1ee142d6b59ac7d034bf81e7e24dd44a74a17dbb83642720ff1ff692a61"
     },

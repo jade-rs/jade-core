@@ -395,12 +395,13 @@ fn capped_autofit_grids_preserve_windows_word_cell_margins() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
     let options = Options::default();
     let twips = |width: Option<f32>| (f64::from(width.unwrap()) * 20.0).round() as i32;
-    for (cohort, count) in [
-        ("nested-autofit-cell-margin-weights", 48),
-        ("nested-autofit-three-column-clamp", 96),
-        ("nested-autofit-host-first", 48),
-        ("nested-autofit-child-margins", 24),
-        ("nested-autofit-four-column-margins", 144),
+    for (cohort, count, table_count) in [
+        ("nested-autofit-cell-margin-weights", 48, 2),
+        ("nested-autofit-three-column-clamp", 96, 2),
+        ("nested-autofit-host-first", 48, 2),
+        ("nested-autofit-child-margins", 24, 2),
+        ("nested-autofit-four-column-margins", 144, 2),
+        ("nested-autofit-two-nested-hosts", 36, 3),
     ] {
         let (mut archive, manifest) = load_word_capture(cohort);
         let cases = manifest["documents"].as_array().unwrap();
@@ -413,7 +414,7 @@ fn capped_autofit_grids_preserve_windows_word_cell_margins() {
             let exported = jade.export_docx().unwrap();
             let saved = block_on(WordDocument::load(&exported, &options)).unwrap();
             let layout = jade.renderer().table_resize_metadata();
-            assert_eq!(layout.tables.len(), 2, "{name}");
+            assert_eq!(layout.tables.len(), table_count, "{name}");
             for table in layout.tables {
                 let expected = widths_at(&word, table.order);
                 let authored = widths_at(jade.word_document(), table.order);

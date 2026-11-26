@@ -13241,7 +13241,6 @@ struct AutofitContentWidths {
 struct WindowsAutofitFrameColumn {
     padding: f64,
     nested_padding: f64,
-    contains_nested_table: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -13595,7 +13594,6 @@ fn autofit_content_widths<C: TableAutofitContext>(
             let mut natural_content_width = 0.0_f64;
             let mut unbreakable_content_width = 0.0_f64;
             let mut nested_padding = 0.0;
-            let mut contains_nested_table = false;
             for block in &cell.blocks {
                 if let BodyElement::Table(child) = block {
                     if shaped_minimum && resolve_cell_spacing_px(row, table) == 0.0 {
@@ -13624,7 +13622,6 @@ fn autofit_content_widths<C: TableAutofitContext>(
                                 };
                             }
                             nested.insert(child.as_ref() as *const Table, measured);
-                            contains_nested_table = true;
                         }
                     }
                     continue;
@@ -13758,7 +13755,6 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     minimums[index] = minimums[index].max(share);
                 }
                 if let Some(column) = frame_columns.get_mut(index) {
-                    column.contains_nested_table |= contains_nested_table;
                     if unbreakable_widths[index].max(minimums[index]) > previous_floor {
                         column.padding = padding.horizontal() * span_share;
                         column.nested_padding = if unbreakable_widths[index] >= minimums[index] {
@@ -18527,14 +18523,7 @@ fn shrink_windows_nested_parent_grid(
     limit: f64,
     columns: &[WindowsAutofitFrameColumn],
 ) -> Option<f64> {
-    if columns
-        .iter()
-        .filter(|column| column.contains_nested_table)
-        .count()
-        != 1
-    {
-        return None;
-    }
+    debug_assert_eq!(widths.len(), columns.len());
     let full_width: f64 = widths.iter().sum();
     let padding: f64 = columns
         .iter()
