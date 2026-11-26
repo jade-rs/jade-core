@@ -12,7 +12,12 @@ enum Command {
     Selectable(usize, bool),
     Freeze(bool),
     TakeSuffix(usize),
+    ParkSuffix(usize),
+    DetachSuffix,
+    DiscardSuffix,
     RestoreSuffix,
+    Gap(usize),
+    RemoveParagraph(usize),
     Select(usize, usize),
 }
 
@@ -30,6 +35,11 @@ fn command() -> impl Strategy<Value = Command> {
         1 => (0usize..12, any::<bool>()).prop_map(|(index, value)| Command::Selectable(index, value)),
         1 => any::<bool>().prop_map(Command::Freeze),
         2 => (0usize..14).prop_map(Command::TakeSuffix),
+        3 => (0usize..14).prop_map(Command::ParkSuffix),
+        1 => Just(Command::DetachSuffix),
+        1 => Just(Command::DiscardSuffix),
+        1 => (0usize..14).prop_map(Command::Gap),
+        1 => (0usize..14).prop_map(Command::RemoveParagraph),
         2 => Just(Command::RestoreSuffix),
         1 => (0usize..14, 0usize..16).prop_map(|(p, o)| Command::Select(p, o)),
     ]
@@ -162,8 +172,12 @@ proptest! {
                     frozen = *value;
                     if frozen { manager.freeze(); } else { manager.unfreeze(); }
                 }
-                Command::TakeSuffix(from) => {
-                    let tail = manager.take_selection_suffix(*from);
+                Command::TakeSuffix(from) | Command::ParkSuffix(from) => {
+                    let tail = if matches!(command, Command::ParkSuffix(_)) {
+                        manager.park_selection_suffix(*from)
+                    } else {
+                        manager.take_selection_suffix(*from)
+                    };
                     let model_tail = paragraphs.iter().skip(*from).cloned().collect::<Vec<_>>();
                     paragraphs.truncate(*from);
                     let tail_excluded = excluded.iter().copied().filter(|p| p >= from).collect::<Vec<_>>();
@@ -171,6 +185,41 @@ proptest! {
                     let tail_origins = caret_origins.iter().copied().filter(|(p, _)| p >= from).collect::<Vec<_>>();
                     caret_origins.retain(|(p, _)| p < from);
                     saved = Some((*from, tail, model_tail, tail_excluded, tail_origins));
+                }
+                Command::DetachSuffix => {
+                    if let Some((from, tail, model_tail, tail_excluded, tail_origins)) = saved.take() {
+                        let tail = manager.detach_selection_suffix(tail);
+                        prop_assert_eq!(tail.paragraphs().len(), model_tail.len());
+                        saved = Some((from, tail, model_tail, tail_excluded, tail_origins));
+                    }
+                }
+                Command::DiscardSuffix => {
+                    if let Some((_, tail, ..)) = saved.take() {
+                        manager.discard_selection_suffix(tail);
+                    }
+                }
+                Command::Gap(index) => {
+                    manager.insert_paragraph_gap(*index);
+                    if *index > paragraphs.len() {
+                        paragraphs.resize_with(index + 1, Paragraph::default);
+                    } else {
+                        paragraphs.insert(*index, Paragraph::default());
+                    }
+                    caret_origins = caret_origins
+                        .into_iter()
+                        .map(|(p, line)| (if p >= *index { p + 1 } else { p }, line))
+                        .collect();
+                }
+                Command::RemoveParagraph(index) => {
+                    manager.remove_paragraph(*index);
+                    if *index < paragraphs.len() {
+                        paragraphs.remove(*index);
+                    }
+                    caret_origins = caret_origins
+                        .into_iter()
+                        .filter(|&(p, _)| p != *index)
+                        .map(|(p, line)| (if p > *index { p - 1 } else { p }, line))
+                        .collect();
                 }
                 Command::RestoreSuffix => {
                     if let Some((from, tail, model_tail, tail_excluded, tail_origins)) = saved.take() {

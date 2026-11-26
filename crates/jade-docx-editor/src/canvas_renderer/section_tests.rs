@@ -157,7 +157,9 @@ mod parity_filler {
         sections(a_body, "", break_type, PAGE_FIELD.to_string(), "")
     }
 
-    /// Adds a text watermark and a manuscript grid to `document`.
+    /// Adds a text watermark and a manuscript grid to `document`. With
+    /// per-section stories installed the watermark is read from them
+    /// instead (see `render`).
     fn decorate(document: &mut Document) {
         document.watermark_text = Some("WM".into());
         document.manuscript_grid = Some(jade_docx_reader::document::ManuscriptGrid {
@@ -178,6 +180,16 @@ mod parity_filler {
         let document = Rc::new(document);
         let mut renderer = recording_renderer();
         renderer.sync_document_header_footer_stories(&word_doc);
+        // Word keeps the watermark in the headers: put it in every one.
+        let watermark = Rc::new(crate::word_document::HeaderWatermark {
+            text: "WM".into(),
+            style: Default::default(),
+        });
+        for section in &mut renderer.section_header_footers {
+            section.header_watermark = Some(Rc::clone(&watermark));
+            section.header_watermark_first = Some(Rc::clone(&watermark));
+            section.header_watermark_even = Some(Rc::clone(&watermark));
+        }
         renderer
             .render(&document, &Options::default())
             .expect("render");

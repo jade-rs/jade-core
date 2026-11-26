@@ -9230,6 +9230,10 @@
     {
       "fixture": "word-windows-edge-styled-page-break-visible-manual-hidden-after-compat15",
       "docx_sha256": "8c07b15275db3767f98aa23834d88adbd714e1120ff72e7c1d748b89bade1fff"
+    },
+    {
+      "fixture": "watermark-per-section",
+      "docx_sha256": "bb9cb6f9ab0b1555406ff8f9a0d9172a55d8d9cefe2dc7ab4b5451fc2cc31e34"
     }
   ]
 }
