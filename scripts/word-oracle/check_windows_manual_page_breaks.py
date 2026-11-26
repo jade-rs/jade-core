@@ -28,6 +28,10 @@ from generate_windows_floating_table_word_wrap_cases import (
 from generate_windows_floating_table_wrap_cases import (
     PREFIX as FLOATING_WRAP_PREFIX, cases as floating_wrap_cases,
 )
+from generate_windows_nested_table_overflow_cases import (
+    PREFIX as NESTED_OVERFLOW_PREFIX, context_cases as nested_overflow_cases,
+    row_height_cases as nested_row_height_cases,
+)
 from generate_windows_nested_table_page_break_cases import (
     PREFIX as NESTED_TABLE_PREFIX, cases as nested_table_cases,
 )
@@ -55,6 +59,10 @@ CAPTURES = (
      TABLE_PREFIX, table_cases, ('--painted-table-headers',)),
     ('nested-table-page-breaks', '67b36135e2762d18e21827129c283296342665742b58dbfc661846949a8ffde2',
      NESTED_TABLE_PREFIX, nested_table_cases, ('--painted-table-headers',)),
+    ('nested-table-overflow', 'be6a8f683f4eea6c88d8e6afc3eaaa7a93349937bf0a79bc33f62163e8dad30e',
+     NESTED_OVERFLOW_PREFIX, nested_overflow_cases, ('--painted-table-headers',)),
+    ('nested-table-row-heights', '7636bbce032a413ba14cfe9ca0bfb2c69830c497b6169e68a1f3356867dc8d64',
+     NESTED_OVERFLOW_PREFIX, nested_row_height_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -85,8 +93,9 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     failures = []
     fixtures = pages = glyphs = 0
     check_screen = capture_path.parent.name in (
-        'nested-table-page-breaks', 'floating-table-breaks', 'floating-table-continuations',
-        'floating-table-wrap', 'floating-table-overlap', 'floating-table-word-wrap',
+        'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
+        'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
+        'floating-table-overlap', 'floating-table-word-wrap',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))

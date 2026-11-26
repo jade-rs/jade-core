@@ -7,20 +7,23 @@ from generate_windows_table_page_break_cases import (
 PREFIX = 'word-windows-edge-nested-table-width-page-break-'
 
 
-def cases():
-    first = para(run('FIRST'))
-    side = para(run('SIDE'))
-    head = para(run('HEAD'))
-    tail = para(run('TAIL'))
-    break_cases = {
+def nested_break_cases():
+    return {
         'paragraph-break-before': para(run('TARGET'), BREAK_BEFORE),
         'same-run-break': para(text_run('PRE', PAGE, 'TARGET')),
         'split-run-break': para(run('PRE') + text_run(PAGE) + run('TARGET')),
         'no-break': para(run('PRETARGET')),
     }
+
+
+def cases():
+    first = para(run('FIRST'))
+    side = para(run('SIDE'))
+    head = para(run('HEAD'))
+    tail = para(run('TAIL'))
     probes = {}
     for width in (1980, 2070, 2160, 4140):
-        for name, content in break_cases.items():
+        for name, content in nested_break_cases().items():
             inner = table([(first, side), (content, side)], cell_width=width)
             probes[f'{width}-{name}'] = head + table([(first, side), (inner + first, side)]) + tail
     return probes

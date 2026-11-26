@@ -1065,6 +1065,7 @@ struct PreparedCell {
     /// each prepared cell so page splits and repeated headers reuse identical
     /// geometry without consulting mutable document state.
     cell_spacing: f64,
+    row_height_is_exact: bool,
     blocks: Vec<CellBlock>,
     height: f64,
     background: Option<String>,
@@ -1102,6 +1103,24 @@ impl PreparedCell {
         horizontal_border_extent(&self.border_bottom, &self.border_bottom_segments)
     }
 
+    fn windows_spaced_row_clip(
+        &self,
+        y_top: f64,
+        row_height: f64,
+        padding: CellPadding,
+        bottom_band: f64,
+    ) -> Option<(f64, f64)> {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        (word_layout_platform() == WordLayoutPlatform::Windows
+            && self.has_separate_borders()
+            && cell_ink_projection_is_horizontal(self.text_direction))
+        .then(|| {
+            let top = (y_top + self.cell_spacing + padding.top).min(y_top + row_height);
+            let bottom = y_top + row_height - self.cell_spacing - padding.bottom - bottom_band;
+            (top, (bottom - top).max(0.0))
+        })
+    }
+
     /// A page fragment copies cell geometry, not discarded paragraph glyphs.
     fn fragment(&self, blocks: Vec<CellBlock>) -> Self {
         Self {
@@ -1118,6 +1137,7 @@ impl PreparedCell {
             border_tr2bl: self.border_tr2bl.clone(),
             padding: self.padding,
             cell_spacing: self.cell_spacing,
+            row_height_is_exact: self.row_height_is_exact,
             blocks,
             height: 0.0,
             background: self.background.clone(),
@@ -5684,19 +5704,10 @@ where
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
         let allow_nested_overflow =
-            !cell.has_separate_borders() && cell_ink_projection_is_horizontal(cell.text_direction);
+            !cell.row_height_is_exact && cell_ink_projection_is_horizontal(cell.text_direction);
         let draw_enabled = self.should_draw_current_page_for_render();
-        let clip_content = jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            && cell.has_separate_borders()
-            && cell_ink_projection_is_horizontal(cell.text_direction);
-        let (clip_top, clip_height) = if clip_content {
-            let top = (y_top + cell.cell_spacing + padding.top).min(y_top + row_height);
-            let bottom = y_top + row_height - cell.cell_spacing - padding.bottom - bottom_band;
-            (top, (bottom - top).max(0.0))
-        } else {
-            (y_top, row_height)
-        };
+        let spaced_clip = cell.windows_spaced_row_clip(y_top, row_height, padding, bottom_band);
+        let (clip_top, clip_height) = spaced_clip.unwrap_or((y_top, row_height));
         let projection_clip =
             if self.auxiliary_story_capture_mode == AuxiliaryStoryCaptureMode::Full {
                 let local = (cell_width > 0.0
@@ -5719,7 +5730,7 @@ where
         let cell_clip = |width| {
             if !draw_enabled {
                 None
-            } else if clip_content && clip_height <= 0.0 {
+            } else if spaced_clip.is_some() && clip_height <= 0.0 {
                 Some(ClipGuard::empty(&clip_painter))
             } else {
                 ClipGuard::new(&clip_painter, x_start, clip_top, width, clip_height)
@@ -6237,7 +6248,7 @@ where
                         projection_right
                     };
                     // Word paints a fixed-width inner table past the parent
-                    // side. Retain the row's vertical clip for the inner table.
+                    // edge when the row can grow. Keep the vertical clip.
                     let offset = pad_left + border_left_inset;
                     let overflow = nested_table.overflow_clip_width(
                         allow_nested_overflow,
@@ -7050,9 +7061,17 @@ where
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
         let allow_nested_overflow =
-            !cell.has_separate_borders() && cell_ink_projection_is_horizontal(cell.text_direction);
+            !cell.row_height_is_exact && cell_ink_projection_is_horizontal(cell.text_direction);
+        let spaced_clip = cell.windows_spaced_row_clip(y_top, row_height, padding, bottom_band);
+        let (clip_top, clip_height) = spaced_clip.unwrap_or((y_top, row_height));
         let clip_painter = self.host.painter();
-        let cell_clip = |width| ClipGuard::new(&clip_painter, x_start, y_top, width, row_height);
+        let cell_clip = |width| {
+            if spaced_clip.is_some() && clip_height <= 0.0 {
+                Some(ClipGuard::empty(&clip_painter))
+            } else {
+                ClipGuard::new(&clip_painter, x_start, clip_top, width, clip_height)
+            }
+        };
         let mut clip_guard = cell_clip(cell_width);
         let text_color = cell.text_color.as_deref().unwrap_or("auto");
         #[allow(deprecated)]
@@ -7376,11 +7395,11 @@ where
                                 &selection_line,
                                 TableLineClip {
                                     vertical: (
-                                        y_top,
+                                        clip_top,
                                         if self.pageless_mode {
-                                            y_top + row_height
+                                            clip_top + clip_height
                                         } else {
-                                            (y_top + row_height).min(self.page_height)
+                                            (clip_top + clip_height).min(self.page_height)
                                         },
                                     ),
                                     ancestor_right: None,
@@ -17766,6 +17785,8 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             border_tr2bl,
             padding,
             cell_spacing,
+            row_height_is_exact: row.height_rule == Some(TableRowHeightRule::Exact)
+                && row.height.is_some(),
             blocks,
             height: cell_height,
             background,
@@ -26084,6 +26105,7 @@ mod tests {
                 bottom: 4.0,
             },
             cell_spacing: 0.0,
+            row_height_is_exact: false,
             blocks: Vec::new(),
             height: 0.0,
             background: None,
