@@ -15,6 +15,9 @@ from check_windows_font_coordinates import require_original_font_programs_regist
 from generate_windows_floating_table_break_cases import (
     PREFIX as FLOATING_PREFIX, cases as floating_cases,
 )
+from generate_windows_floating_table_continuation_cases import (
+    PREFIX as FLOATING_CONTINUATION_PREFIX, cases as floating_continuation_cases,
+)
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
@@ -36,6 +39,8 @@ CAPTURES = (
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
      FLOATING_PREFIX, floating_cases, ('--painted-table-headers',)),
+    ('floating-table-continuations', '7218048a1b7352bc06dd1d97af0d31ec9b3baf05ae96a5c8ccf499717baf3d26',
+     FLOATING_CONTINUATION_PREFIX, floating_continuation_cases, ('--painted-table-headers',)),
 )
 
 
@@ -53,7 +58,9 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     require(sha256(capture_path.read_bytes()) == capture_hash, f'{capture_path}: Word capture changed')
     failures = []
     fixtures = pages = glyphs = 0
-    check_screen = capture_path.parent.name == 'floating-table-breaks'
+    check_screen = capture_path.parent.name in (
+        'floating-table-breaks', 'floating-table-continuations',
+    )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
         require(capture['product_version'] == WORD_VERSION, 'Incorrect Word version')

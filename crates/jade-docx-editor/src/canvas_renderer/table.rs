@@ -599,6 +599,7 @@ pub(super) struct CellParagraph {
     segment_start: usize,
     keep_lines: bool,
     widow_control: bool,
+    compatibility_mode: Option<u32>,
     /// Note references and floating objects anchored in the paragraph;
     /// boxed so the common paragraph without any stays small.
     anchors: Option<Box<CellParagraphAnchors>>,
@@ -699,6 +700,7 @@ impl CellParagraph {
             segment_start,
             keep_lines: self.keep_lines,
             widow_control: self.widow_control,
+            compatibility_mode: self.compatibility_mode,
             numbering: self.numbering.clone(),
             anchors: self.anchors.as_ref().and_then(|anchors| {
                 // Each floating object paints with the page fragment holding
@@ -4181,11 +4183,21 @@ where
             }
 
             loop {
+                // Word uses the body height for layout when a floating
+                // table starts above the top margin.
+                let floating_top_offset = floating_table_frame
+                    .filter(|(frame, _)| {
+                        floating_breaks && frame.page_number == self.current_page_number
+                    })
+                    .map_or(0.0, |(frame, _)| {
+                        (self.effective_body_top() - frame.top).max(0.0)
+                    });
                 // A row that fits but whose notes would not start below it
                 // moves on with them (one page; it is then placed there).
                 let move_for_notes = !row_notes_registered
                     && !self.pageless_mode
-                    && self.current_y + pending_height <= self.table_row_bottom_limit()
+                    && self.current_y + pending_height + floating_top_offset
+                        <= self.table_row_bottom_limit()
                     && if !row_start && indices_preassigned {
                         let saved = self.note_registration_state();
                         let mut trial = layout_config.note_markers.clone();
@@ -4198,7 +4210,7 @@ where
                     };
                 if !self.pageless_mode {
                     // Rows stop above the page's footnote area (#294).
-                    let bottom_limit = self.table_row_bottom_limit();
+                    let bottom_limit = self.table_row_bottom_limit() - floating_top_offset;
                     let mut available_height = (bottom_limit - self.current_y).max(0.0);
                     if move_for_notes {
                         // The reference-bearing whole row cannot be placed here.
@@ -4490,7 +4502,7 @@ where
                 let required_height = if move_for_notes {
                     f64::INFINITY
                 } else {
-                    pending_height
+                    pending_height + floating_top_offset
                 };
                 let mut segment_starts_page =
                     fresh_page_segment.unwrap_or(at_table_frame_top(self));
@@ -4824,9 +4836,7 @@ where
         }
 
         if let Some((frame, logical_floor)) = floating_table_frame {
-            if let Some(rows) = repeated_floating_rows.filter(|_| {
-                self.current_page_number == frame.page_number + floating_fragments.len() - 1
-            }) {
+            if let Some(rows) = repeated_floating_rows {
                 self.record_repeated_header_paragraphs(
                     table_paragraph_start..self.paragraph_counter,
                 );
@@ -4878,10 +4888,7 @@ where
                 });
                 self.floating_table_frames.push(frame);
             } else if self.current_page_number > frame.page_number {
-                // The rows broke across pages, so the body cursor already
-                // follows the table's last row. Register what the table really
-                // occupies on every page so a later `w:tblOverlap` check sees
-                // the continuation, not an extent running off the first page.
+                // Register the continuation for subsequent floating tables.
                 self.floating_table_frames
                     .extend(floating_table_page_frames(
                         frame,
@@ -4890,6 +4897,20 @@ where
                         self.margin_top,
                         self.page_height - self.margin_bottom,
                     ));
+                if floating_breaks {
+                    let final_frame = FloatingTableFrame {
+                        page_number: self.current_page_number,
+                        top: self.margin_top,
+                        bottom: table_end_y,
+                        ..frame
+                    };
+                    self.current_y = final_frame.top;
+                    self.active_float_exclusions.push(PageFloatExclusion {
+                        is_table: true,
+                        page_number: final_frame.page_number,
+                        bounds: windows_floating_table_text_exclusion(table, final_frame),
+                    });
+                }
             }
         }
 
@@ -4931,33 +4952,146 @@ where
                         .unwrap_or(self.current_y);
                     }
                 }
-                let top = self.current_y;
-                if fragment_index != 0 && range.start >= header_row_count {
-                    self.draw_repeated_header_rows(
-                        &rows[..header_row_count],
-                        &row_heights[..header_row_count],
-                        table,
-                        grid,
-                        line_height,
-                    )?;
-                }
-                self.draw_table_rows_visual_only(
-                    &rows[range.clone()],
-                    &row_heights[range.clone()],
+                final_frame = self.draw_floating_table_fragment(
+                    table,
+                    frame,
+                    rows,
+                    row_heights,
+                    range.clone(),
+                    header_row_count,
+                    grid,
+                    line_height,
+                    fragment_index != 0,
+                    !modern && fragment_index == 0,
+                )?;
+            }
+        }
+        Ok(final_frame)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_floating_table_fragment(
+        &mut self,
+        table: &Table,
+        frame: FloatingTableFrame,
+        rows: &[Vec<PreparedCell>],
+        row_heights: &[f64],
+        range: Range<usize>,
+        header_row_count: usize,
+        grid: TableVisualGrid<'_>,
+        line_height: f64,
+        starts_after_break: bool,
+        shares_previous_page: bool,
+    ) -> Result<FloatingTableFrame, JsValue> {
+        let mut top = self.current_y;
+        let header_height = repeated_header_height(row_heights, header_row_count);
+        let draw_headers = |renderer: &mut Self, row_index| {
+            if should_repeat_header_before_row(header_row_count, row_index, true)
+                && header_height <= renderer.table_full_page_content_height()
+            {
+                renderer.draw_repeated_header_rows(
+                    &rows[..header_row_count],
+                    &row_heights[..header_row_count],
                     table,
                     grid,
                     line_height,
-                    range.start,
                 )?;
-                final_frame = FloatingTableFrame {
+            }
+            Ok::<_, JsValue>(())
+        };
+        if starts_after_break {
+            draw_headers(self, range.start)?;
+        }
+        // Legacy Word lays out the opening part of a new instance against
+        // a fresh body height, then paints it below the previous instance.
+        // The translated rows can cross the bottom margin on this page.
+        let mut translated_bottom = if shares_previous_page {
+            Some(top + self.table_full_page_content_height())
+        } else {
+            let offset = (self.effective_body_top() - top).max(0.0);
+            (offset > 0.0).then(|| self.table_row_bottom_limit() - offset)
+        };
+        let mut fresh_frame = true;
+        for row_index in range {
+            let mut height = row_heights[row_index];
+            if height <= 0.0 {
+                continue;
+            }
+            let row = &table.rows[row_index];
+            let mut cells = Cow::Borrowed(rows[row_index].as_slice());
+            let mut row_start = true;
+            loop {
+                let bottom = translated_bottom.unwrap_or_else(|| self.table_row_bottom_limit());
+                let available = (bottom - self.current_y).max(0.0);
+                if height <= available + ROW_SPLIT_EPSILON {
+                    break;
+                }
+                let mut full_height = self.table_full_page_content_height();
+                let repeat_header =
+                    should_repeat_header_before_row(header_row_count, row_index, true)
+                        && header_height <= full_height;
+                if repeat_header {
+                    full_height -= header_height;
+                }
+                let split = if available > MIN_ROW_HEIGHT_PX
+                    && !row_height_blocks_content_split(row, &cells)
+                    && !cant_split_blocks_row_split(row.cant_split, height, full_height)
+                {
+                    split_prepared_row_for_available_height(
+                        &cells,
+                        available,
+                        line_height,
+                        full_height,
+                        repeat_header,
+                        true,
+                    )
+                    .filter(|split| {
+                        !row_start
+                            || height > full_height + ROW_SPLIT_EPSILON
+                            || split.starts_all_cells()
+                    })
+                } else {
+                    None
+                };
+                if let Some(split) = split {
+                    self.draw_table_row_visual_only(
+                        &split.head_cells,
+                        split.head_height,
+                        table,
+                        grid,
+                        line_height,
+                        row_index,
+                    )?;
+                    cells = Cow::Owned(split.tail_cells);
+                    height = split.tail_height;
+                    row_start = false;
+                } else if fresh_frame {
+                    // A row that cannot split still occupies a fresh frame.
+                    break;
+                }
+                self.floating_table_frames.push(FloatingTableFrame {
                     page_number: self.current_page_number,
                     top,
                     bottom: self.current_y,
                     ..frame
-                };
-                self.floating_table_frames.push(final_frame);
+                });
+                self.force_table_page_break()?;
+                self.configure_table_context();
+                top = self.current_y;
+                translated_bottom = None;
+                draw_headers(self, row_index)?;
+                fresh_frame = true;
             }
+            self.draw_table_row_visual_only(&cells, height, table, grid, line_height, row_index)?;
+            fresh_frame = false;
         }
+        let final_frame = FloatingTableFrame {
+            page_number: self.current_page_number,
+            top,
+            bottom: self.current_y,
+            ..frame
+        };
+        self.floating_table_frames.push(final_frame);
         Ok(final_frame)
     }
 
@@ -6572,156 +6706,148 @@ where
         grid: TableVisualGrid<'_>,
         line_height: f64,
     ) -> Result<(), JsValue> {
-        self.draw_table_rows_visual_only(
-            header_rows,
-            header_row_heights,
-            table,
-            grid,
-            line_height,
-            0,
-        )
+        for (row_index, (row, &height)) in header_rows.iter().zip(header_row_heights).enumerate() {
+            self.draw_table_row_visual_only(row, height, table, grid, line_height, row_index)?;
+        }
+        Ok(())
     }
 
-    fn draw_table_rows_visual_only(
+    fn draw_table_row_visual_only(
         &mut self,
-        rows: &[Vec<PreparedCell>],
-        row_heights: &[f64],
+        row_cells: &[PreparedCell],
+        row_height: f64,
         table: &Table,
         grid: TableVisualGrid<'_>,
         line_height: f64,
-        first_row_index: usize,
+        row_index: usize,
     ) -> Result<(), JsValue> {
-        for (row_index, (row_cells, &row_height)) in rows.iter().zip(row_heights).enumerate() {
-            let row_index = first_row_index + row_index;
-            if row_height <= 0.0 {
-                continue;
-            }
-            let reserve_bottom = table.rows.get(row_index).is_some_and(row_grows_for_borders);
-            let bands = HorizontalBorderBands::for_row(row_cells, reserve_bottom);
-            let spacing_background = table
-                .rows
-                .get(row_index)
-                .and_then(|row| table_spacing_background(row, table));
-            let slot_scale = table
-                .rows
-                .get(row_index)
-                .map(|source| {
-                    prepared_spacing_slot_scale(
-                        source,
-                        table,
-                        row_cells,
-                        *grid.column_positions.last().unwrap_or(&0.0),
-                    )
-                })
-                .unwrap_or(1.0);
-            let y_top = self.current_y;
-            if self.should_draw_current_page_for_render() {
-                let painter = self.host.painter();
-                paint_spacing_tail(
-                    &painter,
-                    spacing_background,
-                    grid.table_x,
-                    y_top,
+        if row_height <= 0.0 {
+            return Ok(());
+        }
+        let reserve_bottom = table.rows.get(row_index).is_some_and(row_grows_for_borders);
+        let bands = HorizontalBorderBands::for_row(row_cells, reserve_bottom);
+        let spacing_background = table
+            .rows
+            .get(row_index)
+            .and_then(|row| table_spacing_background(row, table));
+        let slot_scale = table
+            .rows
+            .get(row_index)
+            .map(|source| {
+                prepared_spacing_slot_scale(
+                    source,
+                    table,
+                    row_cells,
                     *grid.column_positions.last().unwrap_or(&0.0),
-                    row_height,
-                    slot_scale,
+                )
+            })
+            .unwrap_or(1.0);
+        let y_top = self.current_y;
+        if self.should_draw_current_page_for_render() {
+            let painter = self.host.painter();
+            paint_spacing_tail(
+                &painter,
+                spacing_background,
+                grid.table_x,
+                y_top,
+                *grid.column_positions.last().unwrap_or(&0.0),
+                row_height,
+                slot_scale,
+            );
+            for cell in row_cells {
+                if cell.skip_render {
+                    continue;
+                }
+                let end_column = (cell.column_index + cell.span).min(grid.column_widths.len());
+                let cell_width = grid.column_widths[cell.column_index..end_column]
+                    .iter()
+                    .sum::<f64>()
+                    * slot_scale;
+                let x_start = visual_cell_x(
+                    grid.table_x,
+                    grid.column_positions,
+                    cell.column_index,
+                    end_column,
+                    grid.bidi_visual,
                 );
-                for cell in row_cells {
-                    if cell.skip_render {
-                        continue;
-                    }
-                    let end_column = (cell.column_index + cell.span).min(grid.column_widths.len());
-                    let cell_width = grid.column_widths[cell.column_index..end_column]
-                        .iter()
-                        .sum::<f64>()
-                        * slot_scale;
-                    let x_start = visual_cell_x(
-                        grid.table_x,
-                        grid.column_positions,
-                        cell.column_index,
-                        end_column,
-                        grid.bidi_visual,
-                    );
-                    let x_start = grid.table_x + (x_start - grid.table_x) * slot_scale;
-                    let rect =
-                        spaced_cell_border_rect(x_start, y_top, cell_width, row_height, cell);
+                let x_start = grid.table_x + (x_start - grid.table_x) * slot_scale;
+                let rect = spaced_cell_border_rect(x_start, y_top, cell_width, row_height, cell);
 
-                    let painter = self.host.painter();
-                    let context = &painter;
-                    let shading_rect = spaced_cell_shading_rect(rect, cell);
-                    paint_cell_spacing_background(
-                        context,
-                        spacing_background,
-                        CellBorderRect {
-                            x: x_start,
-                            y: y_top,
-                            width: cell_width,
-                            height: row_height,
-                        },
-                        shading_rect,
-                    );
-                    if let Some(bg) = &cell.background {
-                        #[allow(deprecated)]
-                        {
-                            context.set_fill_style_str(bg);
-                        }
-                        context.fill_rect(
-                            shading_rect.x,
-                            shading_rect.y,
-                            shading_rect.width,
-                            shading_rect.height,
-                        );
-                    }
+                let painter = self.host.painter();
+                let context = &painter;
+                let shading_rect = spaced_cell_shading_rect(rect, cell);
+                paint_cell_spacing_background(
+                    context,
+                    spacing_background,
+                    CellBorderRect {
+                        x: x_start,
+                        y: y_top,
+                        width: cell_width,
+                        height: row_height,
+                    },
+                    shading_rect,
+                );
+                if let Some(bg) = &cell.background {
                     #[allow(deprecated)]
                     {
-                        context.set_stroke_style_str(BORDER_COLOR);
+                        context.set_fill_style_str(bg);
                     }
-                    self.draw_cell_border_rect(
-                        context,
-                        rect.x,
-                        rect.y,
-                        rect.width,
-                        rect.height,
-                        cell,
-                        bands,
-                    )?;
+                    context.fill_rect(
+                        shading_rect.x,
+                        shading_rect.y,
+                        shading_rect.width,
+                        shading_rect.height,
+                    );
+                }
+                #[allow(deprecated)]
+                {
+                    context.set_stroke_style_str(BORDER_COLOR);
+                }
+                self.draw_cell_border_rect(
+                    context,
+                    rect.x,
+                    rect.y,
+                    rect.width,
+                    rect.height,
+                    cell,
+                    bands,
+                )?;
 
-                    self.draw_cell_text_visual_only(
-                        cell,
-                        rect.x,
-                        rect.y,
-                        grid.content_width.unwrap_or(rect.width),
-                        rect.height,
-                        line_height,
-                        bands,
-                    )?;
-                }
+                self.draw_cell_text_visual_only(
+                    cell,
+                    rect.x,
+                    rect.y,
+                    grid.content_width.unwrap_or(rect.width),
+                    rect.height,
+                    line_height,
+                    bands,
+                )?;
             }
-            // Windows Word repeats the separated table perimeter along with
-            // the header cells. Keep Mac's existing painted header unchanged.
-            if jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            {
-                if let Some(row) = table.rows.get(row_index) {
-                    self.draw_spaced_table_frame_segment(
-                        table,
-                        row,
-                        SpacedTableFrameSegment {
-                            legacy_inline_border_edges: row_cells
-                                .first()
-                                .is_some_and(|cell| cell.legacy_inline_border_edges),
-                            x: grid.table_x,
-                            y: y_top,
-                            width: *grid.column_positions.last().unwrap_or(&0.0),
-                            height: row_height,
-                            draw_top: row_index == 0,
-                            draw_bottom: false,
-                        },
-                    )?;
-                }
-            }
-            self.current_y += row_height;
         }
+        // Windows Word repeats the separated table perimeter along with
+        // the header cells. Keep Mac's existing painted header unchanged.
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            if let Some(row) = table.rows.get(row_index) {
+                self.draw_spaced_table_frame_segment(
+                    table,
+                    row,
+                    SpacedTableFrameSegment {
+                        legacy_inline_border_edges: row_cells
+                            .first()
+                            .is_some_and(|cell| cell.legacy_inline_border_edges),
+                        x: grid.table_x,
+                        y: y_top,
+                        width: *grid.column_positions.last().unwrap_or(&0.0),
+                        height: row_height,
+                        draw_top: row_index == 0,
+                        draw_bottom: false,
+                    },
+                )?;
+            }
+        }
+        self.current_y += row_height;
         Ok(())
     }
 
@@ -7089,7 +7215,14 @@ where
                                 line,
                                 &selection_line,
                                 TableLineClip {
-                                    vertical: (y_top, y_top + row_height),
+                                    vertical: (
+                                        y_top,
+                                        if self.pageless_mode {
+                                            y_top + row_height
+                                        } else {
+                                            (y_top + row_height).min(self.page_height)
+                                        },
+                                    ),
                                     ancestor_right: None,
                                     cell_right: x_start + cell_width,
                                 },
@@ -14389,13 +14522,11 @@ fn split_cell_paragraph(
         WordLayoutPlatform,
     };
     // Mac permits manual-break splits despite paragraph pagination controls.
-    // Windows does too when the paragraph exceeds a fresh frame. The row's
-    // cantSplit is checked separately.
-    let word_manual_break = fits > 0
-        && paragraph.lines[fits - 1].break_kind == LineBreakKind::Hard
-        && (word_layout_platform() == WordLayoutPlatform::Mac
-            || block.height > fresh_page_height + ROW_SPLIT_EPSILON);
-    if !word_manual_break
+    // Legacy Windows Word permits single lines across a manual break but
+    // retains keepLines when the paragraph fits on a fresh page.
+    let at_manual_break = fits > 0 && paragraph.lines[fits - 1].break_kind == LineBreakKind::Hard;
+    let mac_manual_break = at_manual_break && word_layout_platform() == WordLayoutPlatform::Mac;
+    if !mac_manual_break
         && paragraph.keep_lines
         && block.height <= fresh_page_height + ROW_SPLIT_EPSILON
     {
@@ -14413,7 +14544,14 @@ fn split_cell_paragraph(
             .text
             .chars()
             .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'));
-    if paragraph.widow_control && !word_manual_break && !invisible_join_control_tail {
+    let allow_widow = mac_manual_break
+        || at_manual_break
+            && match paragraph.compatibility_mode {
+                Some(12 | 14) => true,
+                Some(15..) => false,
+                _ => block.height > fresh_page_height + ROW_SPLIT_EPSILON,
+            };
+    if paragraph.widow_control && !allow_widow && !invisible_join_control_tail {
         match resolve_widow_orphan_decision(paragraph.lines.len(), fits) {
             WidowOrphanDecision::MoveWholeParagraph => return None,
             WidowOrphanDecision::BreakBeforeLine(line) => fits = line,
@@ -17130,6 +17268,8 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                             .as_ref()
                             .and_then(|properties| properties.widow_control)
                             .unwrap_or(true);
+                        cell_paragraph.compatibility_mode =
+                            paragraph_style.east_asian_rules.compatibility_mode;
                         cell_paragraph.align = paragraph_text_align_for_direction(
                             paragraph,
                             cell.text_direction,
