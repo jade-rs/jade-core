@@ -14,6 +14,7 @@ use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{
     Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
 };
+use jade_docx_editor::document::BodyElement;
 use jade_docx_editor::field_datetime::FieldDateTime;
 use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
@@ -29,6 +30,7 @@ use jade_docx_headless_api::{
 };
 use jade_selection::{SelectionRange, TextPosition};
 use jade_skia_painter::SkiaPainter;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -749,8 +751,85 @@ impl NativeDocument {
     /// Round-trips through jade's writer, so parts the edit never touched keep
     /// their original XML — tracked changes, comments and field codes survive.
     pub fn export_docx(&self) -> Result<Vec<u8>, String> {
+        let resolve_grids = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self
+                .word_document
+                .document
+                .as_ref()
+                .is_some_and(|document| {
+                    document.body.as_ref().is_some_and(|body| {
+                        body.elements.iter().any(|element| {
+                            let BodyElement::Table(table) = element else {
+                                return false;
+                            };
+                            table.rows.iter().flat_map(|row| &row.cells).any(|cell| {
+                                cell.blocks
+                                    .iter()
+                                    .any(|block| matches!(block, BodyElement::Table(_)))
+                            })
+                        })
+                    })
+                });
+        let grids = if resolve_grids {
+            let use_live_layout = self.word_document.raw_document.is_some()
+                && self.renderer.last_layout_complete()
+                && !self.bounded_pass_since_full_layout
+                && !self.roundtrip_relayout_pending
+                && !self.options.render_original
+                && self.options.collapsed_blocks().is_empty();
+            if !use_live_layout {
+                return self.export_docx_with_fresh_autofit_grids();
+            }
+            self.renderer.autofit_grids_for_docx()
+        } else {
+            Vec::new()
+        };
         self.word_document
-            .export_docx()
+            .export_docx_with_table_grids(&grids)
+            .map_err(|err| format!("export failed: {err:?}"))
+    }
+
+    fn export_docx_with_fresh_autofit_grids(&self) -> Result<Vec<u8>, String> {
+        // Layout may be bounded to the edited pages, or the opening pass
+        // may still carry no round-trip IDs. Keep this save pass independent
+        // of the live document, renderer and history.
+        let mut document = Cow::Borrowed(&self.word_document);
+        if document.raw_document.is_none() {
+            document
+                .to_mut()
+                .ensure_roundtrip_xml()
+                .map_err(|error| format!("round-trip XML failed: {error}"))?;
+        }
+        let host = SkiaRenderHost::with_fonts(self.page_width, self.page_height, &self.fonts, 1.0)
+            .ok_or_else(|| "could not allocate the DOCX export layout surface".to_string())?;
+        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
+            .map_err(|_| "DOCX export renderer setup failed".to_string())?;
+        register_math_faces(&mut renderer, &self.math_faces);
+        renderer.sync_word_document(&document);
+        renderer.set_current_datetime(self.field_datetime.map(renderer_datetime));
+        renderer.set_visible_page_range(Some(0..=0));
+        let mut options = self.options.clone();
+        options.render_original = false;
+        options.set_collapsed_blocks(Vec::new());
+        renderer
+            .render_with_numbering_rc(
+                document
+                    .document
+                    .clone()
+                    .ok_or_else(|| "no document".to_string())?,
+                &options,
+                document.numbering_part.as_ref(),
+                document.header_lines.as_deref(),
+                document.footer_lines.as_deref(),
+                Some(&document.comments),
+            )
+            .map_err(|_| "DOCX export layout failed".to_string())?;
+        if let Some(error) = renderer.take_render_error() {
+            return Err(error);
+        }
+        document
+            .export_docx_with_table_grids(&renderer.autofit_grids_for_docx())
             .map_err(|err| format!("export failed: {err:?}"))
     }
 

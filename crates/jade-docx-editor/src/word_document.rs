@@ -52,6 +52,7 @@ use jade_docx_headless_api::HeadlessChangeCaseMode;
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_writer::{self, DocxWriteError};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -6695,18 +6696,29 @@ impl WordDocument {
         let Some(raw) = self.raw_document.as_mut() else {
             return Ok(());
         };
+        let twips = columns.iter().map(|column| {
+            column
+                .width
+                .filter(|width| width.is_finite())
+                .map(|width| (f64::from(width.max(0.0)) * 20.0).round() as i32)
+        });
+        Self::write_table_grid(raw, node_id, twips)
+    }
+
+    fn write_table_grid(
+        raw: &mut DocxXmlDocument,
+        node_id: XmlNodeId,
+        columns: impl IntoIterator<Item = Option<i32>>,
+    ) -> Result<(), DocxXmlError> {
         let mut grid_element = raw.create_element("w:tblGrid", Vec::new(), Vec::new());
-        for column in columns {
-            let mut attributes = Vec::new();
-            if let Some(width) = column.width {
-                if width.is_finite() {
-                    let dxa = ((width.max(0.0) as f64) * 20.0).round() as i32;
-                    attributes.push(XmlAttribute {
-                        name: "w:w".to_string(),
-                        value: dxa.to_string(),
-                    });
-                }
-            }
+        for width in columns {
+            let attributes = width
+                .map(|width| XmlAttribute {
+                    name: "w:w".to_string(),
+                    value: width.to_string(),
+                })
+                .into_iter()
+                .collect();
             let grid_col = raw.create_element("w:gridCol", attributes, Vec::new());
             grid_element.children.push(XmlNode::Element(grid_col));
         }
@@ -6730,7 +6742,14 @@ impl WordDocument {
         }
 
         if let Some(idx) = grid_index {
-            table_element.children[idx] = XmlNode::Element(grid_element);
+            let XmlNode::Element(grid) = &mut table_element.children[idx] else {
+                unreachable!("the grid index points to an element");
+            };
+            // The active column widths can change without discarding the
+            // earlier grid stored inside w:tblGridChange.
+            grid.children
+                .retain(|child| !matches!(child, XmlNode::Element(col) if col.name == "w:gridCol"));
+            grid.children.splice(..0, grid_element.children);
         } else {
             let insert_at = match insert_index {
                 Some(idx) => idx,
@@ -12580,6 +12599,15 @@ impl WordDocument {
     }
 
     pub fn export_docx(&self) -> Result<Vec<u8>, DocxExportError> {
+        self.export_docx_with_table_grids(&[])
+    }
+
+    /// Writes resolved column widths in twips for tables in the main XML
+    /// part. The live model and its preferred cell and table widths are kept.
+    pub fn export_docx_with_table_grids(
+        &self,
+        grids: &[(XmlNodeId, Vec<i32>)],
+    ) -> Result<Vec<u8>, DocxExportError> {
         #[cfg(debug_assertions)]
         self.debug_check_section_ranges_are_derived();
         let package = self
@@ -12589,20 +12617,48 @@ impl WordDocument {
         // A deferred load that has not built its tree has not been edited
         // either (edits need the tree), so the source XML parsed afresh is the
         // tree it would have.
-        let deferred_tree;
-        let raw_document = match self.raw_document.as_ref() {
-            Some(raw) => raw,
+        let mut raw_document = match self.raw_document.as_ref() {
+            Some(raw) => Cow::Borrowed(raw),
             None => {
                 let content = &self
                     .document_part
                     .as_ref()
                     .ok_or(DocxExportError::MissingRawDocument)?
                     .content;
-                deferred_tree = DocxXmlDocument::parse(content)
-                    .map_err(|_| DocxExportError::MissingRawDocument)?;
-                &deferred_tree
+                Cow::Owned(
+                    DocxXmlDocument::parse(content)
+                        .map_err(|_| DocxExportError::MissingRawDocument)?,
+                )
             }
         };
+
+        for (id, widths) in grids {
+            let Some(table) = raw_document
+                .element(*id)
+                .filter(|table| table.name == "w:tbl")
+            else {
+                continue;
+            };
+            let columns = Self::nth_element_with_name(table, "w:tblGrid", 0);
+            let authored = columns.into_iter().flat_map(|grid| {
+                grid.children.iter().filter_map(|child| match child {
+                    XmlNode::Element(col) if col.name == "w:gridCol" => Some(
+                        col.attributes
+                            .iter()
+                            .find(|attr| attr.name == "w:w")
+                            .and_then(|attr| attr.value.parse::<i32>().ok()),
+                    ),
+                    _ => None,
+                })
+            });
+            if !authored.eq(widths.iter().copied().map(Some)) {
+                Self::write_table_grid(
+                    raw_document.to_mut(),
+                    *id,
+                    widths.iter().copied().map(Some),
+                )?;
+            }
+        }
 
         let xml = raw_document.to_string()?;
         let mut overrides = HashMap::new();

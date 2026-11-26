@@ -14224,6 +14224,54 @@
       "docx_sha256": "1f7f0f56471b3e474961591f7b39c2acb0657d6b47a21c19e58c263de14b3fde"
     },
     {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-grid-change-compat12",
+      "docx_sha256": "4d4685a16941ebc0585336136d2fd669ef497eab0bbf9947c2f7477a1c04e647"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-grid-change-compat14",
+      "docx_sha256": "99186e13d7ebf720a9aa44bf5d84f185db2dec6979a562795eaa9a9c74af8ed8"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-grid-change-compat15",
+      "docx_sha256": "2e25e403d76df2f940d12e019eb83e9d2c21172b97a6a0c9199d1a87125ae3aa"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-same-run-compat12",
+      "docx_sha256": "bef9f2b29be9c7228b09f22649f7acded70d763b5f4c26e6c3ac46f32784eeb0"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-same-run-compat14",
+      "docx_sha256": "1df68f7342d08be808cea27d20701962a431250d5b3ded396df4b55b7744dc8f"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-same-run-compat15",
+      "docx_sha256": "c35b10e67f5bd348b7a8499aec7ea4f3dc1f1d1bf9ebdda68db43920da3314c3"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-separate-paragraph-compat12",
+      "docx_sha256": "abbc5ef4ff4aa1bdd110d334b0c6ed1dd94d0a2d640e4a677d606ecbdc25bbc6"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-separate-paragraph-compat14",
+      "docx_sha256": "0eb6bde02c2f2094dd0eee9b2842369301fdabeddda4fd5c43c1275194aa45b4"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-separate-paragraph-compat15",
+      "docx_sha256": "78430a6925480da0fa0f727f2931befb59c6dadbfcb36da7ded07d321952d684"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-separate-run-compat12",
+      "docx_sha256": "481699faf74b397be6c8bbd225641beb51001fcd7049f4b09e749e310e3a1494"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-separate-run-compat14",
+      "docx_sha256": "6ed58348bf3686ca2087f521e2b51a3093b59f651ca25bca539db9ade73b1735"
+    },
+    {
+      "fixture": "word-windows-edge-nested-autofit-parent-save-separate-run-compat15",
+      "docx_sha256": "97152ce816601f8cb2d8add6b69bb559f610845b183e90ef3ec6c19f400a5744"
+    },
+    {
       "fixture": "word-windows-edge-nested-fixed-advance-arial-a-italic-compat12",
       "docx_sha256": "662fb1ee142d6b59ac7d034bf81e7e24dd44a74a17dbb83642720ff1ff692a61"
     },

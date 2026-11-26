@@ -3535,6 +3535,11 @@ where
             node_id: table.node_id.map(|id| id.raw()),
             column_widths: column_widths.clone(),
             resize_geometry: None,
+            save_autofit_grid: body_element_index != usize::MAX
+                && !self.pageless_mode
+                && !self.rendering_header_footer_story
+                && !self.rendering_note_story
+                && !natural_paragraph_layouts.nested.is_empty(),
             row_heights: Vec::with_capacity(table.rows.len()),
         });
 
@@ -9348,6 +9353,10 @@ where
                     node_id: layout.table.node_id.map(|id| id.raw()),
                     column_widths: layout.column_widths.clone(),
                     resize_geometry: layout.resize_geometry.clone(),
+                    save_autofit_grid: layout.resize_geometry.is_some()
+                        && !self.pageless_mode
+                        && !self.rendering_header_footer_story
+                        && !self.rendering_note_story,
                     row_heights: vec![0.0; layout.table.rows.len()],
                 });
                 index
