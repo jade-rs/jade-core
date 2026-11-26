@@ -9759,6 +9759,24 @@ impl OffscreenDocumentView {
         F: Fn(&mut InlineFormattingState),
         G: Fn(SelectionRange) -> Box<dyn Command>,
     {
+        self.apply_inline_style_anchored(update_inline, command_factory, full_document, None)
+    }
+
+    /// [`Self::apply_inline_style_with_scope`] whose repaint keeps the page
+    /// of paragraph `anchor` in view (a lazy view's edit window), rather
+    /// than the first dirty paragraph's: a whole-document command run at
+    /// the caret (a table of contents) does not send the view to page 1.
+    fn apply_inline_style_anchored<F, G>(
+        &self,
+        update_inline: F,
+        command_factory: G,
+        full_document: bool,
+        anchor: Option<usize>,
+    ) -> Result<JsValue, JsValue>
+    where
+        F: Fn(&mut InlineFormattingState),
+        G: Fn(SelectionRange) -> Box<dyn Command>,
+    {
         if self.state.borrow().preview_mode || !self.body_commands_allowed() {
             return Ok(JsValue::NULL);
         }
@@ -9841,7 +9859,7 @@ impl OffscreenDocumentView {
         let anchor_page = {
             let renderer = self.renderer.borrow();
             renderer
-                .cached_paragraph_start_page(dirty_from)
+                .cached_paragraph_start_page(anchor.unwrap_or(dirty_from))
                 .or_else(|| renderer.visible_page_range().as_ref().map(|r| *r.end()))
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
@@ -15115,6 +15133,26 @@ impl OffscreenDocumentView {
         } else {
             outline_max.max(min)
         };
+        if self.document_commands_allowed() {
+            // The layout completed first and the entries labelled with the
+            // number their heading's page displays (`WordToc::build_toc`).
+            let after = self.current_selection().normalized().0.paragraph;
+            self.complete_layout()?;
+            return self.run_word_session_at(
+                "insert_table_of_contents",
+                Some(after),
+                move |session| {
+                    use crate::word::references::toc::WordToc;
+                    session.build_toc(
+                        "insert_table_of_contents",
+                        None,
+                        after,
+                        crate::document::TocOptions::headings(min, max),
+                        "dot".to_string(),
+                    )
+                },
+            );
+        }
         self.apply_paragraph_style_headless(|start, _end| HeadlessCommand::InsertTableOfContents {
             after_paragraph: start,
             outline_min: min,
@@ -15127,6 +15165,15 @@ impl OffscreenDocumentView {
     /// Returns an error when the document has no TOC field.
     #[wasm_bindgen(js_name = updateTableOfContents)]
     pub fn update_table_of_contents(&self) -> Result<JsValue, JsValue> {
+        if self.document_commands_allowed() {
+            // As 目次の更新: the layout completed first, the entries labelled.
+            let caret = self.current_selection().normalized().0.paragraph;
+            self.complete_layout()?;
+            return self.run_word_session_at("update_table_of_contents", Some(caret), |session| {
+                use crate::word::references::toc::WordToc;
+                session.update_toc_at(0, false).map(|_| ())
+            });
+        }
         self.apply_paragraph_style_headless(|_start, _end| HeadlessCommand::UpdateTableOfContents)
     }
 

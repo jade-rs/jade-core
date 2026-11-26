@@ -4260,25 +4260,7 @@ fn apply_headless_commands(
                 outline_min,
                 outline_max,
             } => {
-                let options = crate::document::TocOptions {
-                    outline_min: *outline_min,
-                    outline_max: *outline_max,
-                    hyperlinks: true,
-                    hide_page_numbers: false,
-                    hide_page_number_levels: None,
-                    custom_style_levels: Vec::new(),
-                    page_number_separator: None,
-                    preserve_tabs: false,
-                    preserve_line_breaks: false,
-                    bookmark_name: None,
-                    caption_label: None,
-                    omit_caption_label_and_number: false,
-                    use_toc_entry_fields: false,
-                    toc_entry_identifier: None,
-                    toc_entry_levels: None,
-                    sequence_page_number: None,
-                    use_applied_outline_levels: true,
-                };
+                let options = crate::document::TocOptions::headings(*outline_min, *outline_max);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
