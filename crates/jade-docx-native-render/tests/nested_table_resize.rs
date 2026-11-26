@@ -53,6 +53,7 @@ fn nested_right_edge_resize_matches_word_and_round_trips() {
     verify_resizes("nested-table-resize", 18);
     verify_resizes("table-cell-border-content", 39);
     verify_resizes("nested-table-percent-resize", 12);
+    verify_resizes("spaced-table-border-content", 24);
 }
 
 fn verify_resizes(capture: &str, expected_cases: usize) {

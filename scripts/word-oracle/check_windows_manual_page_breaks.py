@@ -70,6 +70,12 @@ def nested_percent_resize_cases():
     return {'w2059', 'w2060', 'w2061', 'w2160'}
 
 
+def spaced_border_content_cases():
+    rules = ('no-rule', 'only-left', 'only-right', 'only-inner', 'thin-all',
+             'strong-all', 'cell-sides', 'frame-and-cell-sides')
+    return {f'{phase}-{rule}' for phase in ('before', 'resized') for rule in rules}
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -104,6 +110,8 @@ CAPTURES = (
      'word-windows-edge-border-content-', collapsed_border_content_cases, ('--unclipped-tables',)),
     ('nested-table-percent-resize', '23ec5828f242906c655fb6e636915ce5bebdc0ff6fd49746110e1076fba84a88',
      'word-windows-edge-nested-percent-resized-', nested_percent_resize_cases, ('--unclipped-tables',)),
+    ('spaced-table-border-content', '2ae9c231f0f24f1db3ffb1dcf4d2750e0cd26d1532db6875e3478bba55f5732b',
+     'word-windows-edge-spaced-border-content-', spaced_border_content_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -137,6 +145,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
         'nested-table-resize', 'table-cell-border-content', 'nested-table-percent-resize',
+        'spaced-table-border-content',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )

@@ -1850,6 +1850,12 @@ fn spacing_frame_width(row: &TableRow, table: &Table, side: TableBorderSide) -> 
         .unwrap_or(0.0)
 }
 
+fn windows_ltr_spaced_slots(table: &Table) -> bool {
+    !table.bidi_visual
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+}
+
 fn prepared_spacing_slot_scale(
     row: &TableRow,
     table: &Table,
@@ -1862,6 +1868,9 @@ fn prepared_spacing_slot_scale(
     let Some(last) = cells.last() else {
         return 1.0;
     };
+    if windows_ltr_spaced_slots(table) {
+        return spacing_slot_scale(width, first.cell_spacing, 0.0, 0.0, 0.0, 0.0);
+    }
     let (leading, trailing) = if table.bidi_visual {
         (&first.border_right, &last.border_left)
     } else {
@@ -10774,6 +10783,10 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
     outer_spacing
         + if table.bidi_visual {
             padding.right
+        } else if windows_ltr_spaced_slots(table)
+            && resolve_cell_spacing_px(row, table) > f64::EPSILON
+        {
+            padding.left + 2.0 * leading_cell_border_half_px(table, true)
         } else if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && !row_uses_separate_cell_borders(row, table)
@@ -10842,7 +10855,22 @@ fn leading_cell_border_half_px(table: &Table, include_spacing: bool) -> f64 {
         [true, visible_row_count == 1, left_col, right_col],
         cell_spacing,
     );
-    visible_border_width(&border) * 0.5
+    let painted_width = visible_border_width(&border);
+    let width = if include_spacing {
+        spaced_content_border_width(
+            cell,
+            row,
+            table,
+            &format,
+            side,
+            true,
+            cell_spacing,
+            painted_width,
+        )
+    } else {
+        painted_width
+    };
+    width * 0.5
 }
 
 fn trailing_cell_border_half_px(table: &Table) -> f64 {
@@ -10995,6 +11023,16 @@ fn compute_inline_body_table_x_inner(
         if trailing {
             return x - frame;
         }
+    }
+    if !ignored_indent
+        && positive_spacing
+        && !centered
+        && !trailing
+        && (!has_indent || effective_indent == Some(0.0))
+        && windows_ltr_spaced_slots(table)
+        && compatibility_mode.is_some_and(|mode| mode >= 15)
+    {
+        return x + leading_cell_border_half_px(table, true);
     }
     if !ignored_indent
         && !table.bidi_visual
@@ -11995,6 +12033,26 @@ impl WindowsPositiveSpacingGrid {
                         physical_edges,
                         spacing,
                     ));
+                    let left = spaced_content_border_width(
+                        cell,
+                        row,
+                        table,
+                        &format,
+                        TableBorderSide::Left,
+                        physical_edges[2],
+                        spacing,
+                        left,
+                    );
+                    let right = spaced_content_border_width(
+                        cell,
+                        row,
+                        table,
+                        &format,
+                        TableBorderSide::Right,
+                        physical_edges[3],
+                        spacing,
+                        right,
+                    );
                     (padding.horizontal(), left, right)
                 })
                 .collect();
@@ -12006,10 +12064,17 @@ impl WindowsPositiveSpacingGrid {
                 return None;
             }
         }
-        let (leading, trailing) = if table.bidi_visual {
-            (metrics[0].2, metrics[columns - 1].1)
+        let (leading, trailing, frame_left, frame_right) = if table.bidi_visual {
+            (
+                metrics[0].2,
+                metrics[columns - 1].1,
+                spacing_frame_width(first, table, TableBorderSide::Left),
+                spacing_frame_width(first, table, TableBorderSide::Right),
+            )
         } else {
-            (metrics[0].1, metrics[columns - 1].2)
+            // The outside gaps reduce the total span. The rules only affect
+            // how the remaining span is distributed between the columns.
+            (0.0, 0.0, 0.0, 0.0)
         };
         Some(Self {
             spacing,
@@ -12023,8 +12088,8 @@ impl WindowsPositiveSpacingGrid {
                 .collect(),
             leading,
             trailing,
-            frame_left: spacing_frame_width(first, table, TableBorderSide::Left),
-            frame_right: spacing_frame_width(first, table, TableBorderSide::Right),
+            frame_left,
+            frame_right,
         })
     }
 
@@ -16893,6 +16958,35 @@ fn resolve_cell_border_side(
     }
 }
 
+/// Windows budgets the frame rule on an outside edge of a spaced cell.
+/// An inherited insideV may still paint there without using that width.
+#[allow(clippy::too_many_arguments)]
+fn spaced_content_border_width(
+    cell: &TableCell,
+    row: &TableRow,
+    table: &Table,
+    format: &TableStyleCellFormat,
+    side: TableBorderSide,
+    outside: bool,
+    spacing: f64,
+    painted_width: f64,
+) -> f64 {
+    if !outside || spacing <= f64::EPSILON || !windows_ltr_spaced_slots(table) {
+        return painted_width;
+    }
+    let name = if matches!(side, TableBorderSide::Left) {
+        "left"
+    } else {
+        "right"
+    };
+    if cell_border_property(cell, table, name, "style").is_some()
+        || table_style_border_for_side(format, side).is_some()
+    {
+        return painted_width;
+    }
+    spacing_frame_width(row, table, side)
+}
+
 /// Transforms a DOCX table row into drawable cells, measuring wrapped text and resolving styles.
 #[allow(clippy::too_many_arguments)]
 fn prepare_row_layout<P: Painter<Error: PainterError>>(
@@ -16988,6 +17082,9 @@ fn table_row_slot_scale(
         return 1.0;
     }
     let cell_spacing = resolve_cell_spacing_px(row, table);
+    if windows_ltr_spaced_slots(table) {
+        return spacing_slot_scale(column_widths.iter().sum(), cell_spacing, 0.0, 0.0, 0.0, 0.0);
+    }
     let edge_width = |index: usize, name, side| {
         row.cells
             .get(index)
@@ -17206,6 +17303,29 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             config.padding_y,
         );
 
+        let edges = physical_edges(start, end);
+        let spacing_border_widths = [
+            spaced_content_border_width(
+                cell,
+                row,
+                table,
+                &style_format,
+                TableBorderSide::Left,
+                edges[2],
+                cell_spacing,
+                visible_border_width(&border_left),
+            ),
+            spaced_content_border_width(
+                cell,
+                row,
+                table,
+                &style_format,
+                TableBorderSide::Right,
+                edges[3],
+                cell_spacing,
+                visible_border_width(&border_right),
+            ),
+        ];
         let border_inset = if separated {
             let windows = jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
@@ -17220,8 +17340,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             } else {
                 0.5
             };
-            let left = visible_border_width(&border_left) * factor;
-            let right = visible_border_width(&border_right) * factor;
+            let [left, right] = spacing_border_widths.map(|width| width * factor);
             padding.left += left;
             padding.right += right;
             if windows {
@@ -17958,12 +18077,16 @@ pub(crate) fn windows_nested_resize_grid(
     let mut available = points_to_px(text_width);
     for (depth, (table, row_index, cell_index)) in path.into_iter().enumerate() {
         let count = compute_column_count(table).max(1);
-        let widths = if depth == 0 {
+        let mut widths = if depth == 0 {
             compute_column_widths(table, count, available)
         } else {
             word_windows_nested_grid(table, count, available)
                 .unwrap_or_else(|| compute_column_widths(table, count, available))
         };
+        let default_x = table_default_horizontal_padding_px(table, WordLayoutPlatform::Windows);
+        if let Some(spaced) = WindowsPositiveSpacingGrid::resolve(table, count, default_x) {
+            spaced.adjust(&mut widths, None);
+        }
         let row = &table.rows[row_index];
         let cell = &row.cells[cell_index];
         let start = row.grid_before.unwrap_or(0) as usize
@@ -17974,7 +18097,6 @@ pub(crate) fn windows_nested_resize_grid(
         let end = start + cell.span.unwrap_or(1).max(1) as usize;
         let cell_width: f64 = widths.get(start..end)?.iter().sum();
         let spacing = resolve_cell_spacing_px(row, table);
-        let default_x = table_default_horizontal_padding_px(table, WordLayoutPlatform::Windows);
         let mut padding = resolve_cell_padding(
             cell.margins.as_ref(),
             row.cell_margins.as_ref(),
@@ -18005,14 +18127,17 @@ pub(crate) fn windows_nested_resize_grid(
                 table.rows.len(),
                 cell_index,
             ));
-            let border_width = |name, side| {
-                visible_border_width(&resolve_cell_border_side(
+            let border_width = |name, side, outside| {
+                let painted = visible_border_width(&resolve_cell_border_side(
                     cell, row, table, &format, name, side, edges, spacing,
-                ))
+                ));
+                spaced_content_border_width(
+                    cell, row, table, &format, side, outside, spacing, painted,
+                )
             };
             [
-                border_width("left", TableBorderSide::Left),
-                border_width("right", TableBorderSide::Right),
+                border_width("left", TableBorderSide::Left, edges[2]),
+                border_width("right", TableBorderSide::Right, edges[3]),
             ]
         };
         if separated {
