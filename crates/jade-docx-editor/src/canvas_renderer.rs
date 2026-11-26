@@ -13730,6 +13730,10 @@ where
             None => "sans-serif".to_string(),
         };
         context.save();
+        // The page may be created while a table is drawn, which leaves the
+        // `top` baseline set: the shape is centred on its alphabetic one,
+        // whichever way the page is painted.
+        context.set_text_baseline("alphabetic");
         let draw_result = (|| {
             let shape_box = style
                 .width_pt
