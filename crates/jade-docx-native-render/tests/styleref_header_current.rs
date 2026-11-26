@@ -404,3 +404,36 @@ fn a_styleref_that_moves_its_own_heading_stops_repainting() {
         }
     }
 }
+
+/// Collapsing and expanding headings lays the document out again without
+/// editing it; each toggle leaves its wrong headers stale as an edit does.
+#[test]
+fn view_toggles_leave_their_pages_stale_or_right() {
+    let bytes = chapters_docx(&[]);
+    let collapsed: Vec<usize> = (1..=18).collect();
+    let expanded_reference = open_bytes(&bytes);
+    let mut collapsed_reference = open_bytes(&bytes);
+    collapsed_reference
+        .set_collapsed_blocks(collapsed.clone())
+        .unwrap();
+    while collapsed_reference.has_stale_pages() {
+        collapsed_reference
+            .paint_stale_pages(0..usize::MAX)
+            .unwrap();
+    }
+    let mut document = open_bytes(&bytes);
+    for round in 0..3 {
+        document.set_collapsed_blocks(collapsed.clone()).unwrap();
+        assert_stale_or_right_then_right(
+            &format!("collapse {round}"),
+            &mut document,
+            &collapsed_reference,
+        );
+        document.set_collapsed_blocks(Vec::new()).unwrap();
+        assert_stale_or_right_then_right(
+            &format!("expand {round}"),
+            &mut document,
+            &expanded_reference,
+        );
+    }
+}

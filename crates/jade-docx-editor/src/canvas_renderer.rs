@@ -4933,7 +4933,7 @@ where
     /// shows. See [`Self::take_style_reference_wrong_pages`].
     style_ref_wrong_pages: std::collections::BTreeSet<usize>,
     /// Passes since the last edit (see [`Self::note_style_reference_edit`])
-    /// that drew a STYLEREF wrong. A STYLEREF whose text moves the heading
+    /// or the last pass that drew every STYLEREF right, that drew one wrong. A STYLEREF whose text moves the heading
     /// it shows (a header line that wraps and pushes it to the next page)
     /// has no right value, and each pass would draw it wrong again; the
     /// count stops the repaints, while each edit starts it again.
@@ -45729,7 +45729,10 @@ where
                 self.style_ref_wrong_pages.remove(&page_0idx);
             }
         }
+        // A pass that drew every STYLEREF right ends a run of wrong ones: a
+        // STYLEREF that moves its own heading never draws one.
         if wrong.is_empty() {
+            self.style_ref_flagged_passes = 0;
             return;
         }
         let flag = self.style_ref_flagged_passes < MAX_FLAGGED_PAGE_TOTAL_PASSES;

@@ -1037,6 +1037,10 @@ impl NativeDocument {
 
     /// Repaints every page from scratch.
     pub fn repaint_all(&mut self) -> Result<Duration, String> {
+        // Whatever asked for it — an edit, an undo, a view that lays the
+        // document out otherwise (collapsed headings, markup, field codes) —
+        // may leave STYLEREFs wrong afresh.
+        self.renderer.note_style_reference_edit();
         let elapsed = self.repaint_all_drawing(self.paint_window.clone(), true)?;
         self.bounded_pass_since_full_layout = false;
         Ok(elapsed)
