@@ -22,6 +22,18 @@ pub(crate) fn fit_nested_columns_to_content(
     let preferred_total: f64 = preferred.iter().sum();
     let nearest_twip = |value: f64| (value * twips_per_unit).round() / twips_per_unit;
     let budget = nearest_twip(measured_budget);
+    let grown_total: f64 = preferred
+        .iter()
+        .zip(floors)
+        .map(|(preferred, floor)| preferred.max(*floor))
+        .sum();
+    if budget >= grown_total - 1e-8 && grown_total > preferred_total + 1e-8 {
+        // A column whose word exceeds its cell preference grows from that
+        // minimum when the enclosing cell still has spare width.
+        for ((width, preferred), floor) in widths.iter_mut().zip(preferred).zip(floors) {
+            *width = preferred.max(*floor) * measured_budget / grown_total;
+        }
+    }
     if budget >= preferred_total - 1e-8
         && widths
             .iter()

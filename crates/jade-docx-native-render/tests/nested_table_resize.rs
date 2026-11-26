@@ -332,6 +332,60 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
     }
 }
 
+#[cfg(windows)]
+#[test]
+fn autofit_nested_grid_saves_within_the_windows_word_text_frame() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let twips = |width: Option<f32>| (f64::from(width.unwrap()) * 20.0).round() as i32;
+    for (cohort, count) in [
+        ("nested-autofit-text-content", 54),
+        ("nested-autofit-text-frame", 18),
+        ("nested-autofit-text-margins", 18),
+        ("nested-autofit-text-indents", 6),
+        ("nested-autofit-text-resize", 18),
+        ("nested-autofit-text-overflow", 18),
+    ] {
+        let (mut archive, manifest) = load_word_capture(cohort);
+        let cases = manifest["documents"].as_array().unwrap();
+        assert_eq!(cases.len(), count);
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let (input, expected) = read_word_save(&mut archive, case);
+            let word = open_with_windows_fonts(&expected);
+            let jade = open_with_windows_fonts(&input);
+            let saved = open_with_windows_fonts(&jade.export_docx().unwrap());
+            for order in 0..2 {
+                let authored = widths_at(jade.word_document(), order);
+                let exported = widths_at(saved.word_document(), order);
+                assert_eq!(exported.preferred_width, authored.preferred_width, "{name}");
+                assert_eq!(exported.cells, authored.cells, "{name}");
+            }
+            let parent = widths_at(saved.word_document(), 0);
+            let expected_parent = widths_at(word.word_document(), 0);
+            let child = widths_at(saved.word_document(), 1);
+            let expected_child = widths_at(word.word_document(), 1);
+            assert_eq!(
+                parent.grid.iter().copied().map(twips).sum::<i32>(),
+                expected_parent.grid.iter().copied().map(twips).sum::<i32>(),
+                "{name}: table extent"
+            );
+            let child_width = child.grid.iter().copied().map(twips).sum::<i32>();
+            let word_child_width = expected_child.grid.iter().copied().map(twips).sum::<i32>();
+            if word_child_width > twips(expected_parent.grid[1]) {
+                assert_eq!(
+                    child_width, word_child_width,
+                    "{name}: absolute nested width"
+                );
+            } else {
+                assert!(
+                    child_width <= twips(parent.grid[1]),
+                    "{name}: nested columns fit inside the containing cell"
+                );
+            }
+        }
+    }
+}
+
 fn load_word_capture(capture: &str) -> (ZipArchive<Cursor<Vec<u8>>>, serde_json::Value) {
     let archive = std::fs::read(repo_path(&format!(
         "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",

@@ -12898,7 +12898,7 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
     let cached = cache
         .zip(cache_signature.as_ref())
         .and_then(|(cache, signature)| cache.borrow_mut().get(signature));
-    let content_widths = if let Some(cached) = cached {
+    let mut content_widths = if let Some(cached) = cached {
         cached
     } else {
         let measured = autofit_content_widths(
@@ -12992,13 +12992,34 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
                 .zip(&content_widths.unbreakable)
                 .map(|(minimum, word)| minimum.max(*word))
                 .collect();
+            let minimum_width: f64 = floors.iter().sum();
+            let indent = table_leading_indent(table).0.unwrap_or(0.0);
+            let limit = if config.is_some_and(|config| !config.word_modern_border_insets) {
+                // The legacy grid is constrained at the cell text edges.
+                let leading = pre_2013_table_text_inset_px(table, Some(14), false);
+                let trailing = pre_2013_table_trailing_text_inset_px(table);
+                (available_width + leading + trailing - indent).max(1.0)
+            } else {
+                (available_width - indent).max(1.0)
+            };
+            if minimum_width > limit && declared <= limit + 1e-8 {
+                // Windows Word caps the grid at the text area when all
+                // columns cannot fit their unbreakable text at once. An
+                // authored table width past that edge may grow beyond it.
+                column_widths.copy_from_slice(&floors);
+                let table_width = clamp_windows_autofit_grid(column_widths, limit);
+                for child in content_widths.natural_paragraph_layouts.nested.values_mut() {
+                    child.limit_to_cell = true;
+                }
+                return Ok((table_width, content_widths.natural_paragraph_layouts));
+            }
             let total: f64 = column_widths.iter().sum();
             if total > 0.0 {
                 for width in column_widths.iter_mut() {
                     *width *= declared / total;
                 }
             }
-            let budget = declared.min(available_width).max(floors.iter().sum());
+            let budget = declared.min(available_width).max(minimum_width);
             let table_width = apply_table_layout_width_with_content_constraints(
                 column_widths,
                 budget,
@@ -18394,6 +18415,26 @@ struct WindowsNestedAutofit {
     preferred: Vec<f64>,
     floors: Vec<f64>,
     layouts: NaturalParagraphLayoutCache,
+    limit_to_cell: bool,
+}
+
+fn clamp_windows_autofit_grid(widths: &mut [f64], limit: f64) -> f64 {
+    let budget = (limit * 15.0).round();
+    let scale = budget / widths.iter().sum::<f64>();
+    let mut boundary = 0.0;
+    let mut previous = 0.0;
+    let last = widths.len() - 1;
+    for (index, width) in widths.iter_mut().enumerate() {
+        boundary += *width * scale;
+        let snapped = if index == last {
+            budget
+        } else {
+            (boundary + 1e-8).floor()
+        };
+        *width = (snapped - previous) / 15.0;
+        previous = snapped;
+    }
+    budget / 15.0
 }
 
 impl WindowsNestedAutofit {
@@ -18454,6 +18495,7 @@ fn measure_windows_nested_autofit<C: TableAutofitContext>(
         preferred,
         floors,
         layouts: measured.natural_paragraph_layouts,
+        limit_to_cell: false,
     }))
 }
 
@@ -18499,6 +18541,15 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
                 &autofit.floors,
                 15.0,
             );
+            if autofit.limit_to_cell
+                && column_widths.iter().sum::<f64>() > available_width
+                && absolute_table_width(table)
+                    .is_none_or(|width| width + 1e-8 < autofit.floors.iter().sum::<f64>())
+            {
+                // A requested absolute width that can fit the text takes
+                // precedence over the frame of the capped parent.
+                clamp_windows_autofit_grid(&mut column_widths, available_width);
+            }
             autofit.layouts.clone()
         } else {
             NaturalParagraphLayoutCache::default()
