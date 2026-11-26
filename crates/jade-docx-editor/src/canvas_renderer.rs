@@ -4921,6 +4921,23 @@ where
     /// Style ids a header's or footer's STYLEREF has looked up, lowercased,
     /// each with the [`Self::record_pass`] that last looked it up.
     style_ref_style_ids: RefCell<std::collections::HashMap<String, u64>>,
+    /// What this pass's headers and footers drew for each STYLEREF. A
+    /// header is drawn before its page's body, so it looks the page's
+    /// paragraphs up in the layout before this one; the pass checks what it
+    /// drew against the paragraphs it ends with.
+    style_refs_shown: RefCell<std::collections::BTreeMap<StyleRefShown, String>>,
+    /// The header or footer story being laid out, by address, so a STYLEREF
+    /// in the header and the same one in the footer are recorded apart.
+    style_ref_story: usize,
+    /// Pages (0-based) whose STYLEREF a pass drew other than its own layout
+    /// shows. See [`Self::take_style_reference_wrong_pages`].
+    style_ref_wrong_pages: std::collections::BTreeSet<usize>,
+    /// Passes since the last edit (see [`Self::note_style_reference_edit`])
+    /// or the last pass that drew every STYLEREF right, that drew one wrong. A STYLEREF whose text moves the heading
+    /// it shows (a header line that wraps and pushes it to the next page)
+    /// has no right value, and each pass would draw it wrong again; the
+    /// count stops the repaints, while each edit starts it again.
+    style_ref_flagged_passes: u8,
     /// Paragraphs of table header rows (`w:tblHeader`), which repeat at the
     /// top of every page a table continues onto, each with the
     /// [`Self::record_pass`] that last drew it there. A pass that walks the
@@ -11033,6 +11050,10 @@ where
             chapter_numbers: std::collections::BTreeMap::new(),
             styled_paragraphs: std::collections::BTreeMap::new(),
             style_ref_style_ids: RefCell::default(),
+            style_refs_shown: RefCell::default(),
+            style_ref_story: 0,
+            style_ref_wrong_pages: std::collections::BTreeSet::new(),
+            style_ref_flagged_passes: 0,
             repeated_header_paragraphs: RefCell::default(),
             record_pass: 0,
             active_section_index: 0,
@@ -18840,6 +18861,7 @@ where
                 self.record_label_page_owners();
                 self.settle_page_totals(self.current_page_number);
             }
+            self.settle_style_references();
         }
 
         // Turn this full repaint's per-page measurements into section-owned
@@ -22768,26 +22790,20 @@ where
             section_index,
             numbering_counter,
         );
-        if !self.rendering_header_footer_story && !self.rendering_note_story {
-            self.note_mid_page_section_content(section_index);
-            let style = paragraph
-                .properties
-                .as_ref()
-                .and_then(|properties| properties.style.clone());
-            if style.is_some() {
-                let mut text =
-                    String::with_capacity(paragraph.runs.iter().map(|run| run.text.len()).sum());
-                for run in &paragraph.runs {
-                    append_style_reference_text(&mut text, &run.text);
-                }
-                self.styled_paragraphs.insert(
-                    paragraph_index,
-                    (self.current_page_number.max(1), style, text),
-                );
+        // Registered for STYLEREF once the paragraph is placed: pagination
+        // may yet push it to the next page, and the page break that does so
+        // draws a footer and a header that look it up meanwhile.
+        let styled_registration =
+            if !self.rendering_header_footer_story && !self.rendering_note_story {
+                self.note_mid_page_section_content(section_index);
+                let style = paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|properties| properties.style.clone());
+                Some((self.current_page_number.max(1), style))
             } else {
-                self.styled_paragraphs.remove(&paragraph_index);
-            }
-        }
+                None
+            };
         // A paragraph-start seek must preserve the unconsumed input even
         // when before is zero: a later before-spacing edit needs this after.
         self.trailing_spacing_after = None;
@@ -25031,8 +25047,44 @@ where
             }
         }
 
+        if let Some((start_page, style)) = styled_registration {
+            self.register_styled_paragraph(paragraph, paragraph_index, start_page, style);
+        }
         self.place_remaining_footnote_references(paragraph_index)?;
         Ok(())
+    }
+
+    /// Registers a laid-out body paragraph for STYLEREF, on the page its
+    /// first line is on: the page it started on, unless keepLines, keepNext,
+    /// widow control or a first line too tall for the room left pushed it
+    /// onto the next.
+    #[inline(never)]
+    fn register_styled_paragraph(
+        &mut self,
+        paragraph: &Paragraph,
+        paragraph_index: usize,
+        start_page: usize,
+        style: Option<Rc<str>>,
+    ) {
+        if style.is_none() {
+            self.styled_paragraphs.remove(&paragraph_index);
+            return;
+        }
+        let page = if start_page == self.current_page_number.max(1) || self.pageless_mode {
+            start_page
+        } else {
+            self.selection
+                .paragraphs()
+                .get(paragraph_index)
+                .and_then(|layout| layout.lines.first())
+                .map_or(start_page, |line| self.page_for_y(line.absolute_top) + 1)
+        };
+        let mut text = String::with_capacity(paragraph.runs.iter().map(|run| run.text.len()).sum());
+        for run in &paragraph.runs {
+            append_style_reference_text(&mut text, &run.text);
+        }
+        self.styled_paragraphs
+            .insert(paragraph_index, (page, style, text));
     }
 
     /// Records spanning-paragraph seek snapshots (S6) for a paragraph that
@@ -44100,6 +44152,8 @@ where
         }
         // Headers and footers are the page's furniture in a tagged PDF.
         self.suppress_structure(true);
+        let saved_story =
+            std::mem::replace(&mut self.style_ref_story, std::ptr::from_ref(body) as usize);
         let result = self.render_header_footer_body_at_untagged(
             body,
             start_y,
@@ -44107,6 +44161,7 @@ where
             draw,
             capture_story,
         );
+        self.style_ref_story = saved_story;
         self.suppress_structure(false);
         result
     }
@@ -45717,6 +45772,7 @@ where
     /// What a header's `STYLEREF style` shows on `page`: the first paragraph
     /// in the style on the page (the last with `\l`), else the nearest one
     /// before the page, else the first one after it — Word's search order.
+    /// Recorded as shown, for [`Self::settle_style_references`].
     fn style_reference_on_page(
         &self,
         page: usize,
@@ -45730,9 +45786,95 @@ where
             .borrow_mut()
             .entry(wanted.to_lowercase())
             .or_insert(pass) = pass;
+        let text = self.style_reference_text(page, &wanted, from_bottom);
+        // A story measured for its height, or laid out on a page this pass
+        // does not draw, leaves no pixels to check.
+        if self.should_draw_current_page_for_render() {
+            self.style_refs_shown.borrow_mut().insert(
+                (page, self.style_ref_story, wanted, from_bottom),
+                text.clone().unwrap_or_default(),
+            );
+        }
+        text
+    }
+
+    /// Ends a pass: the pages whose STYLEREF it drew other than the
+    /// paragraphs it laid out show are noted, and those it drew right are
+    /// no longer. A document whose headers show no STYLEREF records nothing.
+    #[inline]
+    fn settle_style_references(&mut self) {
+        if !self.style_refs_shown.get_mut().is_empty() {
+            self.settle_shown_style_references();
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn settle_shown_style_references(&mut self) {
+        let shown = std::mem::take(self.style_refs_shown.get_mut());
+        let mut wrong = Vec::new();
+        for ((page, _, wanted, from_bottom), text) in shown {
+            let page_0idx = page.saturating_sub(1);
+            if self
+                .style_reference_text(page, &wanted, from_bottom)
+                .unwrap_or_default()
+                != text
+            {
+                wrong.push(page_0idx);
+            } else {
+                self.style_ref_wrong_pages.remove(&page_0idx);
+            }
+        }
+        // A pass that drew every STYLEREF right ends a run of wrong ones: a
+        // STYLEREF that moves its own heading never draws one.
+        if wrong.is_empty() {
+            self.style_ref_flagged_passes = 0;
+            return;
+        }
+        let flag = self.style_ref_flagged_passes < MAX_FLAGGED_PAGE_TOTAL_PASSES;
+        if flag {
+            self.style_ref_flagged_passes += 1;
+        }
+        for page in wrong {
+            if flag {
+                self.style_ref_wrong_pages.insert(page);
+            } else {
+                self.style_ref_wrong_pages.remove(&page);
+            }
+        }
+    }
+
+    /// Starts the count of passes that drew a STYLEREF wrong again: the
+    /// document changed, so what its passes draw wrong is new. A host calls
+    /// it on every edit; without it, the passes after the first few that
+    /// draw a STYLEREF wrong leave no page stale.
+    #[inline]
+    pub fn note_style_reference_edit(&mut self) {
+        self.style_ref_flagged_passes = 0;
+    }
+
+    /// Whether a pass drew a STYLEREF its own layout shows otherwise, so
+    /// [`Self::take_style_reference_wrong_pages`] has pages to give.
+    #[inline]
+    pub fn has_style_reference_wrong_pages(&self) -> bool {
+        !self.style_ref_wrong_pages.is_empty()
+    }
+
+    /// The pages (0-based) the passes since the last call drew a STYLEREF
+    /// on other than their layout shows — the first pass over a document,
+    /// whose headers are drawn before the headings below them are laid out,
+    /// or one that restyled, moved or retyped a heading. Drawn again, they
+    /// show the paragraphs the pass ended with. Clears them.
+    pub fn take_style_reference_wrong_pages(&mut self) -> std::collections::BTreeSet<usize> {
+        std::mem::take(&mut self.style_ref_wrong_pages)
+    }
+
+    /// [`Self::style_reference_on_page`] for the style id `wanted`, from the
+    /// paragraphs laid out so far.
+    fn style_reference_text(&self, page: usize, wanted: &str, from_bottom: bool) -> Option<String> {
         let matching = self.styled_paragraphs.values().filter(|(_, id, _)| {
             id.as_deref()
-                .is_some_and(|id| id.eq_ignore_ascii_case(&wanted))
+                .is_some_and(|id| id.eq_ignore_ascii_case(wanted))
         });
         let on_page: Vec<&(usize, Option<Rc<str>>, String)> = matching
             .clone()
@@ -46712,6 +46854,10 @@ fn page_break_before_requires_advance(enabled: bool, current_y: f64, body_top: f
     const EPSILON: f64 = 1e-3;
     enabled && current_y > body_top + EPSILON
 }
+
+/// A STYLEREF a header or footer drew: the page (1-based), the story (by
+/// address), the style id and `\l`.
+type StyleRefShown = (usize, usize, String, bool);
 
 /// What a bounded edit pass drops for the paragraphs after the edited one;
 /// see [`CanvasRenderer::set_aside_edit_downstream`].
