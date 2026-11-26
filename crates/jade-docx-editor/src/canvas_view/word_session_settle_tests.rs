@@ -160,6 +160,8 @@ struct Shell {
     renderer: CanvasRenderer<RecordingPainter>,
     pages: Rc<RefCell<Vec<RecordingPainter>>>,
     forgotten: Rc<RefCell<std::collections::BTreeSet<usize>>>,
+    /// The view's kept pages ([`KeptPages`]).
+    kept: KeptPages,
     options: Options,
 }
 
@@ -181,6 +183,7 @@ impl Shell {
             renderer,
             pages,
             forgotten,
+            kept: KeptPages::new(),
             options: Options::default(),
         }
     }
@@ -254,7 +257,16 @@ impl Shell {
     fn lazy_edit(&mut self, document: &WordDocument) -> std::collections::BTreeSet<usize> {
         self.renderer.note_style_reference_edit();
         self.render(document);
-        take_lazy_payload_dirty_regions(&mut self.renderer)
+        take_lazy_payload_dirty_regions(&mut self.renderer, &mut self.kept)
+            .expect("payload")
+            .into_iter()
+            .map(|rect| rect.page)
+            .collect()
+    }
+
+    /// The pages the next lazy payload reports, with no render before it.
+    fn lazy_payload(&mut self) -> std::collections::BTreeSet<usize> {
+        take_lazy_payload_dirty_regions(&mut self.renderer, &mut self.kept)
             .expect("payload")
             .into_iter()
             .map(|rect| rect.page)
@@ -630,17 +642,46 @@ fn a_page_settled_by_an_unreported_extension_is_reported_later() {
     let settled =
         extend_renderer_layout(&mut shell.renderer, Some(3), &options, &document).expect("extend");
     assert!(settled.pages.contains(&0), "{settled:?}");
-    keep_for_next_payload(&mut shell.renderer, &settled.pages);
+    keep_for_next_payload(&mut shell.kept, &settled.pages);
     assert_eq!(page_of_total(&shell.page_text(0)), Some((1, 3)));
     // The extension leaves no dirty regions of its own; the next payload
     // carries page 1 all the same.
-    let reported: std::collections::BTreeSet<usize> =
-        take_lazy_payload_dirty_regions(&mut shell.renderer)
-            .expect("payload")
-            .into_iter()
-            .map(|rect| rect.page)
-            .collect();
+    let reported = shell.lazy_payload();
     assert!(reported.contains(&0), "{reported:?}");
+    assert!(shell.kept.is_empty(), "the payload took them");
+}
+
+/// `set_selection_range_surface_async`: the extension keeps page 1, then
+/// the selection's render is captured without a report
+/// (`capture_pages_after_render`), which clears the dirty tracker. The kept
+/// page outlives it, as it would a `clearDirtyRegions`, and the next
+/// reported payload carries it.
+#[test]
+fn a_kept_page_outlives_an_unreported_capture() {
+    let document = page_of_numpages(3);
+    let mut shell = Shell::new();
+    shell.open_lazily(&document, 1);
+    let options = shell.options.clone();
+    let settled =
+        extend_renderer_layout(&mut shell.renderer, Some(3), &options, &document).expect("extend");
+    assert!(settled.pages.contains(&0), "{settled:?}");
+    keep_for_next_payload(&mut shell.kept, &settled.pages);
+
+    // The selection's render and its unreported capture: it settles
+    // nothing new, keeps what it settled, and clears the tracker.
+    shell.renderer.skip_change_detection_once();
+    shell.render(&document);
+    let unreported = settle_drawn_pages(&mut shell.renderer).expect("settle");
+    keep_for_next_payload(&mut shell.kept, &unreported.pages);
+    shell.renderer.clear_dirty_regions();
+    assert!(shell.kept.contains(&0), "{:?}", shell.kept);
+
+    let reported = shell.lazy_payload();
+    assert!(reported.contains(&0), "{reported:?}");
+    assert!(shell.kept.is_empty());
+    // Reported once: the payload after it does not carry page 1 again.
+    let next = shell.lazy_payload();
+    assert!(!next.contains(&0), "{next:?}");
 }
 
 /// A page outside the visible range is not drawn when its total settles;
