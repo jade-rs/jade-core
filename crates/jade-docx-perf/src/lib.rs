@@ -23,6 +23,7 @@ use jade_docx_editor::headless_api::{
     apply_headless_commands_to_document, apply_headless_commands_with_executor_to_document,
 };
 use jade_docx_editor::render_host::{CanvasRenderHost, ImageCropMapping};
+use jade_docx_editor::word::fields::SelectionRange;
 use jade_docx_editor::word_document::WordDocument;
 use jade_docx_editor::Options;
 use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
@@ -323,18 +324,13 @@ pub fn run(scenario: &str, fixture: &Path) -> Result<(), String> {
             result?;
         }
         "keystroke-band" => {
-            // `keystroke` with the band redraw fast path native typing takes:
-            // see `type_one_band`.
-            let mut model = load(&bytes, options)?;
-            let mut renderer = renderer()?;
-            render_cold(&mut renderer, &model, options)?;
-            let paragraph = keystroke_paragraph(&renderer).ok_or("no paragraph on page 1")?;
-            let mut executor = CommandExecutor::new();
+            // Typing as `NativeDocument` does it, band redraw included: see
+            // `BandTyping`.
+            let mut typing = BandTyping::open(&bytes, options, renderer()?)?;
             let mut result = Ok(());
             perf_measured_region(&mut || {
                 for _ in 0..keystrokes() {
-                    result =
-                        type_one_band(&mut renderer, &mut model, paragraph, options, &mut executor);
+                    result = typing.type_one(options);
                     if result.is_err() {
                         return;
                     }
@@ -425,66 +421,177 @@ fn type_one(
     result
 }
 
-/// [`type_one`] with band redraw on, as `NativeDocument` types.
-///
-/// `apply_and_repaint_grouped` (`jade-docx-native-render/src/document.rs`)
-/// turns band redraw on for a recorded single-paragraph edit, restores the
-/// text-edit cache, asks the renderer to keep the completed pagination when
-/// the paragraph's height holds, and turns band redraw off after the render.
-/// The renderer then repaints only the edited paragraph's band when
-/// `compute_band_redraw_plan` accepts it, and falls back to the page otherwise.
-///
-/// `type_one` is left as it is so the frozen `keystroke` cases keep comparing
-/// like with like; this copy differs only in the band redraw steps.
-fn type_one_band(
-    renderer: &mut CanvasRenderer<PerfPainter>,
-    model: &mut WordDocument,
+/// Where a paragraph's lines start and end, as `NativeDocument` compares it
+/// before and after an edit: line count, first line top, last line bottom.
+type ParagraphExtent = (usize, f64, f64);
+
+fn paragraph_extent(
+    renderer: &CanvasRenderer<PerfPainter>,
     paragraph: usize,
-    options: &Options,
-    executor: &mut CommandExecutor,
-) -> Result<(), String> {
-    const VISIBLE_END_PAGE_1IDX: usize = 1;
-    // Read before the edit, as `NativeDocument` reads it for InsertText.
-    let old_height = renderer.cached_paragraph_height(paragraph);
-    let revision = executor.history_revision();
-    let text_edit_cache = renderer.local_text_edit_cache();
-    renderer.drop_document_cache();
-    apply_headless_commands_with_executor_to_document(
-        model,
-        executor,
-        None,
-        &HeadlessEditRequest {
-            commands: vec![HeadlessCommand::InsertText {
-                paragraph,
-                offset: 0,
-                text: "あ".to_string(),
-            }],
-        },
-    )
-    .map_err(|err| format!("insert text: {err:?}"))?;
-    let single_paragraph_edit = executor.history_revision() != revision
-        && executor.next_undo_render_footprint()
-            == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph });
-    if single_paragraph_edit {
+) -> Option<ParagraphExtent> {
+    let lines = &renderer
+        .selection_manager()
+        .paragraphs()
+        .get(paragraph)?
+        .lines;
+    let (first, last) = (lines.first()?, lines.last()?);
+    Some((
+        lines.len(),
+        first.absolute_top,
+        last.absolute_top + last.height,
+    ))
+}
+
+/// A document typed into the way `NativeDocument` types into it.
+///
+/// [`type_one`] is the browser-shaped sequence the frozen `keystroke` cases
+/// measure, and it never enables band redraw, so it measures the full-page
+/// fallback. Native typing (`open` and `apply_and_repaint_grouped` in
+/// `jade-docx-native-render/src/document.rs`) takes the band path on every
+/// single-paragraph keystroke. This follows that path step by step; the
+/// shell's own bookkeeping (stale page sets, undo shell steps) is left out.
+struct BandTyping {
+    renderer: CanvasRenderer<PerfPainter>,
+    model: WordDocument,
+    executor: CommandExecutor,
+    selection: Option<SelectionRange>,
+    paragraph: usize,
+    /// Pages the opening render laid out: what `NativeDocument::page_count`
+    /// reports between whole-document renders.
+    pages: usize,
+}
+
+impl BandTyping {
+    /// Loads and lays out every page as `NativeDocument` opens a document,
+    /// with its numbering, headers, footers and comments.
+    fn open(
+        bytes: &[u8],
+        options: &Options,
+        mut renderer: CanvasRenderer<PerfPainter>,
+    ) -> Result<Self, String> {
+        let model = load(bytes, options)?;
+        let document = model.document.clone().ok_or("no main document")?;
+        renderer.sync_word_document(&model);
+        renderer.set_use_selection_overlay(false);
+        renderer.mark_full_repaint();
+        renderer
+            .render_with_numbering_rc(
+                document,
+                options,
+                model.numbering_part.as_ref(),
+                model.header_lines.as_deref(),
+                model.footer_lines.as_deref(),
+                Some(&model.comments),
+            )
+            .map_err(|err| format!("render: {err:?}"))?;
+        if let Some(error) = renderer.take_render_error() {
+            return Err(error);
+        }
+        renderer.clear_dirty_regions();
+        let paragraph = keystroke_paragraph(&renderer).ok_or("no paragraph on page 1")?;
+        let pages = (0..model.paragraph_count())
+            .rev()
+            .find_map(|index| paragraph_extent(&renderer, index))
+            .map_or(1, |(_, _, bottom)| {
+                renderer.page_for_y((bottom - 0.5).max(0.0)) + 1
+            });
+        Ok(Self {
+            renderer,
+            model,
+            executor: CommandExecutor::new(),
+            selection: None,
+            paragraph,
+            pages,
+        })
+    }
+
+    /// One keystroke through `apply_and_repaint_grouped` for an `InsertText`
+    /// of one step, bounded to the first page as a window showing it would be.
+    fn type_one(&mut self, options: &Options) -> Result<(), String> {
+        const VISIBLE_END_PAGE_1IDX: usize = 1;
+        let renderer = &mut self.renderer;
+        let paragraph = self.paragraph;
+        let old_height = renderer.cached_paragraph_height(paragraph);
+        let extent_before = paragraph_extent(renderer, paragraph);
+        let text_edit_cache = renderer.local_text_edit_cache_for_paragraph(&self.model, paragraph);
+        let recorded = self.executor.history_revision();
+        // `edit_in_place`: the renderer gives the document up for the edit and
+        // takes the edited one back.
+        renderer.drop_document_cache();
+        let after = apply_headless_commands_with_executor_to_document(
+            &mut self.model,
+            &mut self.executor,
+            self.selection.take(),
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertText {
+                    paragraph,
+                    offset: 0,
+                    text: "あ".to_string(),
+                }],
+            },
+        );
+        if let Some(document) = &self.model.document {
+            renderer.restore_document_cache(Rc::clone(document));
+        }
+        self.selection = after.map_err(|err| format!("insert text: {err:?}"))?;
+        renderer.set_selection_range_for_render(self.selection);
+        let edited = self.model.document.clone().ok_or("no main document")?;
+        let single_paragraph_edit = self.executor.history_revision() != recorded
+            && self.executor.next_undo_render_footprint()
+                == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph });
+        if !single_paragraph_edit {
+            return Err("insert text did not record a single-paragraph edit".to_string());
+        }
         renderer.set_band_redraw_enabled(true);
-        renderer.restore_local_text_edit_cache(text_edit_cache, model, paragraph);
+        renderer.restore_local_text_edit_cache(text_edit_cache, &self.model, paragraph);
         if let Some(height) = old_height {
             renderer.prepare_completed_pagination_edit(paragraph, height);
         }
+        // Raised to the last page the edited paragraph reached.
+        let visible_end_page_1idx = match extent_before {
+            Some((_, _, bottom)) => {
+                VISIBLE_END_PAGE_1IDX.max(renderer.page_for_y((bottom - 0.5).max(0.0)) + 1)
+            }
+            None => VISIBLE_END_PAGE_1IDX,
+        };
+        let bounded = visible_end_page_1idx < self.pages;
+        if bounded {
+            renderer.set_aside_edit_downstream(paragraph);
+        }
+        renderer.prepare_incremental_repaint(paragraph, visible_end_page_1idx);
+        if bounded {
+            renderer.set_visible_page_range(Some(1..=visible_end_page_1idx.max(1)));
+        }
+        let result = renderer.render_bounded_to_page_with_parts(
+            edited,
+            options,
+            self.model.numbering_part.as_ref(),
+            self.model.header_lines.as_deref(),
+            self.model.footer_lines.as_deref(),
+            Some(&self.model.comments),
+            visible_end_page_1idx,
+        );
+        if bounded {
+            renderer.clear_visible_page_range();
+        }
+        renderer.set_band_redraw_enabled(false);
+        result.map_err(|err| format!("repaint: {err:?}"))?;
+        if let Some(error) = renderer.take_render_error() {
+            return Err(error);
+        }
+        let shown_elsewhere = renderer.paragraph_text_shows_elsewhere(paragraph);
+        if let Some(saved) = renderer.take_edit_downstream() {
+            let stood = extent_before.is_some()
+                && !shown_elsewhere
+                && paragraph_extent(renderer, paragraph) == extent_before
+                && renderer.edit_downstream_kept_its_lines(&saved);
+            if stood {
+                renderer.restore_edit_downstream(saved);
+            }
+        }
+        renderer.clear_dirty_regions();
+        Ok(())
     }
-    let edited = model.document.as_ref().ok_or("no main document")?.clone();
-    renderer.prefer_visible_window_seek_once();
-    renderer.set_incremental_dirty_from(paragraph);
-    renderer.invalidate_paragraph_wrap_cache_from(paragraph);
-    renderer.mark_dirty_from_paragraph_to_end_bounded(paragraph, VISIBLE_END_PAGE_1IDX);
-    let previous_limit = renderer.layout_page_limit();
-    renderer.set_layout_page_limit(Some(VISIBLE_END_PAGE_1IDX));
-    let result = renderer
-        .render_with_numbering_rc(edited, options, None, None, None, None)
-        .map_err(|err| format!("repaint: {err:?}"));
-    renderer.set_layout_page_limit(previous_limit);
-    renderer.set_band_redraw_enabled(false);
-    result
 }
 
 #[cfg(test)]
@@ -558,39 +665,55 @@ mod tests {
     }
 
     #[test]
-    fn band_workload_takes_a_band_for_every_keystroke() {
-        // yokohama.docx is the long fixture the band path was built for; the
-        // other two are checked too so a gate that starts rejecting one of
-        // them shows up here rather than as a quietly cheaper or dearer row.
-        for name in ["yokohama.docx", "contract.docx", "nda.docx"] {
-            let bytes = fixture(name);
+    fn band_workload_takes_a_band_on_every_measured_keystroke_but_a_wrap() {
+        // Over the measured run, keystroke by keystroke. On yokohama.docx and
+        // nda.docx every keystroke takes a band and keeps the completed
+        // pagination. On contract.docx the fourth keystroke wraps the edited
+        // paragraph onto a second line: the band is rejected as unstable and
+        // the page is repainted. The keystrokes after it take bands again, but
+        // the bounded pass that grew the paragraph left the layout incomplete,
+        // so the completed pagination is no longer offered for reuse.
+        for (name, wrapping_keystroke) in [
+            ("yokohama.docx", None),
+            ("nda.docx", None),
+            ("contract.docx", Some(4)),
+        ] {
             let options = options("keystroke-band");
-            let mut model = load(&bytes, &options).unwrap();
-            let mut renderer = renderer().unwrap();
-            render_cold(&mut renderer, &model, &options).unwrap();
-            let paragraph = keystroke_paragraph(&renderer).unwrap();
-            let mut executor = CommandExecutor::new();
-            for keystroke in 1..=3 {
-                type_one_band(
-                    &mut renderer,
-                    &mut model,
-                    paragraph,
-                    &options,
-                    &mut executor,
-                )
-                .unwrap();
-                let (eligible, taken, fallbacks) = renderer.band_redraw_stats();
+            let mut typing =
+                BandTyping::open(&fixture(name), &options, renderer().unwrap()).unwrap();
+            let lines_before = paragraph_extent(&typing.renderer, typing.paragraph)
+                .unwrap()
+                .0;
+            let mut expected_bands = 0;
+            for keystroke in 1..=KEYSTROKES {
+                typing.type_one(&options).unwrap();
+                let wrapped = wrapping_keystroke.is_some_and(|wrap| keystroke >= wrap);
+                if wrapping_keystroke != Some(keystroke) {
+                    expected_bands += 1;
+                }
+                let (eligible, taken, fallbacks) = typing.renderer.band_redraw_stats();
                 assert_eq!(
-                    taken, keystroke,
-                    "{name}: keystroke {keystroke} fell back to a page repaint \
-                     (eligible {eligible}, fallbacks {fallbacks:?})"
+                    taken, expected_bands,
+                    "{name}: keystroke {keystroke} (eligible {eligible}, fallbacks {fallbacks:?})"
                 );
-                assert!(!renderer.band_redraw_enabled(), "{name}: band left on");
+                assert!(
+                    !typing.renderer.band_redraw_enabled(),
+                    "{name}: band left on"
+                );
+                assert_eq!(
+                    typing.renderer.last_completed_pagination_edit_preserved(),
+                    !wrapped,
+                    "{name}: keystroke {keystroke} completed pagination reuse"
+                );
+                let lines = paragraph_extent(&typing.renderer, typing.paragraph)
+                    .unwrap()
+                    .0;
+                assert_eq!(
+                    lines,
+                    lines_before + usize::from(wrapped),
+                    "{name}: keystroke {keystroke} line count"
+                );
             }
-            assert!(
-                renderer.last_completed_pagination_edit_preserved(),
-                "{name}: the completed pagination must be reused"
-            );
         }
     }
 
@@ -621,57 +744,56 @@ mod tests {
     #[test]
     fn band_workload_draws_the_edited_paragraph() {
         // A band that clipped away the edit, or painted a stale paragraph,
-        // would still count as taken. The painter sees the inserted text.
+        // would still count as taken. The painter sees the inserted text, and
+        // less of everything else than a page repaint draws.
         let bytes = fixture("yokohama.docx");
         let edited = "あ".repeat(3);
-        let mut drawn = Vec::new();
-        for scenario in ["keystroke", "keystroke-band"] {
-            let options = options(scenario);
-            let mut model = load(&bytes, &options).unwrap();
-            let host = PerfHost::new().unwrap();
-            let painter = host.painter.clone();
-            let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
-            render_cold(&mut renderer, &model, &options).unwrap();
-            assert!(
-                !painter.take_drawn_text().contains(&edited),
-                "{scenario}: the fixture already shows the inserted text"
-            );
-            let paragraph = keystroke_paragraph(&renderer).unwrap();
-            let mut executor = CommandExecutor::new();
-            for _ in 0..3 {
-                painter.take_drawn_text();
-                if scenario == "keystroke-band" {
-                    type_one_band(
-                        &mut renderer,
-                        &mut model,
-                        paragraph,
-                        &options,
-                        &mut executor,
-                    )
-                } else {
-                    type_one(
-                        &mut renderer,
-                        &mut model,
-                        paragraph,
-                        &options,
-                        &mut executor,
-                    )
-                }
-                .unwrap();
-            }
-            let text = painter.take_drawn_text();
-            assert!(
-                text.contains(&edited),
-                "{scenario}: the third keystroke's repaint must draw the edited paragraph"
-            );
-            drawn.push((scenario, text.chars().count(), bands_taken(&renderer)));
-        }
-        let [(_, page_chars, 0), (_, band_chars, 3)] = drawn[..] else {
-            panic!("unexpected band counts: {drawn:?}");
-        };
+
+        let page_options = options("keystroke");
+        let mut model = load(&bytes, &page_options).unwrap();
+        let host = PerfHost::new().unwrap();
+        let painter = host.painter.clone();
+        let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        render_cold(&mut renderer, &model, &page_options).unwrap();
         assert!(
-            band_chars < page_chars,
-            "a band repaint draws less than the page: {drawn:?}"
+            !painter.take_drawn_text().contains(&edited),
+            "the fixture already shows the inserted text"
+        );
+        let paragraph = keystroke_paragraph(&renderer).unwrap();
+        let mut executor = CommandExecutor::new();
+        for _ in 0..3 {
+            painter.take_drawn_text();
+            type_one(
+                &mut renderer,
+                &mut model,
+                paragraph,
+                &page_options,
+                &mut executor,
+            )
+            .unwrap();
+        }
+        let page = painter.take_drawn_text();
+        assert!(page.contains(&edited), "page repaint must draw the edit");
+
+        let band_options = options("keystroke-band");
+        let host = PerfHost::new().unwrap();
+        let painter = host.painter.clone();
+        let renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+        let mut typing = BandTyping::open(&bytes, &band_options, renderer).unwrap();
+        assert_eq!(typing.paragraph, paragraph);
+        assert!(!painter.take_drawn_text().contains(&edited));
+        for _ in 0..3 {
+            painter.take_drawn_text();
+            typing.type_one(&band_options).unwrap();
+        }
+        let band = painter.take_drawn_text();
+        assert_eq!(bands_taken(&typing.renderer), 3);
+        assert!(band.contains(&edited), "band repaint must draw the edit");
+        assert!(
+            band.chars().count() < page.chars().count(),
+            "a band repaint draws less than the page: {} vs {}",
+            band.chars().count(),
+            page.chars().count()
         );
     }
 }
