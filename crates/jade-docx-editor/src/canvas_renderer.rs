@@ -18106,6 +18106,10 @@ where
         } else {
             self.selection.take_cell_layouts()
         };
+        // No parked tail outlives the pass that parked it (a handed-over one
+        // is detached into `EditDownstream`). One left by a bug would make
+        // every later park take its tail instead, copying it per keystroke.
+        self.selection.discard_parked_selection_suffix();
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
