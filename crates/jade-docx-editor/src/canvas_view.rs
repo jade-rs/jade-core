@@ -10570,8 +10570,12 @@ impl OffscreenDocumentView {
         &self,
         renderer: &mut CanvasRenderer,
     ) -> Result<Vec<DirtyRect>, JsValue> {
-        let mut kept = std::mem::take(&mut self.state.borrow_mut().kept_settled_pages);
-        word_session::take_lazy_payload_dirty_regions(renderer, &mut kept)
+        // The set is handed in place, not taken out: settling can fail, and
+        // a bounded pass leaves the pages past its end kept.
+        word_session::take_lazy_payload_dirty_regions(
+            renderer,
+            &mut self.state.borrow_mut().kept_settled_pages,
+        )
     }
 
     fn capture_settled_paged_images(
@@ -11688,7 +11692,10 @@ impl OffscreenDocumentView {
         let (pending_images, page_count, complete, mut settled) =
             self.extend_layout(Some(end_page), true)?;
         // This result reports what earlier unreported passes settled too.
-        settled.append(&mut self.state.borrow_mut().kept_settled_pages);
+        settled.append(&mut word_session::take_reportable_kept_pages(
+            &self.renderer.borrow(),
+            &mut self.state.borrow_mut().kept_settled_pages,
+        ));
 
         if let Some(wait) = pending_images {
             if let Err(err) = JsFuture::from(wait).await {
