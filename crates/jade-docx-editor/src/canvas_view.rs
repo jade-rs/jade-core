@@ -1750,7 +1750,14 @@ impl OffscreenDocumentView {
     /// alive until the edit's render has run.
     #[must_use]
     fn drop_renderer_document_cache(&self) -> RendererDocumentCacheGuard {
-        self.renderer.borrow_mut().drop_document_cache();
+        {
+            let mut renderer = self.renderer.borrow_mut();
+            renderer.drop_document_cache();
+            // The document changes: what its passes draw wrong is new, so
+            // the renderer counts the STYLEREF repaints from here, as the
+            // native host's edits do.
+            renderer.note_style_reference_edit();
+        }
         RendererDocumentCacheGuard {
             renderer: Rc::clone(&self.renderer),
             state: Rc::clone(&self.state),
@@ -10538,6 +10545,11 @@ impl OffscreenDocumentView {
         if self.state.borrow().options.pageless() {
             return Ok((None, Array::new().into()));
         }
+        // A pass that drew a NUMPAGES total or a STYLEREF its own end proved
+        // wrong (the first complete pass, an edit that moved the page count
+        // or a heading) draws those pages again, and leaves them dirty for
+        // the payload below. A pass that drew them right paints nothing.
+        word_session::settle_drawn_pages(renderer)?;
         // Page-level caching strategy:
         // - Only generate ImageBitmaps for dirty pages.
         // - Clean pages are left untouched on the main thread (canvas retains pixels).
@@ -11054,6 +11066,11 @@ impl OffscreenDocumentView {
                                 Some(&word_doc.comments),
                             )
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+                        // A pass that lays the document out whole draws its
+                        // NUMPAGES and STYLEREFs before it knows them; the
+                        // pages are drawn again, as the native host does at
+                        // open. Every page is fetched after this anyway.
+                        word_session::settle_drawn_pages(&mut renderer_mut)?;
                     }
 
                     let metadata = renderer_mut.table_resize_metadata();
@@ -11187,6 +11204,11 @@ impl OffscreenDocumentView {
                                 Some(&word_doc.comments),
                             )
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+                        // A pass that lays the document out whole draws its
+                        // NUMPAGES and STYLEREFs before it knows them; the
+                        // pages are drawn again, as the native host does at
+                        // open. Every page is fetched after this anyway.
+                        word_session::settle_drawn_pages(&mut renderer_mut)?;
                     }
 
                     let metadata = renderer_mut.table_resize_metadata();
@@ -11407,6 +11429,11 @@ impl OffscreenDocumentView {
                                 Some(&word_doc.comments),
                             )
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+                        // A pass that lays the document out whole draws its
+                        // NUMPAGES and STYLEREFs before it knows them; the
+                        // pages are drawn again, as the native host does at
+                        // open. Every page is fetched after this anyway.
+                        word_session::settle_drawn_pages(&mut renderer_mut)?;
                     }
 
                     let metadata = renderer_mut.table_resize_metadata();
@@ -11508,8 +11535,11 @@ impl OffscreenDocumentView {
     /// page dimensions. The host can call this when the viewport approaches the end
     /// of the currently laid-out pages.
     ///
-    /// Returns { pageCount, pages: [{width,height}, ...], complete } by default.
+    /// Returns { pageCount, pages: [{width,height}, ...], complete, dirtyRegions } by default.
     /// With compact_dimensions, replaces pages with pageDimensionRuns: [[count,width,height], ...].
+    /// `dirtyRegions` (whole pages, as an edit's payload gives them) lists the
+    /// pages drawn before this pass proved their NUMPAGES totals or STYLEREFs
+    /// wrong; those in the visible range are drawn again already.
     #[wasm_bindgen(js_name = ensureLayoutThroughPage)]
     pub fn ensure_layout_through_page(
         &self,
@@ -11528,24 +11558,34 @@ impl OffscreenDocumentView {
     /// `None`: to its end), resuming from the last valid page-top snapshot
     /// where one qualifies, and records the table-resize metadata. Returns
     /// the image loads the pass started when `drain_images` (for the caller
-    /// to wait on; otherwise the next render drains them), the page count
-    /// and whether the layout reached the end of the document. Shared by
-    /// `ensureLayoutThroughPage` and `complete_layout`.
-    #[allow(clippy::too_many_arguments)]
+    /// to wait on; otherwise the next render drains them), the page count,
+    /// whether the layout reached the end of the document, and the pages
+    /// whose drawn NUMPAGES totals or STYLEREFs the pass proved wrong
+    /// ([`word_session::extend_renderer_layout`]), which the main thread
+    /// fetches again. Shared by `ensureLayoutThroughPage` and
+    /// `complete_layout`.
     pub(super) fn extend_layout(
         &self,
         end_page: Option<usize>,
         drain_images: bool,
-        options: &Options,
-        document: Option<Rc<jade_docx_reader::document::Document>>,
-        numbering_part: Option<jade_docx_reader::numbering::NumberingPart>,
-        header_lines: Option<Vec<HeaderLine>>,
-        footer_lines: Option<Vec<HeaderLine>>,
-        comments: std::collections::HashMap<String, jade_docx_reader::document::DocumentComment>,
-    ) -> Result<(Option<js_sys::Promise>, usize, bool), JsValue> {
-        let (pending, page_count, complete, table_resize_metadata) = {
+    ) -> Result<
+        (
+            Option<js_sys::Promise>,
+            usize,
+            bool,
+            std::collections::BTreeSet<usize>,
+        ),
+        JsValue,
+    > {
+        let (pending, page_count, complete, table_resize_metadata, settled) = {
+            // The side tables are read where the document keeps them: a
+            // background chunk copies none of them.
+            let state = self.state.borrow();
+            let word_doc = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("No document loaded"))?;
             let mut renderer_mut = self.renderer.borrow_mut();
-            let previous_visible_range = renderer_mut.visible_page_range();
             // IMPORTANT:
             // Do NOT clear the selection here.
             //
@@ -11553,35 +11593,12 @@ impl OffscreenDocumentView {
             // If we clear selection, subsequent edit commands (e.g. insert_text) can observe
             // `selection_range() == None` and fall back to `TextPosition::default()` (0,0),
             // which manifests as "caret jumps to the beginning while typing".
-            let previous_limit = renderer_mut.layout_page_limit();
-            renderer_mut.set_layout_page_limit(end_page);
-            // Preserve the current viewport window while extending layout in the background.
-            // Expanding the visible range to `1..=end_page` makes later edit renders treat the
-            // whole laid-out prefix as visible, which causes avoidable tail bitmap churn.
-            renderer_mut.set_visible_page_range(previous_visible_range.clone());
-            // Resume the layout-only walk from the last valid page-top snapshot
-            // instead of re-walking every laid-out page; falls back to the
-            // from-start walk when no snapshot qualifies.
-            renderer_mut.prepare_layout_extension_seek(
-                previous_limit,
-                end_page.unwrap_or(usize::MAX),
-                options,
-            );
-
-            if let Some(document) = document.as_ref() {
-                renderer_mut
-                    .render_layout_with_numbering_rc(
-                        Rc::clone(document),
-                        options,
-                        numbering_part.as_ref(),
-                        header_lines.as_deref(),
-                        footer_lines.as_deref(),
-                        Some(&comments),
-                    )
-                    .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
-            }
-            // Layout expansion should not leave dirty regions that can slow subsequent renders.
-            renderer_mut.clear_dirty_regions();
+            let settled = word_session::extend_renderer_layout(
+                &mut renderer_mut,
+                end_page,
+                &state.options,
+                word_doc,
+            )?;
 
             let pending = if drain_images {
                 renderer_mut.drain_pending_image_promises()
@@ -11591,10 +11608,16 @@ impl OffscreenDocumentView {
             let page_count = renderer_mut.page_count();
             let complete = renderer_mut.last_layout_complete();
             let table_resize_metadata = renderer_mut.table_resize_metadata();
-            (pending, page_count, complete, table_resize_metadata)
+            (
+                pending,
+                page_count,
+                complete,
+                table_resize_metadata,
+                settled.pages,
+            )
         };
         self.state.borrow_mut().table_resize = table_resize_metadata;
-        Ok((pending, page_count, complete))
+        Ok((pending, page_count, complete, settled))
     }
 
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
@@ -11603,32 +11626,8 @@ impl OffscreenDocumentView {
         end_page: usize,
         compact_dimensions: bool,
     ) -> Result<JsValue, JsValue> {
-        let (options, document, numbering_part, header_lines, footer_lines, comments) = {
-            let state = self.state.borrow();
-            let word_doc = state
-                .word_doc
-                .as_ref()
-                .ok_or_else(|| JsValue::from_str("No document loaded"))?;
-            (
-                state.options.clone(),
-                word_doc.document.as_ref().map(Rc::clone),
-                word_doc.numbering_part.clone(),
-                word_doc.header_lines.clone(),
-                word_doc.footer_lines.clone(),
-                word_doc.comments.clone(),
-            )
-        };
-
-        let (pending_images, page_count, complete) = self.extend_layout(
-            Some(end_page),
-            true,
-            &options,
-            document,
-            numbering_part,
-            header_lines,
-            footer_lines,
-            comments,
-        )?;
+        let (pending_images, page_count, complete, settled) =
+            self.extend_layout(Some(end_page), true)?;
 
         if let Some(wait) = pending_images {
             if let Err(err) = JsFuture::from(wait).await {
@@ -11647,6 +11646,13 @@ impl OffscreenDocumentView {
             &JsValue::from_str("complete"),
             &JsValue::from_bool(complete),
         )?;
+        // Pages drawn before the pass proved their NUMPAGES totals or
+        // STYLEREFs wrong: the main thread fetches their bitmaps again.
+        let dirty_regions = {
+            let renderer = self.renderer.borrow();
+            Self::dirty_regions_to_js(&word_session::whole_page_rects(&renderer, &settled))
+        };
+        Reflect::set(&result, &JsValue::from_str("dirtyRegions"), &dirty_regions)?;
         // Encode consecutive equal sizes before crossing the WASM/JS boundary.
         // Complete snapshots need no cache invalidation after edits or shrinkage.
         if compact_dimensions {

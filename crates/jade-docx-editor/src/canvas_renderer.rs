@@ -45152,7 +45152,6 @@ where
     /// Ends a pass that paginated to `pages`: a completed layout settles the
     /// totals the next pass shows, and notes whether this one drew others.
     fn settle_page_totals(&mut self, pages: usize) {
-        let shown = std::mem::take(self.page_totals_shown.get_mut());
         if !self.last_layout_complete {
             // A bounded pass that ran onto a new page knows of it from the
             // host, though it settles nothing else.
@@ -45162,8 +45161,13 @@ where
             }
             // Passes that ask for a paint are only counted back to back.
             self.page_totals_flagged_passes = 0;
+            // What it drew stays recorded for the pass that completes the
+            // layout to check: a lazily opened document draws its first
+            // pages on a bounded pass, and the layout-only passes that reach
+            // its end draw none of them again.
             return;
         }
+        let shown = std::mem::take(self.page_totals_shown.get_mut());
         // Sections are counted once a document has shown a SECTIONPAGES,
         // and kept counted, so a pass that draws none (a bounded edit off
         // the header) does not forget them.
