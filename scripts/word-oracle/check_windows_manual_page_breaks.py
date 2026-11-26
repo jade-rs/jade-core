@@ -28,6 +28,9 @@ from generate_windows_floating_table_word_wrap_cases import (
 from generate_windows_floating_table_wrap_cases import (
     PREFIX as FLOATING_WRAP_PREFIX, cases as floating_wrap_cases,
 )
+from generate_windows_nested_table_page_break_cases import (
+    PREFIX as NESTED_TABLE_PREFIX, cases as nested_table_cases,
+)
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
@@ -50,6 +53,8 @@ CAPTURES = (
      STYLED_PREFIX, styled_cases, ()),
     ('table-page-breaks', '4ef3859c6fffd2a75cc1a2249c892b6e8bdeebe5d70cc6b7f0df31faf2af8d93',
      TABLE_PREFIX, table_cases, ('--painted-table-headers',)),
+    ('nested-table-page-breaks', '67b36135e2762d18e21827129c283296342665742b58dbfc661846949a8ffde2',
+     NESTED_TABLE_PREFIX, nested_table_cases, ('--painted-table-headers',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -80,8 +85,8 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     failures = []
     fixtures = pages = glyphs = 0
     check_screen = capture_path.parent.name in (
-        'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
-        'floating-table-overlap', 'floating-table-word-wrap',
+        'nested-table-page-breaks', 'floating-table-breaks', 'floating-table-continuations',
+        'floating-table-wrap', 'floating-table-overlap', 'floating-table-word-wrap',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))

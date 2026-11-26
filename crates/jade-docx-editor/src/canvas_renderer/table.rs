@@ -1659,6 +1659,31 @@ struct NestedTableLayout {
     line_height: f64,
 }
 
+impl NestedTableLayout {
+    fn overflow_clip_width(
+        &self,
+        allow_overflow: bool,
+        content_offset: f64,
+        content_width: f64,
+        cell_width: f64,
+    ) -> Option<f64> {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        let end = content_offset + self.width;
+        (allow_overflow
+            && end > cell_width
+            && word_layout_platform() == WordLayoutPlatform::Windows
+            && !table_floats(&self.table)
+            && resolve_table_layout_mode(&self.table) == TableLayoutMode::Fixed
+            && self
+                .table
+                .style
+                .get("width")
+                .and_then(|width| parse_length_to_px(width))
+                .is_some_and(|width| width > content_width))
+        .then_some(end)
+    }
+}
+
 /// Prepared data for a single nested table row.
 #[derive(Clone, Debug)]
 struct NestedRowLayout {
@@ -5658,6 +5683,8 @@ where
         let bottom_band = bands.content_bottom;
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
+        let allow_nested_overflow =
+            !cell.has_separate_borders() && cell_ink_projection_is_horizontal(cell.text_direction);
         let draw_enabled = self.should_draw_current_page_for_render();
         let clip_content = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
@@ -5689,15 +5716,16 @@ where
         // Named so the painter outlives the guard that borrows it, and owning so
         // the borrow is not of `self`.
         let clip_painter = self.host.painter();
-        let clip_guard = if draw_enabled {
-            if clip_content && clip_height <= 0.0 {
+        let cell_clip = |width| {
+            if !draw_enabled {
+                None
+            } else if clip_content && clip_height <= 0.0 {
                 Some(ClipGuard::empty(&clip_painter))
             } else {
-                ClipGuard::new(&clip_painter, x_start, clip_top, cell_width, clip_height)
+                ClipGuard::new(&clip_painter, x_start, clip_top, width, clip_height)
             }
-        } else {
-            None
         };
+        let mut clip_guard = cell_clip(cell_width);
         // Offset the content downward for `w:vAlign="center"/"bottom"`. The
         // leftover space is the cell's inner height minus the total content
         // height; `vertical_align_share` decides how much of it sits above the
@@ -6208,11 +6236,24 @@ where
                     } else {
                         projection_right
                     };
+                    // Word paints a fixed-width inner table past the parent
+                    // side. Retain the row's vertical clip for the inner table.
+                    let offset = pad_left + border_left_inset;
+                    let overflow = nested_table.overflow_clip_width(
+                        allow_nested_overflow,
+                        offset,
+                        content_width,
+                        cell_width,
+                    );
+                    let nested_clip = overflow.and_then(|width| {
+                        drop(clip_guard.take());
+                        cell_clip(width)
+                    });
                     let nested_height = self.render_nested_table(
                         nested_table,
                         numbering_part,
                         numbering_counter,
-                        x_start + pad_left + border_left_inset,
+                        x_start + offset,
                         block_top,
                         content_width,
                         TableProjectionClip {
@@ -6220,6 +6261,10 @@ where
                             right,
                         },
                     )?;
+                    drop(nested_clip);
+                    if overflow.is_some() {
+                        clip_guard = cell_clip(cell_width);
+                    }
 
                     let consumed = nested_height.max(block.height.max(line_height));
                     block_top += consumed;
@@ -7004,8 +7049,11 @@ where
         let bottom_band = bands.content_bottom;
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
+        let allow_nested_overflow =
+            !cell.has_separate_borders() && cell_ink_projection_is_horizontal(cell.text_direction);
         let clip_painter = self.host.painter();
-        let clip_guard = ClipGuard::new(&clip_painter, x_start, y_top, cell_width, row_height);
+        let cell_clip = |width| ClipGuard::new(&clip_painter, x_start, y_top, width, row_height);
+        let mut clip_guard = cell_clip(cell_width);
         let text_color = cell.text_color.as_deref().unwrap_or("auto");
         #[allow(deprecated)]
         clip_painter.set_fill_style_str(self.resolve_text_fill_color(text_color).as_ref());
@@ -7070,12 +7118,27 @@ where
                 let content_width =
                     cell_width - pad_horizontal - border_left_inset - border_right_inset;
                 if content_width > 0.0 {
+                    let offset = pad_left + border_left_inset;
+                    let overflow = nested.overflow_clip_width(
+                        allow_nested_overflow,
+                        offset,
+                        content_width,
+                        cell_width,
+                    );
+                    let nested_clip = overflow.and_then(|width| {
+                        drop(clip_guard.take());
+                        cell_clip(width)
+                    });
                     self.draw_nested_table_visual_only(
                         nested,
-                        x_start + pad_left + border_left_inset,
+                        x_start + offset,
                         block_top,
                         content_width,
                     )?;
+                    drop(nested_clip);
+                    if overflow.is_some() {
+                        clip_guard = cell_clip(cell_width);
+                    }
                 }
                 block_top += block.height.max(line_height);
                 #[allow(deprecated)]
