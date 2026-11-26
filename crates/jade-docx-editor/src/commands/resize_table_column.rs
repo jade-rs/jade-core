@@ -18,27 +18,42 @@ pub(crate) fn fit_nested_columns_to_content(
     floors: &[f64],
     twips_per_unit: f64,
 ) {
-    let budget: f64 = widths.iter().sum();
+    let measured_budget: f64 = widths.iter().sum();
     let preferred_total: f64 = preferred.iter().sum();
     let nearest_twip = |value: f64| (value * twips_per_unit).round() / twips_per_unit;
-    let budget = nearest_twip(budget);
+    let budget = nearest_twip(measured_budget);
+    let grown_total: f64 = preferred
+        .iter()
+        .zip(floors)
+        .map(|(preferred, floor)| preferred.max(*floor))
+        .sum();
+    if budget >= grown_total - 1e-8 && grown_total > preferred_total + 1e-8 {
+        // A column whose word exceeds its cell preference grows from that
+        // minimum when the enclosing cell still has spare width.
+        for ((width, preferred), floor) in widths.iter_mut().zip(preferred).zip(floors) {
+            *width = preferred.max(*floor) * measured_budget / grown_total;
+        }
+    }
     if budget >= preferred_total - 1e-8
         && widths
             .iter()
             .zip(floors)
             .all(|(width, floor)| width + 1e-8 >= *floor)
     {
-        // When a scaled grid divides a whole twip, the trailing column
-        // receives the remainder.
+        // Snap each boundary to the nearest twip. For an exact half, the
+        // trailing column receives the remainder.
         let mut ideal_boundary = 0.0;
         let mut previous_boundary = 0.0;
         let last = widths.len() - 1;
+        // A stored percentage can describe a fractional twip even when
+        // Word's resolved grid has the same width as its cell preferences.
+        let scale = budget / measured_budget;
         for (index, width) in widths.iter_mut().enumerate() {
-            ideal_boundary += *width;
+            ideal_boundary += *width * scale;
             let boundary = if index == last {
                 budget
             } else {
-                ((ideal_boundary * twips_per_unit + 1e-8).floor() / twips_per_unit)
+                ((ideal_boundary * twips_per_unit - 0.5 - 1e-8).ceil() / twips_per_unit)
                     .max(previous_boundary + floors[index])
             };
             *width = boundary - previous_boundary;
