@@ -189,6 +189,12 @@ impl OffscreenDocumentView {
         }
     }
 
+    /// Whether [`Self::apply_document_command`] runs its command: not in
+    /// preview, nor while a header or footer is being edited.
+    pub(super) fn document_commands_allowed(&self) -> bool {
+        !self.state.borrow().preview_mode && self.body_commands_allowed()
+    }
+
     /// Runs one field or protection command over the whole document.
     pub(super) fn apply_document_command(
         &self,
@@ -280,7 +286,9 @@ impl OffscreenDocumentView {
         // Every page's number first: a lazily laid out document has only
         // the pages the viewport needed. A page left unlaid keeps its
         // fields' results.
-        self.complete_layout()?;
+        if self.document_commands_allowed() {
+            self.complete_layout()?;
+        }
         let env = self.field_environment(answers);
         self.apply_document_command(move |_| Box::new(FieldCommand::update(scope, env)))
     }
@@ -306,10 +314,13 @@ impl OffscreenDocumentView {
         if code.trim().is_empty() {
             return Err(JsValue::from_str("a field code must not be empty"));
         }
-        // Every page's number first, as `updateFields`: a PAGE or PAGEREF
-        // on a page the lazy layout has not reached would get an empty
-        // result, which the saved file keeps.
-        self.complete_layout()?;
+        // Every page's number first, as `updateFields`, for a code that
+        // reads one: a PAGE or PAGEREF on a page the lazy layout has not
+        // reached would get an empty result, which the saved file keeps.
+        // Not when the command would not run (preview, a header open).
+        if self.document_commands_allowed() && fields::code_reads_pages(&code) {
+            self.complete_layout()?;
+        }
         let env = self.field_environment(HashMap::new());
         self.apply_document_command(move |_| Box::new(FieldCommand::insert(code, env)))
     }
@@ -320,10 +331,13 @@ impl OffscreenDocumentView {
         if code.trim().is_empty() {
             return Err(JsValue::from_str("a field code must not be empty"));
         }
-        // Every page's number first, as `updateFields`: a PAGE or PAGEREF
-        // on a page the lazy layout has not reached would get an empty
-        // result, which the saved file keeps.
-        self.complete_layout()?;
+        // Every page's number first, as `updateFields`, for a code that
+        // reads one: a PAGE or PAGEREF on a page the lazy layout has not
+        // reached would get an empty result, which the saved file keeps.
+        // Not when the command would not run (preview, a header open).
+        if self.document_commands_allowed() && fields::code_reads_pages(&code) {
+            self.complete_layout()?;
+        }
         let env = self.field_environment(HashMap::new());
         self.apply_document_command(move |selection| {
             Box::new(FieldCommand::edit(selection, code, env))

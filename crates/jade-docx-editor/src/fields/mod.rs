@@ -936,6 +936,13 @@ fn update_fields_in_scope(
         };
         let before = blocks_named(doc);
         if name == "TOC" {
+            // An entry whose page the layout did not reach keeps the number
+            // it had, as a PAGEREF does.
+            let previous = if env.page_labels_from_layout {
+                toc::toc_page_results_at(doc, index)
+            } else {
+                HashMap::new()
+            };
             doc.update_table_of_contents_at(index)?;
             if env.page_labels_from_layout {
                 let removed = before
@@ -945,7 +952,7 @@ fn update_fields_in_scope(
                 // The rebuilt entries' PAGEREFs get the number their
                 // heading's page displays at the last layout, as 目次の更新
                 // writes them, rather than the generated placeholders.
-                toc::label_rebuilt_toc(doc, index, removed, |paragraph| {
+                toc::label_rebuilt_toc(doc, index, removed, &previous, |paragraph| {
                     let paragraph = paragraph_in_layout(paragraph, rebuilt)?;
                     let page = env.paragraph_pages.get(&paragraph)?;
                     env.page_labels
@@ -963,6 +970,30 @@ fn update_fields_in_scope(
         written += 1;
     }
     Ok(written)
+}
+
+/// Whether a field code (its nested fields too) reads what only a layout
+/// knows — a page's number, the page count, a table's or an index's page
+/// numbers — so that inserting or editing it lays the document out
+/// through its end first. Matches words of the code, so a false positive
+/// (a `DOCPROPERTY` named "Page") only costs that layout.
+pub fn code_reads_pages(code: &str) -> bool {
+    code.split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|word| {
+            [
+                "PAGE",
+                "PAGEREF",
+                "NUMPAGES",
+                "SECTIONPAGES",
+                // DOCPROPERTY Pages, INFO NumPages.
+                "PAGES",
+                "TOC",
+                "INDEX",
+                "TOA",
+            ]
+            .iter()
+            .any(|name| word.eq_ignore_ascii_case(name))
+        })
 }
 
 /// Where `paragraph` was at the last layout, after the blocks in

@@ -280,13 +280,38 @@ pub trait WordToc: WordSession {
     /// from before the table went in). A session without page labels keeps
     /// the generated placeholders.
     fn apply_toc_dialog(&mut self, dialog: &TocDialog) -> Result<(), String> {
-        let options = dialog.options();
-        let leader = dialog.leader.token().to_string();
-        let replacing = dialog.replacing;
         let after = self
             .selection_range()
             .map(|range| range.normalized().0.paragraph)
             .unwrap_or(0);
+        self.build_toc(
+            "table_of_contents",
+            dialog.replacing,
+            after,
+            dialog.options(),
+            dialog.leader.token().to_string(),
+        )
+    }
+
+    /// A table of contents built from `options` with `leader`'s tabs:
+    /// over the `replacing`-th table, or after paragraph `after` — one undo
+    /// step named `name`. The session lays the document out through its end
+    /// first, and the entries get the number their heading's page displays
+    /// at that layout; one whose page it did not reach keeps the number it
+    /// had (a new table's, the generated placeholder). A session without
+    /// page labels keeps the generated placeholders.
+    ///
+    /// Known limit, as [`Self::update_toc`]'s: the pages are those from
+    /// before the table went in.
+    fn build_toc(
+        &mut self,
+        name: &'static str,
+        replacing: Option<usize>,
+        after: usize,
+        options: TocOptions,
+        leader: String,
+    ) -> Result<(), String> {
+        let after = after.min(self.word_document().paragraph_count().saturating_sub(1));
         self.complete_layout();
         let labels = self.has_page_labels().then(|| self.paragraph_page_labels());
         let removed = replacing
@@ -297,24 +322,33 @@ pub trait WordToc: WordSession {
                     .nth(index)
             })
             .map_or(0, |block| block.end + 1 - block.start);
-        edit_document(self, "table_of_contents", true, move |document, _| {
-            let index = match replacing {
+        edit_document(self, name, true, move |document, _| {
+            let (index, previous) = match replacing {
                 Some(index) => {
+                    let previous = if labels.is_some() {
+                        toc_page_results_at(document, index)
+                    } else {
+                        HashMap::new()
+                    };
                     document.replace_table_of_contents(index, &options, &leader)?;
-                    Some(index)
+                    (Some(index), previous)
                 }
                 None => {
+                    let count = document.tables_of_contents().len();
                     document.insert_table_of_contents_with_leader(after, &options, &leader)?;
-                    // The new table starts after the caret's paragraph;
-                    // every table before it ends at or before that one.
-                    document
-                        .tables_of_contents()
-                        .iter()
-                        .position(|block| block.start > after)
+                    // The new table, when it is a block of its own right
+                    // after the caret's paragraph. Inserted inside another
+                    // table (the caret in a table of figures), it is nested
+                    // in that one's field, and no table is relabelled.
+                    let tables = document.tables_of_contents();
+                    let index = (tables.len() == count + 1)
+                        .then(|| tables.iter().position(|block| block.start == after + 1))
+                        .flatten();
+                    (index, HashMap::new())
                 }
             };
             if let (Some(labels), Some(index)) = (&labels, index) {
-                label_rebuilt_toc(document, index, removed, |paragraph| {
+                label_rebuilt_toc(document, index, removed, &previous, |paragraph| {
                     labels.get(&paragraph).cloned()
                 })?;
             }
@@ -370,6 +404,11 @@ pub trait WordToc: WordSession {
                 "update_table_of_contents",
                 true,
                 move |document, _| {
+                    let previous = if labelled {
+                        toc_page_results_at(document, index)
+                    } else {
+                        HashMap::new()
+                    };
                     document.update_table_of_contents_at(index)?;
                     counted.set(0);
                     if !labelled {
@@ -379,6 +418,7 @@ pub trait WordToc: WordSession {
                         document,
                         index,
                         before.end + 1 - before.start,
+                        &previous,
                         |paragraph| labels.get(&paragraph).cloned(),
                     )?;
                     counted.set(left);
@@ -472,6 +512,19 @@ pub trait WordToc: WordSession {
 
 impl<T: WordSession + ?Sized> WordToc for T {}
 
+/// 目次 from the headings with outline levels `min` to `max`, as the
+/// ribbon's button and `HeadlessCommand::InsertTableOfContents` build it:
+/// linked entries, page numbers shown, applied outline levels too.
+pub(crate) fn heading_toc_options(min: u8, max: u8) -> TocOptions {
+    TocOptions {
+        outline_min: min,
+        outline_max: max,
+        hyperlinks: true,
+        use_applied_outline_levels: true,
+        ..TocOptions::default()
+    }
+}
+
 /// Where a paragraph of the document after a table of contents was
 /// rebuilt (or inserted) as `after` was at the last layout: the table's
 /// own paragraphs are new (`None`), those after it moved by the change in
@@ -493,13 +546,15 @@ pub(crate) fn paragraph_before_rebuild(
 /// Writes the page numbers of the `index`-th table of contents, just
 /// rebuilt or inserted over `removed` paragraphs, from `label_of`: the
 /// label, at the last layout, of the page a paragraph (in that layout's
-/// numbering) starts on. Returns how many entries it left as generated
-/// (no label: a page the layout did not reach), and how many numbers it
-/// changed.
+/// numbering) starts on. An entry without a label (a page the layout did
+/// not reach) gets its number from `previous` (bookmark → the result the
+/// table had, [`toc_page_results_at`]), or stays as generated. Returns
+/// how many entries had no label, and how many numbers it changed.
 pub(crate) fn label_rebuilt_toc(
     document: &mut crate::word_document::WordDocument,
     index: usize,
     removed: usize,
+    previous: &HashMap<String, String>,
     label_of: impl Fn(usize) -> Option<String>,
 ) -> Result<(usize, usize), String> {
     let after = document
@@ -514,11 +569,66 @@ pub(crate) fn label_rebuilt_toc(
             Some(label) => {
                 pages.insert(name, label);
             }
-            None => left += 1,
+            None => {
+                left += 1;
+                if let Some(result) = previous.get(&name) {
+                    pages.insert(name, result.clone());
+                }
+            }
         }
     }
     let changed = document.refresh_toc_page_numbers(index, &pages)?;
     Ok((left, changed))
+}
+
+/// The page numbers the `index`-th table of contents shows now, by its
+/// entries' bookmarks: each page-number PAGEREF's result (not `\p`'s).
+pub(crate) fn toc_page_results_at(
+    document: &crate::word_document::WordDocument,
+    index: usize,
+) -> HashMap<String, String> {
+    let mut results: HashMap<String, String> = HashMap::new();
+    let Some(block) = document.tables_of_contents().into_iter().nth(index) else {
+        return results;
+    };
+    for paragraph in block.start..=block.end {
+        let Some(entry) = document.paragraph(paragraph) else {
+            continue;
+        };
+        // A result split over formatted runs is one field: the runs share
+        // the name and the source field.
+        let mut current = None;
+        for run in &entry.runs {
+            let Some(field) = run.field.as_ref() else {
+                current = None;
+                continue;
+            };
+            let RunFieldKind::PageRef {
+                name,
+                relative_position: false,
+                ..
+            } = &field.kind
+            else {
+                current = None;
+                continue;
+            };
+            let key = (name.clone(), field.source_field_id);
+            let text = if run.text.is_empty() {
+                field.cached_text.clone().unwrap_or_default()
+            } else {
+                run.text.clone()
+            };
+            if current.as_ref() == Some(&key) {
+                if let Some(result) = results.get_mut(name) {
+                    result.push_str(&text);
+                }
+            } else {
+                results.entry(name.clone()).or_insert(text);
+                current = Some(key);
+            }
+        }
+    }
+    results
 }
 
 /// The table's page-number PAGEREFs (not `\p`, which keeps its saved

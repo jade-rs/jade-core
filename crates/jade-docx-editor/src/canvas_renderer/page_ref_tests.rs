@@ -1143,6 +1143,12 @@ fn typing_after_a_stable_edit_keeps_every_page_owner() {
 /// After a full layout, typing on page 1 and a pass bounded to page 1
 /// leave labels for page 1 only.
 fn session_after_typing_on_page_one() -> LaidOutSession {
+    session_after_typing_on_page_one_with("<w:r><w:t>stale</w:t></w:r>")
+}
+
+/// [`session_after_typing_on_page_one`] with the TOC's result `toc` (the
+/// heading also carries the bookmark `_Toc100`).
+fn session_after_typing_on_page_one_with(toc: &str) -> LaidOutSession {
     let filler: String = (0..60)
         .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
         .collect();
@@ -1150,7 +1156,7 @@ fn session_after_typing_on_page_one() -> LaidOutSession {
         .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
         .collect();
     let body = format!(
-        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>stale</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>Chapter</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p><w:p><w:r><w:t>(</w:t></w:r><w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r>{toc}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:bookmarkStart w:id="0" w:name="target"/><w:bookmarkStart w:id="1" w:name="_Toc100"/><w:r><w:t>Chapter</w:t></w:r><w:bookmarkEnd w:id="1"/><w:bookmarkEnd w:id="0"/></w:p><w:p><w:r><w:t>(</w:t></w:r><w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
         section_properties("nextPage", ROMAN_RESTART),
         section_properties("nextPage", r#"<w:pgNumType w:start="5"/>"#),
     );
@@ -1307,5 +1313,89 @@ fn printing_and_inserting_a_toc_write_the_displayed_labels() {
             .any(|text| text.starts_with("Chapter") && text.ends_with("\t5")),
         "{:?}",
         &paragraphs[60..70]
+    );
+}
+
+/// Only a code that reads page data lays the document out first: AUTHOR
+/// or DATE after a bounded pass leaves the layout as it was.
+#[test]
+fn inserting_a_field_without_page_data_does_not_complete_the_layout() {
+    use crate::word::fields::{FieldHost, WordFields};
+    use crate::word::WordSession;
+    for code in ["AUTHOR", "DATE \\@ \"yyyy\"", "STYLEREF \"Heading 1\""] {
+        assert!(!crate::fields::code_reads_pages(code), "{code}");
+    }
+    for code in [
+        "PAGE",
+        "PAGEREF target \\h",
+        "NUMPAGES",
+        "SECTIONPAGES",
+        "IF { PAGE } = 1 \"a\" \"b\"",
+        "DOCPROPERTY Pages",
+        "TOC \\o \"1-3\"",
+    ] {
+        assert!(crate::fields::code_reads_pages(code), "{code}");
+    }
+    let mut session = session_after_typing_on_page_one();
+    session.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
+        jade_selection::TextPosition::new(63, 1),
+    )));
+    session
+        .insert_field_code("AUTHOR", &FieldHost::default())
+        .expect("insert the field");
+    assert!(!session.renderer.last_layout_complete());
+}
+
+/// F9 on a session that cannot lay out the rest: the TOC entry on the page
+/// the bounded pass did not reach keeps the number it had ("9"), as a
+/// PAGEREF does, rather than the generated "1".
+#[test]
+fn f9_keeps_a_toc_entrys_number_on_a_page_not_laid_out() {
+    use crate::word::fields::{FieldHost, WordFields};
+    let toc = format!(
+        "<w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}",
+        complex_field("PAGEREF _Toc100 \\h", "9")
+    );
+    let mut session = session_after_typing_on_page_one_with(&toc);
+    session.can_layout = false;
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t9");
+}
+
+/// From the review: with the caret in a two-paragraph table of figures,
+/// the new table of contents goes inside that field and is no table of
+/// its own. The later table's numbers ("Beta 20", "Gamma 40") must not be
+/// relabelled as if they were the new table's.
+#[test]
+fn inserting_a_toc_inside_another_table_relabels_no_other_table() {
+    use crate::word::references::toc::WordToc;
+    let heading = |id: usize, name: &str, text: &str| {
+        format!(
+            r#"<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:bookmarkStart w:id="{id}" w:name="{name}"/><w:r><w:t>{text}</w:t></w:r><w:bookmarkEnd w:id="{id}"/></w:p>"#
+        )
+    };
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \h \z \c "Figure" </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Figure 1</w:t></w:r></w:p><w:p><w:r><w:t>Figure 2</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:r><w:t>x</w:t></w:r></w:p><w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Beta</w:t></w:r><w:r><w:tab/></w:r>{}</w:p><w:p><w:r><w:t>Gamma</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{}{}{}"#,
+        complex_field("PAGEREF _Toc1 \\h", "20"),
+        complex_field("PAGEREF _Toc2 \\h", "40"),
+        heading(1, "_Toc1", "Beta"),
+        heading(2, "_Toc2", "Gamma"),
+        section_properties("nextPage", ""),
+    );
+    let mut session = laid_out_session(&body);
+    let dialog = session.toc_dialog(None);
+    assert_eq!(dialog.replacing, None);
+    session.apply_toc_dialog(&dialog).expect("insert a table");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(
+        paragraphs.iter().any(|text| text == "Beta\t20")
+            && paragraphs.iter().any(|text| text == "Gamma\t40"),
+        "{paragraphs:?}"
     );
 }

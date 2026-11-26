@@ -109,15 +109,15 @@ impl OffscreenDocumentView {
         let leader = leader_of(leader);
         let (start, _) = self.current_selection().normalized();
         let after = start.paragraph;
-        self.apply_document_command(move |_| {
-            Box::new(SnapshotEditCommand::new(
-                "insert_table_of_contents",
-                move |document| {
-                    document
-                        .insert_table_of_contents_with_leader(after, &options, &leader)
-                        .map(|_| ())
-                },
-            ))
+        if !self.document_commands_allowed() {
+            return Ok(JsValue::NULL);
+        }
+        // The layout completed first and the entries labelled with the
+        // number their heading's page displays (`WordToc::build_toc`).
+        self.complete_layout()?;
+        self.run_word_session("insert_table_of_contents", move |session| {
+            use crate::word::references::toc::WordToc;
+            session.build_toc("insert_table_of_contents", None, after, options, leader)
         })
     }
 
@@ -153,15 +153,13 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let options = toc_options(options)?;
         let leader = leader_of(leader);
-        self.apply_document_command(move |_| {
-            Box::new(SnapshotEditCommand::new(
-                "replace_table_of_contents",
-                move |document| {
-                    document
-                        .replace_table_of_contents(index, &options, &leader)
-                        .map(|_| ())
-                },
-            ))
+        if !self.document_commands_allowed() {
+            return Ok(JsValue::NULL);
+        }
+        self.complete_layout()?;
+        self.run_word_session("replace_table_of_contents", move |session| {
+            use crate::word::references::toc::WordToc;
+            session.build_toc("replace_table_of_contents", Some(index), 0, options, leader)
         })
     }
 

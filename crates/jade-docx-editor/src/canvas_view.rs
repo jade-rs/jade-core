@@ -15047,6 +15047,22 @@ impl OffscreenDocumentView {
         } else {
             outline_max.max(min)
         };
+        if self.document_commands_allowed() {
+            // The layout completed first and the entries labelled with the
+            // number their heading's page displays (`WordToc::build_toc`).
+            let after = self.current_selection().normalized().0.paragraph;
+            self.complete_layout()?;
+            return self.run_word_session("insert_table_of_contents", move |session| {
+                use crate::word::references::toc::{self, WordToc};
+                session.build_toc(
+                    "insert_table_of_contents",
+                    None,
+                    after,
+                    toc::heading_toc_options(min, max),
+                    "dot".to_string(),
+                )
+            });
+        }
         self.apply_paragraph_style_headless(|start, _end| HeadlessCommand::InsertTableOfContents {
             after_paragraph: start,
             outline_min: min,
@@ -15059,6 +15075,14 @@ impl OffscreenDocumentView {
     /// Returns an error when the document has no TOC field.
     #[wasm_bindgen(js_name = updateTableOfContents)]
     pub fn update_table_of_contents(&self) -> Result<JsValue, JsValue> {
+        if self.document_commands_allowed() {
+            // As 目次の更新: the layout completed first, the entries labelled.
+            self.complete_layout()?;
+            return self.run_word_session("update_table_of_contents", |session| {
+                use crate::word::references::toc::WordToc;
+                session.update_toc_at(0, false).map(|_| ())
+            });
+        }
         self.apply_paragraph_style_headless(|_start, _end| HeadlessCommand::UpdateTableOfContents)
     }
 
