@@ -1056,6 +1056,9 @@ struct PreparedCell {
     border_bottom: CellBorderSpec,
     border_bottom_segments: Box<[HorizontalBorderSegment]>,
     border_left: CellBorderSpec,
+    // Signed outward offset for each vertical rule when an insideV rule also paints
+    // at the perimeter of a cell with spacing.
+    spaced_border_overhang: [f64; 2],
     /// Optional physical cell diagonals (`w:tl2br` / `w:tr2bl`). Unlike the
     /// four grid edges, absence means no editable guide line should be drawn.
     border_tl2br: Option<CellBorderSpec>,
@@ -1133,6 +1136,7 @@ impl PreparedCell {
             border_bottom: self.border_bottom.clone(),
             border_bottom_segments: self.border_bottom_segments.clone(),
             border_left: self.border_left.clone(),
+            spaced_border_overhang: self.spaced_border_overhang,
             border_tl2br: self.border_tl2br.clone(),
             border_tr2bl: self.border_tr2bl.clone(),
             padding: self.padding,
@@ -9910,7 +9914,8 @@ where
             let trailing = visible_border_width(&cell.border_right);
             (x - leading, width + leading + trailing)
         } else {
-            (x, width)
+            let [left, right] = cell.spaced_border_overhang;
+            (x - left, (width + left + right).max(0.0))
         };
         let windows = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
@@ -17304,6 +17309,10 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
         );
 
         let edges = physical_edges(start, end);
+        let painted_border_widths = [
+            visible_border_width(&border_left),
+            visible_border_width(&border_right),
+        ];
         let spacing_border_widths = [
             spaced_content_border_width(
                 cell,
@@ -17313,7 +17322,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                 TableBorderSide::Left,
                 edges[2],
                 cell_spacing,
-                visible_border_width(&border_left),
+                painted_border_widths[0],
             ),
             spaced_content_border_width(
                 cell,
@@ -17323,9 +17332,17 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                 TableBorderSide::Right,
                 edges[3],
                 cell_spacing,
-                visible_border_width(&border_right),
+                painted_border_widths[1],
             ),
         ];
+        let spaced_border_overhang = std::array::from_fn(|index| {
+            let painted = painted_border_widths[index];
+            if painted > f64::EPSILON {
+                painted - spacing_border_widths[index]
+            } else {
+                0.0
+            }
+        });
         let border_inset = if separated {
             let windows = jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
@@ -17953,6 +17970,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             border_bottom,
             border_bottom_segments: Box::default(),
             border_left,
+            spaced_border_overhang,
             border_tl2br,
             border_tr2bl,
             padding,
@@ -26503,6 +26521,7 @@ mod tests {
             border_bottom: CellBorderSpec::single_default(),
             border_bottom_segments: Box::default(),
             border_left: CellBorderSpec::single_default(),
+            spaced_border_overhang: [0.0; 2],
             border_tl2br: None,
             border_tr2bl: None,
             padding: CellPadding {
