@@ -1713,24 +1713,6 @@ impl NestedTableLayout {
         }
         left
     }
-
-    fn overflow_clip(
-        &self,
-        allow_overflow: bool,
-        cell_left: f64,
-        content_left: f64,
-        content_width: f64,
-        cell_width: f64,
-    ) -> Option<(f64, f64)> {
-        if !allow_overflow || !self.windows_fixed_inline() {
-            return None;
-        }
-        let table_left = self.x_in_cell(content_left, content_width);
-        let cell_right = cell_left + cell_width;
-        let table_right = table_left + self.width;
-        (table_left < cell_left || table_right > cell_right)
-            .then(|| (table_left.min(cell_left), table_right.max(cell_right)))
-    }
 }
 
 /// Prepared data for a single nested table row.
@@ -6276,20 +6258,17 @@ where
                     } else {
                         projection_right
                     };
-                    // Word paints a fixed-width inner table past the parent
-                    // edge when the row can grow. Keep the vertical clip.
+                    // An inner table can let its descendants paint past its
+                    // own frame as well. Keep the row's vertical clip while
+                    // painting fixed nested tables in growing Windows rows.
                     let content_left = x_start + pad_left + border_left_inset;
-                    let overflow = nested_table.overflow_clip(
-                        allow_nested_overflow,
-                        x_start,
-                        content_left,
-                        content_width,
-                        cell_width,
-                    );
-                    let nested_clip = overflow.and_then(|(left, right)| {
+                    let overflow = allow_nested_overflow && nested_table.windows_fixed_inline();
+                    let nested_clip = if overflow {
                         drop(clip_guard.take());
-                        cell_clip(left, right - left)
-                    });
+                        cell_clip(0.0, self.page_width)
+                    } else {
+                        None
+                    };
                     let nested_height = self.render_nested_table(
                         nested_table,
                         numbering_part,
@@ -6303,7 +6282,7 @@ where
                         },
                     )?;
                     drop(nested_clip);
-                    if overflow.is_some() {
+                    if overflow {
                         clip_guard = cell_clip(x_start, cell_width);
                     }
 
@@ -7168,17 +7147,13 @@ where
                     cell_width - pad_horizontal - border_left_inset - border_right_inset;
                 if content_width > 0.0 {
                     let content_left = x_start + pad_left + border_left_inset;
-                    let overflow = nested.overflow_clip(
-                        allow_nested_overflow,
-                        x_start,
-                        content_left,
-                        content_width,
-                        cell_width,
-                    );
-                    let nested_clip = overflow.and_then(|(left, right)| {
+                    let overflow = allow_nested_overflow && nested.windows_fixed_inline();
+                    let nested_clip = if overflow {
                         drop(clip_guard.take());
-                        cell_clip(left, right - left)
-                    });
+                        cell_clip(0.0, self.page_width)
+                    } else {
+                        None
+                    };
                     self.draw_nested_table_visual_only(
                         nested,
                         content_left,
@@ -7186,7 +7161,7 @@ where
                         content_width,
                     )?;
                     drop(nested_clip);
-                    if overflow.is_some() {
+                    if overflow {
                         clip_guard = cell_clip(x_start, cell_width);
                     }
                 }

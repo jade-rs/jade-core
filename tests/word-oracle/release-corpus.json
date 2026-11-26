@@ -11224,6 +11224,222 @@
       "docx_sha256": "618507622fe4ce9ede2b2b3404cefa8dbc4ad21a5b9a4c4030fc307439f9dabc"
     },
     {
+      "fixture": "word-windows-edge-nested-three-level-center-growing-compat12",
+      "docx_sha256": "d7fa57e5168518f4a11c1ea4291d01d8cb77d8f80f356c25507b18d607625498"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-growing-compat14",
+      "docx_sha256": "08f7a359ef9e0c59135a4dbf8a8cc8c56f2a79a753c72717ad46a5d9f0de4eb4"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-growing-compat15",
+      "docx_sha256": "8f73386d44cd370720f4a3e9e7df8811611f01b880e426af7aeef032822b26e0"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-middle-exact-compat12",
+      "docx_sha256": "fb4fec78ec0b69c912051f77aae8e6c1e15cd8ce1a26947af9c0ed704563cb80"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-middle-exact-compat14",
+      "docx_sha256": "a92c157c3ff8635246bbcc5d4d72f24a8164197dd757da144c6936e3d7516f12"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-middle-exact-compat15",
+      "docx_sha256": "df8adc17e701cb0bc0e7850aa20f2b062bf5fa8dd19a0b420f937363e5b7b59f"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-outer-exact-compat12",
+      "docx_sha256": "99d5b3b55cca0aa865c330f08c5025ebe6501dac4ab8efbe90a200ef68ca5325"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-outer-exact-compat14",
+      "docx_sha256": "0c6cce7692f8044cb8eac98ffd32809268fb33cb9840f94f25a39d2f993bb6fc"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-center-outer-exact-compat15",
+      "docx_sha256": "3a83874cb5b6511c4101080d788dda174f0afefa9b1255931d04614a6fbcffd0"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-growing-compat12",
+      "docx_sha256": "71853e464ade00e55b3a018847a59045e9447ca54856041b147279033b3162db"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-growing-compat14",
+      "docx_sha256": "368ad40fbf023248645dbfff640dd3bf2a822fa1693156778271f33577b30420"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-growing-compat15",
+      "docx_sha256": "61d0a3926a57ae47acfec32f611764466f021c95e3bb4b538dff06e58635dd7b"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-middle-exact-compat12",
+      "docx_sha256": "ae80d44d09e3e7de5594fb1aea036b96836f87d981b0e5174666957bc3025f78"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-middle-exact-compat14",
+      "docx_sha256": "433efb9403a583bc3d70061fc018276bce4228dd38e40696bb772325789489ae"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-middle-exact-compat15",
+      "docx_sha256": "afef81bd0f0bf4ab3f39fc168597816b1002cad911121c591d622769b4b8775b"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-outer-exact-compat12",
+      "docx_sha256": "56a942eec7ec53bada6f289eb889890618bb1eb33b94e0addbf58b95de8f9dfa"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-outer-exact-compat14",
+      "docx_sha256": "aa246f62d3776fcfa80072cca0473363357e05c80a4a932367f2184fe3e8c57e"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-left-outer-exact-compat15",
+      "docx_sha256": "5f23aa38332311e03c04548d8d58c7f02bf65934141c6c621e826505253c9622"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-center-growing-compat12",
+      "docx_sha256": "4f081f7d2c3f173557926d0a81619c4dbcd00c9191fa7daa0628bbad37563aa9"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-center-growing-compat14",
+      "docx_sha256": "76a5168a5c71bd6d839fa35e82a82dc51dd8bba6dc1185e894ce26077ae1d37a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-center-growing-compat15",
+      "docx_sha256": "e36facc170552336960b652e320397ea16eb82d1ea31b82323987cd9fb10b2a1"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-center-outer-exact-compat12",
+      "docx_sha256": "4babf11339b49bdad61a264804f489282447452493cfe899a0c7d0e35359dd91"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-center-outer-exact-compat14",
+      "docx_sha256": "b4d4db5292020ad5d0d4ae4530421ef4857b8074670b6f4ebb0438823830cb35"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-center-outer-exact-compat15",
+      "docx_sha256": "3d7fc57b32513a998680b2b74c3958c30982544c74acc77b1fd4ebe67d49ae5a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-left-growing-compat12",
+      "docx_sha256": "98ca96e732b2744ec96413e72e1510d369d605ce7210cfa3a9cd31f11d816986"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-left-growing-compat14",
+      "docx_sha256": "12fe660f7526b882eb1bea924c2ef1ade21e485b24c478aef0e03f35e61c0e7f"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-left-growing-compat15",
+      "docx_sha256": "a06c924224ab662061e25989a98b9398d7d6d4821a63b1713ea6ae578c9bc538"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-left-outer-exact-compat12",
+      "docx_sha256": "8b69a6f2135262226187cb206ae5e03dce3583226ad2f9c25a160920a1145fb6"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-left-outer-exact-compat14",
+      "docx_sha256": "3621470f9bc2c2d40490b53245e0edc91fec47d0fe375a7744a2496ea2c792ea"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-left-outer-exact-compat15",
+      "docx_sha256": "1d80a1d85036c2a48fd8e379ef0c51550f9af57eebbb0e739c22c2762fec1966"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-right-growing-compat12",
+      "docx_sha256": "6c7366756ea4d2715cf37b9d35f81971e8c93f610cf1aaf97703f7bf2c55d354"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-right-growing-compat14",
+      "docx_sha256": "e9c4a0d53fbc2ea5b72a6c09ad405a5b3435ecc97dc23ab73e511d89151665f2"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-right-growing-compat15",
+      "docx_sha256": "bef15985c0d13616813ac3f3ab289df60a34ec701d8900d206d71665892b6805"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-right-outer-exact-compat12",
+      "docx_sha256": "7cdd1c621a4567ed74338472c6ad84c384f5c0d0ca77d67197a0f142f3f6af05"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-right-outer-exact-compat14",
+      "docx_sha256": "f39aab4a998d2eaf5388e7c4d5283bbeccd867eabd3dfb200d67837173bb6da6"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-repeat-right-outer-exact-compat15",
+      "docx_sha256": "6aac5e05e5243baa6bc0baa39f6141379f494ae337b98d752680d27320cb4597"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-growing-compat12",
+      "docx_sha256": "a3cb3eaae474926b60ba71c6a59e791ab2e3885843fec4e733f862de3e6ac3b3"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-growing-compat14",
+      "docx_sha256": "69c4913745533d47007c5e7d7519e3217e74bb40d33acc7588999aa2cf0846f0"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-growing-compat15",
+      "docx_sha256": "a2ac43b7766c7195e38d744f40c0f67abe6f7bda03bfb00ccb1e15ac2b2f9d31"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-growing-compat12",
+      "docx_sha256": "e3f0a53a3e139890dcd19b751f449c80786dce57139a960a12c37557128f9018"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-growing-compat14",
+      "docx_sha256": "35415d74ebd9865f744f3724916124adfb3e52bfc4e9d2c52a6543ecc9036222"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-growing-compat15",
+      "docx_sha256": "9118eb69fdc2cb32e0ebabb3020367fa7d67f58d5b4b298dfa4cbac1f230bce5"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-middle-exact-compat12",
+      "docx_sha256": "1c8872e015ee99694e5f44708cd8d3dc4e6c7f6104abcc58ffcec7ad1ed104de"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-middle-exact-compat14",
+      "docx_sha256": "9fb453419e54f6e84c394f891f4dcaaea2e44fb4aa9fe267bed459b485462e6b"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-middle-exact-compat15",
+      "docx_sha256": "087c5bca3dfc57f058ade91de9ecf514f1fd06c6486225887181c3dbc7eca64f"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-outer-exact-compat12",
+      "docx_sha256": "229758c89ad5921cf8835d23fde836a22f074ec4532be96e7b061ebeb4a0fd1a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-outer-exact-compat14",
+      "docx_sha256": "31f3702cb6d597998a09786bbd1d1ace566a57d5b09e25b730519fe56cd8353c"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-indent-outer-exact-compat15",
+      "docx_sha256": "f28daaf65caad74b9683339fd883930548c261118f4170d86ac36305ee246ab3"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-middle-exact-compat12",
+      "docx_sha256": "50bab0ddae8a55993cb4ac5fdc335e50bdd5ae8068a139149e2a5e3350de72f6"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-middle-exact-compat14",
+      "docx_sha256": "2522b57d8d4cb1fbd82b7ae4494ec26e676b8a3fce35ce2392b2043420456085"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-middle-exact-compat15",
+      "docx_sha256": "d2cf8a24b858634fe8303622db3ad6a5ce0faffda583cb08f4c97ee17f5fdb62"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-outer-exact-compat12",
+      "docx_sha256": "775dba01eeecaddba4879865d0e6ef836d4f078e71ff4ea1871580fb57314b32"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-outer-exact-compat14",
+      "docx_sha256": "3e404ad580de43782a2c2879662173eb97b81eaffad72b0f9253e486019b2d3c"
+    },
+    {
+      "fixture": "word-windows-edge-nested-three-level-right-outer-exact-compat15",
+      "docx_sha256": "d24b0753c2396e7055880c4bf42e840a1c5a7a0591556b0f82ccbc641ae4a192"
+    },
+    {
       "fixture": "word-windows-edge-vertical-table-break-extended-latin-bottom-up-compat12",
       "docx_sha256": "b8f198f3e58e2d67a4ade56baea22668c2887b4dc71c87cd05c8fe4b66f88df3"
     },
