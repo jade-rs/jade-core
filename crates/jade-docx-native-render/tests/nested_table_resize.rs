@@ -227,26 +227,42 @@ fn docx_export_matches_word_autofit_grids_on_both_sides_of_page_break() {
 #[test]
 fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    let (_, manifest) = load_word_capture("nested-autofit-batch-resize");
+    verify_word_resize_batches("nested-autofit-batch-resize");
+    verify_word_resize_batches("nested-autofit-insert-then-resize");
+}
+
+#[cfg(windows)]
+fn verify_word_resize_batches(cohort: &str) {
+    let (mut archive, manifest) = load_word_capture(cohort);
     let cases = manifest["documents"].as_array().unwrap();
     assert_eq!(cases.len(), 36);
     for case in cases {
         let name = case["name"].as_str().unwrap();
         let before = case["before_fixture"].as_str().unwrap();
         let source = std::fs::read(repo_path(&format!("public/fixtures/{before}.docx"))).unwrap();
-        let saved = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
         assert_eq!(
             case["before_input_sha256"],
             format!("{:x}", Sha256::digest(&source))
         );
-        assert_eq!(
-            case["input_sha256"],
-            format!("{:x}", Sha256::digest(&saved))
-        );
+        let saved = if case["word_save_sha256"].is_string() {
+            read_word_save(&mut archive, case).1
+        } else {
+            let saved = std::fs::read(repo_path(&format!("public/fixtures/{name}.docx"))).unwrap();
+            assert_eq!(
+                case["input_sha256"],
+                format!("{:x}", Sha256::digest(&saved))
+            );
+            saved
+        };
         let word = open_with_windows_fonts(&saved);
         let mut jade = open_with_windows_fonts(&source);
         let actions = case["actions"].as_array().unwrap();
         assert_eq!(actions.len(), 2);
+        let paragraph_with_text = |text: &str| {
+            (0..jade.word_document().paragraph_count())
+                .find(|&index| jade.word_document().rendered_paragraph_text(index) == text)
+                .unwrap()
+        };
         let commands: Vec<_> = actions
             .iter()
             .map(|action| {
@@ -256,15 +272,17 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
                         column_index: 1,
                         new_width: width as f32,
                     }
+                } else if let Some(text) = action["insert_text"].as_str() {
+                    HeadlessCommand::InsertText {
+                        paragraph: paragraph_with_text("FIRST"),
+                        offset: 0,
+                        text: text.to_owned(),
+                    }
                 } else {
                     let length = action["parent_word_length"].as_u64().unwrap() as usize;
                     assert_eq!(action["delete_text"], "W");
                     let original = "W".repeat(length);
-                    let paragraph = (0..jade.word_document().paragraph_count())
-                        .find(|&index| {
-                            jade.word_document().rendered_paragraph_text(index) == original
-                        })
-                        .unwrap();
+                    let paragraph = paragraph_with_text(&original);
                     HeadlessCommand::ReplaceRange {
                         start_paragraph: paragraph,
                         start_offset: 0,
@@ -288,6 +306,10 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
             assert_eq!(reopened.page_count(), expected.page_count(), "{name}");
             if let HeadlessCommand::ReplaceRange {
                 start_paragraph, ..
+            }
+            | HeadlessCommand::InsertText {
+                paragraph: start_paragraph,
+                ..
             } = commands[0]
             {
                 assert_eq!(
@@ -297,7 +319,7 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
                     expected
                         .word_document()
                         .rendered_paragraph_text(start_paragraph),
-                    "{name}: parent text"
+                    "{name}: edited text"
                 );
             }
         };
@@ -313,7 +335,9 @@ fn batched_autofit_resize_remeasures_each_edit_and_matches_word() {
         jade.redo().unwrap();
         check_saved(&jade, &word);
 
-        if name.ends_with("shorten-n24-rightedge-compat15") {
+        if name.ends_with("shorten-n24-rightedge-compat15")
+            || name.ends_with("-edge-w65-insert12-compat15")
+        {
             jade.undo().unwrap();
             let mut invalid = commands.clone();
             invalid.push(HeadlessCommand::ResizeTableColumnRightEdge {

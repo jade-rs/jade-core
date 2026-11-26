@@ -1,6 +1,6 @@
 use super::*;
 use crate::commands::resize_table_column::{
-    fit_nested_columns_to_content, NestedColumnResizeGeometry,
+    fit_nested_columns_to_content, shrink_nested_text_to_frame, NestedColumnResizeGeometry,
 };
 use crate::document::{
     resolve_cell_margin_edge_points, TableStyleCellFormat, TableStyleCellPosition, TextDirection,
@@ -12993,14 +12993,21 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
                 .map(|(minimum, word)| minimum.max(*word))
                 .collect();
             let minimum_width: f64 = floors.iter().sum();
-            let indent = table_leading_indent(table).0.unwrap_or(0.0);
+            let indent = table_leading_indent(table).0;
             let limit = if config.is_some_and(|config| !config.word_modern_border_insets) {
                 // The legacy grid is constrained at the cell text edges.
                 let leading = pre_2013_table_text_inset_px(table, Some(14), false);
                 let trailing = pre_2013_table_trailing_text_inset_px(table);
+                // Without an indent from the document or table style, Word
+                // deducts the default leading inset from the available grid.
+                let indent = indent.unwrap_or(if table.resolved_style.is_none() {
+                    leading
+                } else {
+                    0.0
+                });
                 (available_width + leading + trailing - indent).max(1.0)
             } else {
-                (available_width - indent).max(1.0)
+                (available_width - indent.unwrap_or(0.0)).max(1.0)
             };
             if minimum_width > limit && declared <= limit + 1e-8 {
                 // Windows Word caps the grid at the text area when all
@@ -13609,17 +13616,11 @@ fn autofit_content_widths<C: TableAutofitContext>(
                             natural_content_width = natural_content_width.max(floor);
                             if floor > unbreakable_content_width {
                                 unbreakable_content_width = floor;
-                                nested_padding = if absolute_table_width(child)
-                                    .is_some_and(|width| floor <= width + 1e-8)
-                                {
-                                    0.0
-                                } else {
-                                    measured
-                                        .frame_columns
-                                        .iter()
-                                        .map(|column| column.padding + column.nested_padding)
-                                        .sum()
-                                };
+                                nested_padding = measured
+                                    .frame_columns
+                                    .iter()
+                                    .map(|column| column.padding + column.nested_padding)
+                                    .sum();
                             }
                             nested.insert(child.as_ref() as *const Table, measured);
                         }
@@ -18487,37 +18488,6 @@ fn clamp_windows_autofit_grid(widths: &mut [f64], limit: f64) -> f64 {
     budget / 15.0
 }
 
-fn shrink_windows_nested_child_grid(
-    widths: &mut [f64],
-    limit: f64,
-    columns: &[WindowsAutofitFrameColumn],
-) {
-    debug_assert_eq!(widths.len(), columns.len());
-    let padding: f64 = columns.iter().map(|column| column.padding).sum();
-    let full_width: f64 = widths.iter().sum();
-    let budget = (limit * 15.0).round();
-    let text_budget = budget / 15.0 - padding;
-    if text_budget <= 0.0 || full_width <= padding {
-        clamp_windows_autofit_grid(widths, limit);
-        return;
-    }
-    // Preserve the cell margins while proportionally reducing the text area.
-    let scale = text_budget / (full_width - padding);
-    let last = widths.len() - 1;
-    let mut boundary = 0.0;
-    let mut previous = 0.0;
-    for (index, (width, column)) in widths.iter_mut().zip(columns).enumerate() {
-        boundary += (column.padding + (*width - column.padding) * scale) * 15.0;
-        let snapped = if index == last {
-            budget
-        } else {
-            boundary.round()
-        };
-        *width = (snapped - previous) / 15.0;
-        previous = snapped;
-    }
-}
-
 fn shrink_windows_nested_parent_grid(
     widths: &mut [f64],
     limit: f64,
@@ -18672,11 +18642,14 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             {
                 // A requested absolute width that can fit the text takes
                 // precedence over the frame of the capped parent.
-                shrink_windows_nested_child_grid(
+                if !shrink_nested_text_to_frame(
                     &mut column_widths,
                     available_width,
-                    &autofit.frame_columns,
-                );
+                    autofit.frame_columns.iter().map(|column| column.padding),
+                    15.0,
+                ) {
+                    clamp_windows_autofit_grid(&mut column_widths, available_width);
+                }
             }
             autofit.layouts.clone()
         } else {
@@ -18843,6 +18816,11 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
                     .map(|width| (width * 0.75) as f32)
                     .collect(),
                 minimum_widths: autofit.floors.iter().map(|width| width * 0.75).collect(),
+                horizontal_padding: autofit
+                    .frame_columns
+                    .iter()
+                    .map(|column| column.padding * 0.75)
+                    .collect(),
                 frame_width: (available_width * 0.75) as f32,
             })
         }),

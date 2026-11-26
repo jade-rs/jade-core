@@ -19,6 +19,7 @@ use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
     apply_headless_commands_with_executor_to_document,
     apply_headless_commands_with_resize_measurement, execute_headless_queries_on_document,
+    ResizeMeasurement,
 };
 use jade_docx_editor::word_document::{
     FloatingObjectKind, FloatingObjectTarget, FloatingObjectTransform, WordDocument,
@@ -3477,29 +3478,51 @@ impl NativeDocument {
             self.executor.begin_group();
         }
         let after = self.edit_in_place(|this| {
-            let mut measure = |document: &WordDocument, index, table_order| {
+            let mut before_insertion = None;
+            let mut measure = |document: &WordDocument, index, table_order, stage| {
+                if stage == ResizeMeasurement::BeforeInsertion
+                    && !document.document.as_ref().is_some_and(|document| {
+                        document
+                            .east_asian_line_breaking
+                            .compatibility_mode
+                            .is_some_and(|mode| mode >= 15)
+                    })
+                {
+                    return Ok(None);
+                }
                 let Some(id) = document
                     .table_by_order(table_order)
                     .and_then(|table| table.node_id)
                 else {
                     return Ok(None);
                 };
-                if index == 0 && reuse_first_layout {
-                    return Ok(this.renderer.nested_column_resize_geometry_for_node(id));
-                }
-                if !Self::has_windows_nested_body_tables(document) {
+                let geometry = if index == 0 && reuse_first_layout {
+                    this.renderer.nested_column_resize_geometry_for_node(id)
+                } else {
+                    if !Self::has_windows_nested_body_tables(document) {
+                        return Ok(None);
+                    }
+                    Self::measure_tables(
+                        document,
+                        (this.page_width, this.page_height),
+                        &this.fonts,
+                        &this.math_faces,
+                        this.field_datetime,
+                        &this.options,
+                    )
+                    .map_err(CommandError::Custom)?
+                    .nested_column_resize_geometry_for_node(id)
+                };
+                if stage == ResizeMeasurement::BeforeInsertion {
+                    before_insertion = geometry.map(|geometry| (id, geometry));
                     return Ok(None);
                 }
-                let renderer = Self::measure_tables(
-                    document,
-                    (this.page_width, this.page_height),
-                    &this.fonts,
-                    &this.math_faces,
-                    this.field_datetime,
-                    &this.options,
-                )
-                .map_err(CommandError::Custom)?;
-                Ok(renderer.nested_column_resize_geometry_for_node(id))
+                let previous = before_insertion.take().filter(|(node, _)| *node == id);
+                Ok(geometry.map(|geometry| {
+                    previous
+                        .and_then(|(_, previous)| geometry.after_text_insertion(&previous))
+                        .map_or(geometry, Rc::new)
+                }))
             };
             let result = apply_headless_commands_with_resize_measurement(
                 &mut this.word_document,

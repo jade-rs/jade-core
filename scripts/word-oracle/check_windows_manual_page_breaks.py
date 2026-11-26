@@ -113,6 +113,15 @@ def nested_autofit_batch_resize_cases():
             for length in (22, 23, 24) for position in ('edge', 'rightedge')}
 
 
+def nested_autofit_insert_then_resize_cases():
+    return {f'{position}-w{width}-insert{count}' for position in ('edge', 'rightedge')
+            for width in (45, 65, 85) for count in (8, 12)}
+
+
+def nested_autofit_implicit_frame_cases():
+    return {'implicit', 'indent-zero', 'indent-ten', 'table', 'table-indent-zero', 'cell'}
+
+
 def nested_autofit_text_content_cases():
     return {f'{count}-n{length}-{position}' for count in ('four', 'eight', 'twelve')
             for length in (22, 23, 24) for position in ('edge', 'rightedge')}
@@ -222,6 +231,10 @@ CAPTURES = (
      'word-windows-edge-nested-autofit-parent-save-', nested_autofit_parent_save_cases, ('--unclipped-tables',)),
     ('nested-autofit-batch-resize', 'e5b5025d5a739bb0d0600b7f8480e4445dfd6e9bbebe5d326094ab22e986165b',
      'word-windows-edge-nested-autofit-batch-', nested_autofit_batch_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-insert-then-resize', 'da85a47acd53ce3a5fdab52afdb940fb38a655415a9cbd4b0189ef42730433bf',
+     'word-windows-edge-nested-autofit-insert-then-resize-', nested_autofit_insert_then_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-implicit-frame', '5afd2f9d7807d30ae6ea9bfb9a1ee386a896dcbac818aca6368f22a6e7814f3f',
+     'word-windows-edge-nested-autofit-implicit-frame-', nested_autofit_implicit_frame_cases, ('--unclipped-tables',)),
     ('nested-autofit-text-content', 'b05ee7303b2be4060258c44b6e8f422e798dea9598dc99cb8777214c11eff62f',
      'word-windows-edge-nested-autofit-text-content-', nested_autofit_text_content_cases, ('--unclipped-tables',)),
     ('nested-autofit-text-frame', 'cf6ddf00d54d91060ba4300bb2854f5795c5174c1fea5341c3bbd7957c934da1',
@@ -287,6 +300,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'spaced-table-border-content',
         'nested-autofit-advances', 'nested-autofit-resize', 'nested-autofit-floors',
         'nested-autofit-twip-rounding', 'nested-autofit-parent-save', 'nested-autofit-batch-resize',
+        'nested-autofit-insert-then-resize', 'nested-autofit-implicit-frame',
         'nested-autofit-text-content', 'nested-autofit-text-frame',
         'nested-autofit-text-margins', 'nested-autofit-text-indents',
         'nested-autofit-text-resize', 'nested-autofit-text-overflow',
