@@ -29,12 +29,14 @@ struct Header<'a> {
     watermark: Option<&'a str>,
 }
 
-/// One section: its header references (`w:type`, header) and whether it
-/// has a title page.
+/// One section: its header references (`w:type`, header), whether it has
+/// a title page, how it starts (`w:type`) and further `w:sectPr` content.
 struct Section<'a> {
     body: &'a str,
     headers: Vec<(&'a str, Header<'a>)>,
     title_page: bool,
+    break_type: &'a str,
+    extra: &'a str,
 }
 
 /// A run holding the shape Word's デザイン › 透かし inserts.
@@ -83,7 +85,8 @@ fn package(sections: &[Section]) -> Vec<u8> {
             ""
         };
         let properties = format!(
-            r#"<w:sectPr>{references}<w:type w:val="nextPage"/>{geometry}{title_page}</w:sectPr>"#
+            r#"<w:sectPr>{references}<w:type w:val="{}"/>{geometry}{}{title_page}</w:sectPr>"#,
+            section.break_type, section.extra
         );
         body.push_str(section.body);
         if index + 1 < sections.len() {
@@ -159,6 +162,8 @@ fn two_section_package() -> Vec<u8> {
                 ),
             ],
             title_page: true,
+            break_type: "nextPage",
+            extra: "",
         },
         Section {
             body: &s2,
@@ -171,6 +176,8 @@ fn two_section_package() -> Vec<u8> {
                 },
             )],
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
     ])
 }
@@ -288,11 +295,15 @@ fn link_to_previous_carries_the_watermark_and_an_unlinked_header_drops_it() {
                 },
             )],
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
         Section {
             body: s2,
             headers: Vec::new(),
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
         Section {
             body: s3,
@@ -305,6 +316,8 @@ fn link_to_previous_carries_the_watermark_and_an_unlinked_header_drops_it() {
                 },
             )],
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
     ]));
     assert_eq!(pages.len(), 3);
@@ -332,6 +345,8 @@ fn a_single_header_paints_its_watermark_on_every_page() {
             },
         )],
         title_page: false,
+        break_type: "nextPage",
+        extra: "",
     }]));
     assert_eq!(pages.len(), 3);
     let watermark_ops = |page: &[Op]| -> Vec<Op> {
@@ -380,6 +395,8 @@ fn unlinked_two_section_package() -> Vec<u8> {
                 },
             )],
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
         Section {
             body: &s2,
@@ -392,6 +409,8 @@ fn unlinked_two_section_package() -> Vec<u8> {
                 },
             )],
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
     ])
 }
@@ -446,6 +465,8 @@ fn set_watermark_creates_the_headers_pages_show_blank() {
             body: &s1,
             headers: Vec::new(),
             title_page: true,
+            break_type: "nextPage",
+            extra: "",
         },
         Section {
             body: s2,
@@ -458,6 +479,8 @@ fn set_watermark_creates_the_headers_pages_show_blank() {
                 },
             )],
             title_page: false,
+            break_type: "nextPage",
+            extra: "",
         },
     ]));
     let pages = set_and_render(&mut word_doc, Some("DRAFT"));
@@ -471,6 +494,138 @@ fn set_watermark_creates_the_headers_pages_show_blank() {
     );
     let pages = set_and_render(&mut word_doc, None);
     assert!(pages.iter().all(|page| watermarks(page).is_empty()));
+}
+
+/// Section 1 fills page 1 down to a continuous break near its bottom.
+/// Section 2 has a title page, its first-page header carrying "FIRST" and
+/// its default header "TWO", a page border shown on its first page only,
+/// and a first paragraph too tall for what is left of page 1, so section 2
+/// starts on page 2.
+pub(super) fn continuous_title_page_package() -> Vec<u8> {
+    let tall = |text: &str, points: u32| {
+        format!(
+            r#"<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="{}" w:lineRule="exact"/></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>"#,
+            points * 20
+        )
+    };
+    let s1 = tall("one", 600);
+    let s2 = format!("{}{PAGE_BREAK}{}", tall("three", 72), tall("four", 72));
+    package(&[
+        Section {
+            body: &s1,
+            headers: vec![(
+                "default",
+                Header {
+                    id: "rH1",
+                    text: "H1",
+                    watermark: Some("ONE"),
+                },
+            )],
+            title_page: false,
+            break_type: "nextPage",
+            extra: "",
+        },
+        Section {
+            body: &s2,
+            headers: vec![
+                (
+                    "default",
+                    Header {
+                        id: "rH2",
+                        text: "H2",
+                        watermark: Some("TWO"),
+                    },
+                ),
+                (
+                    "first",
+                    Header {
+                        id: "rH2F",
+                        text: "H2-first",
+                        watermark: Some("FIRST"),
+                    },
+                ),
+            ],
+            title_page: true,
+            break_type: "continuous",
+            extra: r#"<w:pgBorders w:display="firstPage" w:offsetFrom="text"><w:top w:val="single" w:sz="8" w:space="4" w:color="FF0000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="FF0000"/></w:pgBorders>"#,
+        },
+    ])
+}
+
+/// While page 2's backing is created, section 2's first paragraph has only
+/// started on page 1 and is moving on: page 2 is still section 2's first
+/// page, so it shows the first-page header's watermark and the page border
+/// shown on the first page only.
+#[test]
+fn a_continuous_section_pushed_to_the_next_page_starts_there() {
+    let pages = render(&continuous_title_page_package());
+    assert_eq!(pages.len(), 3, "three pages");
+    assert_eq!(watermarks(&pages[0]), ["ONE"], "page 1");
+    let page_two = page_text(&pages[1]);
+    assert!(page_two.contains("H2-first"), "page 2 header: {page_two}");
+    assert_eq!(watermarks(&pages[1]), ["FIRST"], "page 2");
+    let page_three = page_text(&pages[2]);
+    assert!(
+        page_three.contains("H2") && !page_three.contains("first"),
+        "page 3 header: {page_three}"
+    );
+    assert_eq!(watermarks(&pages[2]), ["TWO"], "page 3");
+    let red = |page: &[Op]| {
+        page.iter()
+            .any(|op| matches!(op, Op::SetStrokeStyle(stroke) if stroke.contains("FF0000")))
+    };
+    assert!(!red(&pages[0]), "no border on page 1");
+    assert!(red(&pages[1]), "w:display=firstPage borders page 2");
+    assert!(!red(&pages[2]), "no border on page 3");
+}
+
+/// A document whose sections declare no header gets one header, in its
+/// first section, which the later sections show through "link to
+/// previous" — as Word's command leaves it — rather than a header each.
+#[test]
+fn set_watermark_on_sections_without_headers_creates_one_linked_header() {
+    use std::io::Read;
+    let s1 = r#"<w:p><w:r><w:t>one</w:t></w:r></w:p>"#;
+    let s2 = r#"<w:p><w:r><w:t>two</w:t></w:r></w:p>"#;
+    let unheaded = |body| Section {
+        body,
+        headers: Vec::new(),
+        title_page: false,
+        break_type: "nextPage",
+        extra: "",
+    };
+    let mut word_doc = load(&package(&[unheaded(s1), unheaded(s2)]));
+    let pages = set_and_render(&mut word_doc, Some("DRAFT"));
+    assert_eq!(pages.len(), 2);
+    for (index, page) in pages.iter().enumerate() {
+        assert_eq!(watermarks(page), ["DRAFT"], "page {}", index + 1);
+    }
+
+    let exported = word_doc.export_docx().expect("export");
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(exported)).expect("package");
+    let headers = (0..archive.len())
+        .filter_map(|index| Some(archive.by_index(index).ok()?.name().ok()?.into_owned()))
+        .filter(|name: &String| name.starts_with("word/header"))
+        .collect::<Vec<_>>();
+    assert_eq!(headers.len(), 1, "one header part: {headers:?}");
+    let mut document_xml = String::new();
+    archive
+        .by_name("word/document.xml")
+        .expect("document part")
+        .read_to_string(&mut document_xml)
+        .expect("read document part");
+    let (first_section, last_section) = document_xml
+        .split_once("</w:sectPr>")
+        .expect("a section break");
+    assert_eq!(
+        first_section.matches("w:headerReference").count(),
+        1,
+        "section 1 owns the header: {document_xml}"
+    );
+    assert!(
+        !last_section.contains("w:headerReference"),
+        "section 2 stays linked to section 1: {document_xml}"
+    );
 }
 
 #[test]

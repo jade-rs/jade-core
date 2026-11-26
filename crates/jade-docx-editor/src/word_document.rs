@@ -2436,6 +2436,10 @@ impl WordDocument {
                     }
                 }
             }
+            // Not memoised: a loaded header always has its parse, so this is
+            // a part just written and not yet reparsed, whose XML may change
+            // again; the `textpath` check keeps headers without a watermark
+            // from being parsed at all.
             return Self::header_watermark_from_xml(&part.content);
         }
         let content = self.read_xml_part_content(&path)?;
@@ -10537,9 +10541,8 @@ impl WordDocument {
         // section with its own (unlinked) header shows the watermark too,
         // and a header a page shows but the package lacks is created.
         if normalized.is_some() {
-            self.ensure_hf_part_for_edit(HeaderFooterRole::Header, HeaderFooterVariant::Default)?;
             for (section, variant) in self.missing_watermark_header_slots() {
-                let previous = self.hf_edit_section.replace(section);
+                let previous = std::mem::replace(&mut self.hf_edit_section, section);
                 let created = self.ensure_hf_part_for_edit(HeaderFooterRole::Header, variant);
                 self.hf_edit_section = previous;
                 created?;
@@ -10707,10 +10710,12 @@ impl WordDocument {
     /// The headers pages show blank because no section up to theirs
     /// declares one: the default header, the first-page header of a section
     /// with a title page, and the even-page header with different odd and
-    /// even pages. Word's watermark command creates them; a header created
-    /// for the first section lacking one serves the linked sections after
-    /// it, so each is listed once.
-    fn missing_watermark_header_slots(&self) -> Vec<(usize, HeaderFooterVariant)> {
+    /// even pages. Setting a watermark creates them, as Word's command does.
+    /// A header created for the first section lacking one serves the linked
+    /// sections after it, so each kind is listed once, with the section to
+    /// create it in (`None`: the document-wide section of a document without
+    /// section ranges). Kinds no page shows are not created.
+    fn missing_watermark_header_slots(&self) -> Vec<(Option<usize>, HeaderFooterVariant)> {
         let Some(document) = self.document.as_deref() else {
             return Vec::new();
         };
@@ -10720,16 +10725,25 @@ impl WordDocument {
             HeaderFooterVariant::First,
             HeaderFooterVariant::Even,
         ] {
+            let in_use = |title_page: bool| match variant {
+                HeaderFooterVariant::Default => true,
+                HeaderFooterVariant::First => title_page,
+                HeaderFooterVariant::Even => self.even_and_odd_headers,
+            };
+            if document.sections.is_empty() {
+                if in_use(self.title_page)
+                    && pick_hf_reference(document, HeaderFooterRole::Header, variant).is_none()
+                {
+                    slots.push((None, variant));
+                }
+                continue;
+            }
             let first_in_use = (0..document.sections.len()).find(|&section| {
-                let in_use = match variant {
-                    HeaderFooterVariant::Default => true,
-                    HeaderFooterVariant::First => document.sections[section]
-                        .properties
-                        .as_ref()
-                        .is_some_and(|properties| properties.title_page),
-                    HeaderFooterVariant::Even => self.even_and_odd_headers,
-                };
-                in_use
+                let title_page = document.sections[section]
+                    .properties
+                    .as_ref()
+                    .is_some_and(|properties| properties.title_page);
+                in_use(title_page)
                     && hf_reference_for_section(
                         document,
                         section,
@@ -10739,7 +10753,7 @@ impl WordDocument {
                     .is_none()
             });
             if let Some(section) = first_in_use {
-                slots.push((section, variant));
+                slots.push((Some(section), variant));
             }
         }
         slots
@@ -10973,6 +10987,9 @@ impl WordDocument {
 
         let serialized = xml.to_string().map_err(|error| error.to_string())?;
         self.upsert_xml_part_content(&part_path, serialized);
+        // One part can serve several variants and sections. The refresh
+        // reparses the part and updates every variant that shows it, so the
+        // variant passed here is never read (its parameter is unused).
         self.refresh_header_footer_lines_for(
             HeaderFooterRole::Header,
             HeaderFooterVariant::Default,

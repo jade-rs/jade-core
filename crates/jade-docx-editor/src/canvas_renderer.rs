@@ -13732,10 +13732,20 @@ where
             Some(start) if start.page == previous => start.page_top_section,
             _ => previous_last,
         };
+        // While the next page's backing is created, a paragraph only started
+        // on the current page is moving onto the next one: it placed nothing
+        // here, so the next page still starts the section.
+        let placed_content = |start: MidPageSectionStart| {
+            if previous == self.current_page_number {
+                start.content == MidPageContent::Placed
+            } else {
+                self.mid_page_start_has_content(start)
+            }
+        };
         previous_top != section
             && !self
                 .mid_page_start(section)
-                .is_some_and(|start| start.page < page && self.mid_page_start_has_content(start))
+                .is_some_and(|start| start.page < page && placed_content(start))
     }
 
     /// Strokes the current page's settled page borders when they belong to
