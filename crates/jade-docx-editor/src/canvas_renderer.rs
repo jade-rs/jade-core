@@ -42775,19 +42775,17 @@ where
         // A picture's effects (`wp:effectExtent`) keep text clear as its
         // rotated bounds do. Word likely writes a rotation's growth into the
         // extent too, so each edge reaches the farther of the two, not their
-        // sum (unverified against Word); an edge without effects stays at
-        // the rotated bounds.
+        // sum (unverified against Word).
         let (left, top, right, bottom) = effect_extent(layout)
             .filter(|_| target.kind == FloatingObjectKind::Image)
             .map_or((0.0, 0.0, 0.0, 0.0), |extent| {
                 (extent.left, extent.top, extent.right, extent.bottom)
             });
+        // On an axis the rotation widens, the extent is measured from the
+        // unrotated box; on one it narrows, it is added to the rotated
+        // bounds. No extent leaves the rotated bounds exactly.
         let reach = |extent: f64, half: f64, rotated_half: f64| {
-            if extent > 0.0 {
-                half + extent.max(rotated_half - half)
-            } else {
-                rotated_half
-            }
+            rotated_half.max(half.min(rotated_half) + extent)
         };
         let (half_width, half_height) = (transform.width / 2.0, transform.height / 2.0);
         let box_left = center_x - reach(left, half_width, rotated_width / 2.0);

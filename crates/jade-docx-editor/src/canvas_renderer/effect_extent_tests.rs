@@ -245,6 +245,24 @@ fn text_wraps_around_a_floating_pictures_effect_extent() {
     );
 }
 
+/// On an axis a 90° rotation narrows, a small effect extent is added to the
+/// rotated bounds: text clears the 100 px wide rotated box by r, not the
+/// 200 px unrotated one.
+#[test]
+fn a_small_extent_on_a_narrowed_axis_adds_to_the_rotated_bounds() {
+    let text_x = |effects: [f64; 4]| {
+        let renderer = render(&format!(
+            r#"<w:p>{}<w:r><w:t>Host</w:t></w:r></w:p>"#,
+            floating(200.0, 100.0, 90.0, effects)
+        ));
+        glyph(&renderer.host.painter().inner().ops(), "H").0
+    };
+    let r = 2540.0 / EMU_PER_PX;
+    let rotated = text_x([0.0; 4]);
+    assert_near(rotated, 246.0, "the rotated bounds");
+    assert_near(text_x([0.0, 0.0, r, 0.0]), 246.0 + r, "the bounds + r");
+}
+
 /// A 200 by 100 picture at 30° whose effect extent already holds its
 /// rotated box (as Word likely writes it) wraps at the rotated bounds, not
 /// beyond them: each edge reaches the farther of the two, not their sum.
