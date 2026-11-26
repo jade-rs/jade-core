@@ -2,6 +2,7 @@
 import generate_windows_edge_cases as edge
 from generate_windows_edge_cases import run
 
+MODES = (12, 14, 15)
 PAGE = '<w:br w:type="page"/>'
 SAVED = '<w:lastRenderedPageBreak/>'
 INDENT = '<w:ind w:left="240" w:firstLine="360"/>'
@@ -113,7 +114,7 @@ def cases():
 
 
 if __name__ == '__main__':
-    for mode in (12, 14, 15):
+    for mode in MODES:
         for name, body in cases().items():
             edge.write(
                 f'page-break-{name}-compat{mode}', body, mode, section_properties=PAGE_GEOMETRY,

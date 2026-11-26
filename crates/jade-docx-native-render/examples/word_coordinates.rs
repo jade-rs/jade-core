@@ -1,5 +1,5 @@
 //! Capture the native renderer's unaligned glyph origins in PDF points.
-//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables | --painted-table-headers] [--password-file file] [--fonts-directory directory] [--line-details]
+//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables | --painted-table-headers] [--password-file file] [--fonts-directory directory] [--line-details] [--without-formatting-marks]
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_native_render::{
     system_fonts, FontFace, NativeDocument, PdfExportOptions, PdfRenderingMode,
@@ -31,6 +31,8 @@ fn main() {
         });
     let line_details = args.iter().any(|arg| arg == "--line-details");
     args.retain(|arg| arg != "--line-details");
+    let without_formatting_marks = args.iter().any(|arg| arg == "--without-formatting-marks");
+    args.retain(|arg| arg != "--without-formatting-marks");
     let unclipped_tables = args.iter().any(|arg| arg == "--unclipped-tables");
     args.retain(|arg| arg != "--unclipped-tables");
     let painted_table_headers = args.iter().any(|arg| arg == "--painted-table-headers");
@@ -95,6 +97,9 @@ fn main() {
         system_fonts::word_document_faces(&bytes, &fallback)
     };
     let mut doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+    if without_formatting_marks {
+        doc.set_formatting_marks(false).unwrap();
+    }
     let snapshot = if unclipped_tables {
         doc.capture_full_layout_debug_unclipped_tables().unwrap()
     } else if painted_table_headers {

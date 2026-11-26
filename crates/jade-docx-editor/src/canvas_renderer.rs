@@ -4640,6 +4640,7 @@ where
     valign_gap_applied: (usize, f64),
     /// Page whose empty section mark uses the unaligned cursor for pagination.
     section_mark_flow_page: Option<usize>,
+    deferred_section_page_break: bool,
     /// Natural per-page used body-content heights recorded during the current
     /// full repaint (index = `page_number - 1`). Fed into
     /// `page_valign_offsets_from_heights` to compute the next render's offsets.
@@ -10951,6 +10952,7 @@ where
             valign_pending_gap_slot: None,
             valign_gap_applied: (0, 0.0),
             section_mark_flow_page: None,
+            deferred_section_page_break: false,
             valign_used_heights: Vec::new(),
             valign_available_heights: Vec::new(),
             render_skip_draw: false,
@@ -18447,6 +18449,7 @@ where
             let mut truncated = false;
             let start_section_index = seek_snapshot.as_ref().map(|s| s.section_index).unwrap_or(0);
             let mut section_mark_top = None;
+            self.deferred_section_page_break = false;
             'sections: for (index, section) in sections.iter().enumerate().skip(start_section_index)
             {
                 let start = section.start.min(body.elements.len());
@@ -20695,6 +20698,11 @@ where
             && (new_footer_distance - self.footer_distance).abs() < EPS;
 
         let section_break = SectionBreakType::from_word_value(section_break_type);
+        let section_break = if std::mem::take(&mut self.deferred_section_page_break) {
+            section_break.after_manual_page_break()
+        } else {
+            section_break
+        };
         let previous_column_index = self.column_index;
         let has_next_column = previous_column_index + 1 < self.column_layout.count();
         let transition = self.settle_parity_transition(
@@ -23985,6 +23993,17 @@ where
                 .and_then(|document| document.sections.get(section_index))
                 .map_or(0, |section| section.start)
                 == body_element_index;
+        let section_consumes_final_break = layout_text.ends_with(PAGE_BREAK_CHAR)
+            && !self.pageless_mode
+            && !self.measuring_keep_next
+            && self.last_document.as_deref().is_some_and(|document| {
+                jade_docx_layout::text_extract::windows_section_consumes_final_manual_page_break(
+                    document,
+                    body_element_index,
+                    section_index,
+                )
+            });
+        self.deferred_section_page_break |= section_consumes_final_break;
         let object_only =
             has_inline_objects && run_styles.iter().all(|style| style.inline_object.is_some());
         let text_single_line_spacing = !has_inline_objects
@@ -24343,6 +24362,7 @@ where
                     applied_spacing_before,
                     starts_section,
                     spacing_advanced_page,
+                    section_consumes_final_break,
                     if numbering_consumed || resuming {
                         None
                     } else {
@@ -24616,12 +24636,7 @@ where
         // spacing-after onto the new page; otherwise browser debug lines report
         // page-2 text one line lower than Word even though the page break itself
         // already reset the cursor.
-        let paragraph_ended_with_page_break = paragraph
-            .runs
-            .iter()
-            .rev()
-            .find(|run| !run.text.is_empty())
-            .is_some_and(|run| run.text.ends_with(PAGE_BREAK_STR));
+        let paragraph_ended_with_page_break = layout_text.ends_with(PAGE_BREAK_CHAR);
 
         if let Some(borders) = paragraph_box_borders.filter(|_| !paragraph_ended_with_page_break) {
             let extent_pt = if border_box_continues {
@@ -24636,7 +24651,15 @@ where
         let suppress_spacing_after = self.contextual_suppresses_spacing_after(body_element_index);
         if spacing_ref
             .is_some_and(|spacing| spacing.after.is_some() || spacing.after_lines.is_some())
-            && !paragraph_ended_with_page_break
+            && (!paragraph_ended_with_page_break
+                || (!self.pageless_mode && self.last_document.as_deref().is_some_and(|document| {
+                    jade_docx_layout::text_extract::manual_page_break_preserves_spacing_collapse(
+                        document,
+                        body_element_index,
+                        section_index,
+                        None,
+                    )
+                })))
         {
             let spacing_after = jade_docx_layout::text_extract::spacing_after_px_on_grid(
                 paragraph,
@@ -24644,7 +24667,7 @@ where
                 self.paragraph_spacing_grid_pitch_pt(paragraph),
             );
             let y_before_spacing_after = self.current_y;
-            if !suppress_spacing_after {
+            if !paragraph_ended_with_page_break && !suppress_spacing_after {
                 self.apply_spacing_after_value(spacing_after)?;
             }
             // What the space-after really took: a space that does not fit is
@@ -26651,6 +26674,7 @@ where
         spacing_before: f64,
         starts_section: bool,
         spacing_advanced_page: bool,
+        section_consumes_final_break: bool,
         pending_numbering: Option<&PendingNumberingRender>,
         paragraph_shading: Option<ShadingPaint>,
         windows_shading_continuation: bool,
@@ -26747,6 +26771,11 @@ where
             self.band_redraw_in_edited_paragraph = saved_band_in_edited;
             return Ok(());
         }
+        let section_break_without_content =
+            section_consumes_final_break && text == jade_docx_reader::PAGE_BREAK_STR;
+        let keep_lines_enabled = keep_lines_enabled && !section_break_without_content;
+        let keep_next_enabled = keep_next_enabled && !section_break_without_content;
+        let widow_control_enabled = widow_control_enabled && !section_break_without_content;
 
         // Keep the arena borrow independent of `self` while render helpers
         // continue mutating renderer state.
@@ -26863,7 +26892,7 @@ where
         // for it, as above). When the whole paragraph fits but that line does
         // not, Word moves the last line, or the last two under widow control,
         // or the whole paragraph when it cannot split.
-        let keep_next_property = self.current_paragraph_keep_next;
+        let keep_next_property = self.current_paragraph_keep_next && !section_break_without_content;
         if keep_next_property
             && !keep_lines_handled
             && !keep_next_handled
@@ -27638,6 +27667,11 @@ where
                 self.ensure_space(remaining_height + force_break_reserve)?;
             }
             let break_kind = wrapped_line.break_kind;
+            let defer_page_advance = break_kind == LineBreakKind::Page
+                && section_consumes_final_break
+                && wrapped_line
+                    .break_range
+                    .is_some_and(|(_, end)| end == base_offset + text.len());
             let extent_only = self.measuring_keep_next
                 && inline_images.is_empty()
                 && inline_text_boxes.is_empty()
@@ -28079,7 +28113,13 @@ where
             } else {
                 line_box_height
             };
-            self.ensure_space(fit_height)?;
+            // The section transition lays out the new page for a break-only
+            // line without reserving a separate text band at the page foot.
+            let section_only_mark =
+                defer_page_advance && prepared_segments.is_empty() && !has_inline_object;
+            if !section_only_mark || self.current_y >= self.effective_body_bottom() - 1e-3 {
+                self.ensure_space(fit_height)?;
+            }
             if line_index < leading_page_breaks && self.current_page_number != page_before_space {
                 // A leading break's line box can fail to fit at the foot of
                 // the page. The natural advance also satisfies the break.
@@ -28101,7 +28141,9 @@ where
                 }
             }
             let top = self.current_y;
-            self.current_y += line_box_height;
+            if !section_only_mark {
+                self.current_y += line_box_height;
+            }
             if let Some((_, band_bottom)) = continued_band {
                 self.current_y = self.current_y.max(band_bottom);
             }
@@ -28507,7 +28549,9 @@ where
                 // A page-break-only line has no prepared text and exits via
                 // this branch. It must still advance the physical page;
                 // otherwise consecutive manual breaks collapse into one.
-                self.advance_after_empty_prepared_line(break_kind)?;
+                if !defer_page_advance {
+                    self.advance_after_empty_prepared_line(break_kind)?;
+                }
                 continue;
             }
 
@@ -29781,7 +29825,9 @@ where
             self.last_line_baseline = baseline;
             self.last_line_box = Some((baseline, top));
 
-            self.advance_after_break(break_kind)?;
+            if !defer_page_advance {
+                self.advance_after_break(break_kind)?;
+            }
         }
 
         self.band_redraw_in_edited_paragraph = saved_band_in_edited;

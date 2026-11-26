@@ -43089,17 +43089,18 @@ impl WordDocument {
             match element.name.as_str() {
                 "w:rPr" => {}
                 "w:t" => has_text |= Self::xml_text_len(element) > 0,
-                "w:br"
-                    if matches!(
-                        Self::word_break_type(element).as_deref(),
-                        None | Some("textwrapping")
-                    ) =>
-                {
-                    if std::mem::take(&mut has_text) {
-                        pieces.push(false);
+                "w:br" => match Self::word_break_type(element).as_deref() {
+                    None | Some("textwrapping") => {
+                        if std::mem::take(&mut has_text) {
+                            pieces.push(false);
+                        }
+                        pieces.push(true);
                     }
-                    pieces.push(true);
-                }
+                    // The reader keeps page and column breaks inside the
+                    // adjoining piece of text when splitting at soft breaks.
+                    Some("page" | "column") => has_text = true,
+                    _ => return None,
+                },
                 _ => return None,
             }
         }
@@ -66502,6 +66503,34 @@ mod tests {
             !raw.contains("<w:br"),
             "a deleted break must not return: {raw}"
         );
+    }
+
+    #[test]
+    fn soft_and_page_or_column_breaks_survive_editing_the_same_run() {
+        for (kind, control) in [("page", "\u{000C}"), ("column", "\u{000E}")] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:t>Above</w:t><w:br/><w:br w:type="{kind}"/></w:r></w:p></w:body>
+</w:document>"#
+            );
+            let data = build_document_docx(&xml);
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let runs = &mut doc.paragraph_mut(0).unwrap().runs;
+            assert_eq!(
+                runs.iter().map(|run| run.text.as_str()).collect::<Vec<_>>(),
+                ["Above", "\n", control],
+            );
+            runs[0].text.insert(0, 'Z');
+            doc.sync_paragraph_text(0);
+            let raw = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+            assert!(
+                raw.contains(&format!(
+                    r#"<w:t>ZAbove</w:t><w:br/><w:br w:type="{kind}"/>"#
+                )),
+                "{raw}"
+            );
+        }
     }
 
     #[test]
