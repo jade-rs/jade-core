@@ -3,6 +3,7 @@ use crate::document::{
     resolve_cell_margin_edge_points, TableStyleCellFormat, TableStyleCellPosition, TextDirection,
     DEFAULT_VERTICAL_CELL_MARGIN_PT,
 };
+use crate::word_document::DEFAULT_HORIZONTAL_CELL_MARGIN_PT as CELL_HORIZONTAL_PADDING_PT;
 use jade_docx_layout::font_resolver::{resolve_run_style_for_wrap, ResolvedRunStyle};
 use jade_docx_layout::layout_cache::{TextMeasureCache, TextMeasurer};
 use jade_docx_layout::line_geometry::LineHorizontalMetrics;
@@ -92,8 +93,6 @@ const HIDDEN_BORDER_COLOR: &str = "#9A9A9A";
 /// than a real table border, but bright enough that an empty table remains
 /// discoverable on the dark page.
 const DARK_MODE_HIDDEN_BORDER_COLOR: &str = "#94A3B8";
-/// Horizontal padding (in points) applied on both sides of table cell content.
-const CELL_HORIZONTAL_PADDING_PT: f32 = 6.0;
 const UNSTYLED_CELL_HORIZONTAL_PADDING_PT: f32 = 0.5;
 /// Vertical padding (in points) applied above and below table cell content.
 const CELL_VERTICAL_PADDING_PT: f32 = DEFAULT_VERTICAL_CELL_MARGIN_PT;

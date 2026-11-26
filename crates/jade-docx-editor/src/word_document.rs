@@ -102,6 +102,8 @@ const CUSTOM_XML_PROPS_RELATIONSHIP_TYPE: &str =
 const CUSTOM_XML_PROPS_CONTENT_TYPE: &str =
     "application/vnd.openxmlformats-officedocument.customXmlProperties+xml";
 pub(crate) const MIN_TABLE_COLUMN_WIDTH_PT: f32 = 9.0;
+/// The editor's horizontal fallback per side for unstyled generated cells.
+pub(crate) const DEFAULT_HORIZONTAL_CELL_MARGIN_PT: f32 = 6.0;
 
 /// A table width or row height rounded to whole twips, which is all a .docx
 /// can express: `w:gridCol w:w`, `w:tcW w:w` and `w:trHeight` are integers. Left unrounded, the
@@ -24523,7 +24525,7 @@ impl WordDocument {
         // cells' paragraphs lost what their styles give them (Normal's
         // justification, the table style's spacing) until it was reopened.
         let Some(styles) = self.styles_part.clone() else {
-            return Self::with_inserted_table_border_defaults(table);
+            return Self::with_inserted_table_defaults(table);
         };
         let mut elements = [BodyElement::from_table(table)];
         Self::apply_style_paragraph_defaults_to_elements(
@@ -24538,15 +24540,28 @@ impl WordDocument {
         let [BodyElement::Table(table)] = elements else {
             unreachable!("the table was put in")
         };
-        Self::with_inserted_table_border_defaults(*table)
+        Self::with_inserted_table_defaults(*table)
     }
 
-    fn with_inserted_table_border_defaults(mut table: Table) -> Table {
+    fn with_inserted_table_defaults(mut table: Table) -> Table {
         if jade_docx_reader::word_platform::word_layout_platform()
-            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
-            && table.resolved_style.is_none()
-            && table.borders.is_none()
+            != jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+            || table.resolved_style.is_some()
         {
+            return table;
+        }
+        // Save the same horizontal padding the editor uses for a fresh
+        // unstyled table so the package reopens with matching geometry.
+        let margins = table
+            .cell_margins
+            .get_or_insert_with(TableCellMargins::default);
+        if margins.physical_left(table.bidi_visual).is_none() {
+            margins.left = Some(DEFAULT_HORIZONTAL_CELL_MARGIN_PT);
+        }
+        if margins.physical_right(table.bidi_visual).is_none() {
+            margins.right = Some(DEFAULT_HORIZONTAL_CELL_MARGIN_PT);
+        }
+        if table.borders.is_none() {
             // Preserve the editor's existing 1px black insertion grid as
             // authored OOXML. An undeclared border must remain absent when
             // reading arbitrary Word documents, including this export.
@@ -26981,7 +26996,23 @@ impl WordDocument {
             return Ok(());
         };
         let properties_id = Self::ensure_properties_element(raw, node_id, properties_name)?;
+        let margins_element = Self::cell_margins_element(raw, element_name, margins);
+        let properties = raw
+            .element_mut(properties_id)
+            .ok_or_else(|| format!("failed to locate {properties_name}"))?;
+        properties.children.retain(
+            |node| !matches!(node, XmlNode::Element(existing) if existing.name == element_name),
+        );
+        properties.children.push(XmlNode::Element(margins_element));
+        raw.rebuild_index_for_subtree(node_id);
+        Ok(())
+    }
 
+    fn cell_margins_element(
+        raw: &mut DocxXmlDocument,
+        element_name: &str,
+        margins: &TableCellMargins,
+    ) -> XmlElement {
         let mut children = Vec::new();
         for (edge, value) in [
             ("w:top", margins.top),
@@ -27009,17 +27040,7 @@ impl WordDocument {
             children.push(XmlNode::Element(element));
         }
 
-        let margins_element =
-            raw.create_element_preserving_child_ids(element_name, Vec::new(), children);
-        let properties = raw
-            .element_mut(properties_id)
-            .ok_or_else(|| format!("failed to locate {properties_name}"))?;
-        properties.children.retain(
-            |node| !matches!(node, XmlNode::Element(existing) if existing.name == element_name),
-        );
-        properties.children.push(XmlNode::Element(margins_element));
-        raw.rebuild_index_for_subtree(node_id);
-        Ok(())
+        raw.create_element_preserving_child_ids(element_name, Vec::new(), children)
     }
 
     /// `RRGGBB` as OOXML writes it, from `#RRGGBB` or `RRGGBB`.
@@ -29341,10 +29362,10 @@ impl WordDocument {
             Vec::new(),
         );
         tbl_pr_children.push(XmlNode::Element(tbl_w));
-        if table.node_id.is_none()
+        let new_windows_table = table.node_id.is_none()
             && jade_docx_reader::word_platform::word_layout_platform()
-                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
-        {
+                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows;
+        if new_windows_table {
             if let Some(borders) = table.borders.as_ref() {
                 let children = Self::table_border_xml_children(raw, borders);
                 let borders =
@@ -29361,6 +29382,13 @@ impl WordDocument {
             Vec::new(),
         );
         tbl_pr_children.push(XmlNode::Element(tbl_layout));
+        if let Some(margins) = table.cell_margins.as_ref().filter(|_| new_windows_table) {
+            tbl_pr_children.push(XmlNode::Element(Self::cell_margins_element(
+                raw,
+                "w:tblCellMar",
+                margins,
+            )));
+        }
         let tbl_pr = raw.create_element("w:tblPr", Vec::new(), tbl_pr_children);
         table_children.push(XmlNode::Element(tbl_pr));
 
