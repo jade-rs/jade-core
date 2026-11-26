@@ -21903,7 +21903,7 @@ mod tests {
                 false,
             )
             .unwrap();
-            assert_eq!(layouts[0].layout.text, expected);
+            assert_eq!(layouts.paragraphs[0].layout.text, expected);
             assert_eq!(cache.borrow().stats.hits, hits);
             assert_eq!(cache.borrow().stats.misses, misses);
         }
@@ -21949,7 +21949,7 @@ mod tests {
             false,
         )
         .unwrap();
-        assert_eq!(layouts[0].layout.text, "Ordinary cell");
+        assert_eq!(layouts.paragraphs[0].layout.text, "Ordinary cell");
     }
 
     #[test]
