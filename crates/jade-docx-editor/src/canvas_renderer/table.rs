@@ -11148,7 +11148,9 @@ fn compute_floating_body_table_x(
     // placement, while mode 15 aligns the table frame. The paired horizontal
     // probes also establish absolute tblpX and asymmetric trailing padding.
     let alignment = table.style.get("table-position-x-align");
-    let border_halves = if windows {
+    // The Windows legacy text-edge adjustment includes directly authored
+    // table rules. The captured TableGrid style aligns without that charge.
+    let border_halves = if windows && table.borders.is_some() {
         leading_cell_border_half_px(table, false) + trailing_cell_border_half_px(table)
     } else {
         0.0
