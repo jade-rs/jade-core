@@ -413,14 +413,48 @@ fn autofit_nested_grid_saves_within_the_windows_word_text_frame() {
 #[cfg(windows)]
 #[test]
 fn fixed_nested_grids_match_windows_word_on_render_and_export() {
+    verify_fixed_nested_grids("nested-fixed-grid-fit", 252, None);
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_nested_grids_match_windows_word_when_rows_differ() {
+    verify_fixed_nested_grids("nested-fixed-variable-rows", 456, None);
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_mixed_width_grids_match_windows_word_in_compat12() {
+    verify_fixed_nested_grids("nested-fixed-mixed-widths", 372, Some("-compat12"));
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_mixed_width_grids_match_windows_word_in_compat14() {
+    verify_fixed_nested_grids("nested-fixed-mixed-widths", 372, Some("-compat14"));
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_mixed_width_grids_match_windows_word_in_compat15() {
+    verify_fixed_nested_grids("nested-fixed-mixed-widths", 372, Some("-compat15"));
+}
+
+#[cfg(windows)]
+fn verify_fixed_nested_grids(cohort: &str, count: usize, suffix: Option<&str>) {
     use futures::executor::block_on;
     use jade_docx_editor::Options;
 
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    let (mut archive, manifest) = load_word_capture("nested-fixed-grid-fit");
-    let cases = manifest["documents"].as_array().unwrap();
+    let (mut archive, manifest) = load_word_capture(cohort);
+    let cases: Vec<_> = manifest["documents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|case| suffix.is_none_or(|suffix| case["name"].as_str().unwrap().ends_with(suffix)))
+        .collect();
     let options = Options::default();
-    assert_eq!(cases.len(), 252);
+    assert_eq!(cases.len(), count);
     for case in cases {
         let name = case["name"].as_str().unwrap();
         let (input, expected) = read_word_save(&mut archive, case);

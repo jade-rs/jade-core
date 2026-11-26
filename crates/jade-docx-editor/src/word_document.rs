@@ -6865,7 +6865,8 @@ impl WordDocument {
                 let ids = reserved_ids
                     .next()
                     .ok_or_else(|| "table cell width node ids were not reserved".to_string())?;
-                Self::apply_table_cell_width_element(cell, width, ids);
+                let twips = width.map(|width| (f64::from(width) * 20.0).round() as i32);
+                Self::apply_table_cell_width_element(cell, twips, ids);
             }
         }
         raw.rebuild_index();
@@ -6947,13 +6948,13 @@ impl WordDocument {
 
     fn apply_table_cell_width_element(
         cell: &mut XmlElement,
-        width: Option<f32>,
+        twips: Option<i32>,
         (tc_pr_id, tc_w_id): (XmlNodeId, XmlNodeId),
     ) {
         let tc_pr_index = cell.children.iter().position(
             |child| matches!(child, XmlNode::Element(element) if element.name == "w:tcPr"),
         );
-        let tc_pr_index = match (tc_pr_index, width) {
+        let tc_pr_index = match (tc_pr_index, twips) {
             (Some(index), _) => index,
             (None, Some(_)) => {
                 cell.children.insert(
@@ -6975,7 +6976,7 @@ impl WordDocument {
         tc_pr
             .children
             .retain(|child| !matches!(child, XmlNode::Element(element) if element.name == "w:tcW"));
-        if let Some(width) = width {
+        if let Some(twips) = twips {
             tc_pr.children.insert(
                 0,
                 XmlNode::Element(XmlElement {
@@ -6988,7 +6989,7 @@ impl WordDocument {
                         },
                         XmlAttribute {
                             name: "w:w".to_string(),
-                            value: ((width as f64 * 20.0).round() as i32).to_string(),
+                            value: twips.to_string(),
                         },
                     ],
                     children: Vec::new(),
@@ -12602,8 +12603,9 @@ impl WordDocument {
         self.export_docx_with_table_grids(&[])
     }
 
-    /// Writes resolved column widths in twips for tables in the main XML
-    /// part. The live model and its preferred cell and table widths are kept.
+    /// Writes resolved column widths in twips for tables in the main XML part.
+    /// A fixed table saves automatic cell widths from its authored grid. The
+    /// live model and explicitly preferred widths are kept.
     pub fn export_docx_with_table_grids(
         &self,
         grids: &[(XmlNodeId, Vec<i32>)],
@@ -12640,23 +12642,42 @@ impl WordDocument {
                 continue;
             };
             let columns = Self::nth_element_with_name(table, "w:tblGrid", 0);
-            let authored = columns.into_iter().flat_map(|grid| {
-                grid.children.iter().filter_map(|child| match child {
-                    XmlNode::Element(col) if col.name == "w:gridCol" => Some(
-                        col.attributes
-                            .iter()
-                            .find(|attr| attr.name == "w:w")
-                            .and_then(|attr| attr.value.parse::<i32>().ok()),
-                    ),
-                    _ => None,
+            let authored: Vec<_> = columns
+                .into_iter()
+                .flat_map(|grid| {
+                    grid.children.iter().filter_map(|child| match child {
+                        XmlNode::Element(col) if col.name == "w:gridCol" => Some(
+                            col.attributes
+                                .iter()
+                                .find(|attr| attr.name == "w:w")
+                                .and_then(|attr| attr.value.parse::<i32>().ok()),
+                        ),
+                        _ => None,
+                    })
                 })
-            });
-            if !authored.eq(widths.iter().copied().map(Some)) {
+                .collect();
+            let automatic = Self::automatic_fixed_table_cell_widths(table, &authored);
+            if !authored
+                .iter()
+                .copied()
+                .eq(widths.iter().copied().map(Some))
+            {
                 Self::write_table_grid(
                     raw_document.to_mut(),
                     *id,
                     widths.iter().copied().map(Some),
                 )?;
+            }
+            if !automatic.is_empty() {
+                let raw = raw_document.to_mut();
+                for (cell_id, twips) in automatic {
+                    let ids = (raw.allocate_node_id(), raw.allocate_node_id());
+                    let cell = raw
+                        .element_mut(cell_id)
+                        .ok_or(DocxXmlError::UnknownNode(cell_id))?;
+                    Self::apply_table_cell_width_element(cell, Some(twips), ids);
+                }
+                raw.rebuild_index();
             }
         }
 
@@ -12694,6 +12715,57 @@ impl WordDocument {
                 &self.removed_parts,
             )?
         })
+    }
+
+    fn automatic_fixed_table_cell_widths(
+        table: &XmlElement,
+        grid: &[Option<i32>],
+    ) -> Vec<(XmlNodeId, i32)> {
+        let fixed = Self::nth_element_with_name(table, "w:tblPr", 0)
+            .and_then(|properties| Self::nth_element_with_name(properties, "w:tblLayout", 0))
+            .is_some_and(|layout| {
+                layout
+                    .attributes
+                    .iter()
+                    .any(|attribute| attribute.name == "w:type" && attribute.value == "fixed")
+            });
+        if !fixed {
+            return Vec::new();
+        }
+        let mut automatic = Vec::new();
+        for row in table.children.iter().filter_map(|child| match child {
+            XmlNode::Element(row) if row.name == "w:tr" => Some(row),
+            _ => None,
+        }) {
+            let cells = row.children.iter().filter_map(|child| match child {
+                XmlNode::Element(cell) if cell.name == "w:tc" => Some(cell),
+                _ => None,
+            });
+            if cells.clone().count() != grid.len() {
+                return Vec::new();
+            }
+            for (cell, &width) in cells.zip(grid) {
+                let properties = Self::nth_element_with_name(cell, "w:tcPr", 0);
+                if properties.is_some_and(|properties| {
+                    Self::nth_element_with_name(properties, "w:gridSpan", 0).is_some()
+                        || Self::nth_element_with_name(properties, "w:vMerge", 0).is_some()
+                }) {
+                    return Vec::new();
+                }
+                let preference = properties
+                    .and_then(|properties| Self::nth_element_with_name(properties, "w:tcW", 0));
+                let uses_grid = preference.is_none_or(|preference| {
+                    preference.attributes.iter().any(|attribute| {
+                        attribute.name == "w:type"
+                            && matches!(attribute.value.as_str(), "auto" | "nil")
+                    })
+                });
+                if let Some(width) = width.filter(|width| uses_grid && *width > 0) {
+                    automatic.push((cell.id, width));
+                }
+            }
+        }
+        automatic
     }
 
     pub fn snapshot(&self) -> Option<WordDocumentSnapshot> {

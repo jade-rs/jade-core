@@ -195,6 +195,40 @@ def nested_fixed_grid_fit_cases():
                for kind in ('full', 'percentage', 'absolute') for budget in (2800, 2904, 3000, 3104)})
 
 
+def nested_fixed_variable_row_cases():
+    rows = ('crossed', 'crossed-first', 'diff-margins', 'diff-margins-first',
+            'left-first', 'margins-first-only', 'margins-second-only', 'one-column',
+            'right-first', 'rotated', 'rotated-first', 'same', 'same-margins',
+            'split-equal', 'wide-first', 'wide-second', 'widest-opposite-padding',
+            'width-and-margins', 'width-and-margins-first')
+    return {f'{row}-{width}-{budget}' for row in rows for width in ('full', 'absolute')
+            for budget in (2701, 2903, 3103, 3701)}
+
+
+def nested_fixed_mixed_width_cases():
+    mixed = {
+        'core': (('absolute-control', 'all-pct', 'one-pct', 'alternating-absolute',
+                  'alternating-pct', 'pct-short-total', 'pct-over-total', 'pct-rows-opposed',
+                  'one-auto', 'one-nil', 'all-auto', 'one-auto-one-pct'), (2701, 2903, 3103, 3701)),
+        'ties': (('single-fraction-first', 'single-fraction-middle', 'single-fraction-last',
+                  'two-fractions', 'two-fractions-near-total', 'two-fractions-above-total',
+                  'two-fractions-same-tie'), (2702, 2770, 2902, 3102)),
+        'order': (('pct25-abs-pct50', 'pct50-abs-pct25', 'abs-pct25-pct50', 'abs-pct50-pct25',
+                   'pct25-pct50-abs', 'pct50-pct25-abs'), (2701, 2702, 2703, 2704)),
+        'margins': (('one-pct-first-margins', 'one-pct-mid-margins', 'all-pct-margins',
+                     'two-pct-margins', 'two-pct-near-margins', 'two-pct-above-margins'),
+                    (2701, 2702, 3102, 3701)),
+    }
+    automatic = ('auto-auto', 'nil-auto', 'missing-missing', 'auto-nil', 'auto-dxa',
+                 'dxa-auto', 'auto-pct', 'pct-auto')
+    return ({f'{group}-{case}-{width}-{budget}' for group, (cases, budgets) in mixed.items()
+             for case in cases for width in ('full', 'absolute') for budget in budgets}
+            | {f'auto-{case}-{grid}-{budget}' for case in automatic for grid in (420, 700, 1100, 1400)
+               for budget in (2702, 3701)}
+            | {f'near-{position}-abs{order}-full-{budget}' for position in ('first', 'middle', 'last')
+               for order in ('', '-reversed') for budget in range(2697, 2707)})
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -277,6 +311,10 @@ CAPTURES = (
      'word-windows-edge-nested-fixed-floor-', nested_fixed_parent_width_cases, ('--unclipped-tables',)),
     ('nested-fixed-grid-fit', 'dd83a184031b57208324f102eb1797f37a7e2d4dcdd54bb1c416514d0045a756',
      'word-windows-edge-nested-fixed-grid-fit-', nested_fixed_grid_fit_cases, ('--unclipped-tables',)),
+    ('nested-fixed-variable-rows', 'f11e49bd496af8243ed8edf17c689392af4b6df6b71c8354243d1d88ac98b7f2',
+     'word-windows-edge-nested-fixed-variable-rows-', nested_fixed_variable_row_cases, ('--unclipped-tables',)),
+    ('nested-fixed-mixed-widths', 'fefe9c0be201338ccf623e6ed759a03df23a83a4fb38e352de36b84993e9b183',
+     'word-windows-edge-nested-fixed-mixed-widths-', nested_fixed_mixed_width_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -321,7 +359,8 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-autofit-cell-margin-weights', 'nested-autofit-three-column-clamp',
         'nested-autofit-host-first', 'nested-autofit-child-margins',
         'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
-        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit',
+        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
+        'nested-fixed-mixed-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
