@@ -135,3 +135,94 @@ fn thai_after_latin_draws_in_the_thai_face() {
         "the Thai is not drawn as the Thai face draws it"
     );
 }
+
+#[test]
+fn arabic_fallback_uses_contextual_advances_and_positioned_glyphs() {
+    let arabic = font("Noto_Sans_Arabic/NotoSansArabic-Regular.ttf");
+    let painter = SkiaPainter::new(200, 100).unwrap();
+    painter
+        .register_font_bytes("Japanese", 400, &font(JAPANESE))
+        .unwrap();
+    painter.register_font_bytes("Arabic", 400, &arabic).unwrap();
+    painter.set_font("40px Japanese");
+    let text = "سلام";
+    let face = rustybuzz::Face::from_slice(&arabic, 0).unwrap();
+    let mut buffer = rustybuzz::UnicodeBuffer::new();
+    buffer.push_str(text);
+    buffer.guess_segment_properties();
+    let shaped = rustybuzz::shape(&face, &[], buffer);
+    let mut expected = 0.0;
+    let mut positions = Vec::new();
+    for (glyph, position) in shaped.glyph_infos().iter().zip(shaped.glyph_positions()) {
+        positions.push((glyph.cluster as usize, 10.0 + expected));
+        expected += f64::from(position.x_advance) * 40.0 / f64::from(face.units_per_em());
+    }
+    positions.sort_by_key(|&(byte, _)| byte);
+    let measured = painter.measure_text_width(text).unwrap();
+    assert!(
+        (measured - expected).abs() < 0.01,
+        "{measured} vs {expected}"
+    );
+    assert!(painter
+        .try_fill_shaped_text(text, &positions, 60.0)
+        .unwrap());
+
+    let direct = SkiaPainter::new(200, 100).unwrap();
+    direct.register_font_bytes("Arabic", 400, &arabic).unwrap();
+    direct.set_font("40px Arabic");
+    direct.fill_text(text, 10.0, 60.0).unwrap();
+    assert!(painter.encode_png().unwrap() == direct.encode_png().unwrap());
+
+    let whole_word = SkiaPainter::new(200, 100).unwrap();
+    whole_word
+        .register_font_bytes("Arabic", 400, &arabic)
+        .unwrap();
+    whole_word.set_font("40px Arabic");
+    assert!(whole_word
+        .try_fill_shaped_text(text, &[(0, 10.0)], 60.0)
+        .unwrap());
+    assert!(whole_word.encode_png().unwrap() == direct.encode_png().unwrap());
+}
+
+#[test]
+fn mixed_arabic_uses_visual_order_without_reversing_the_digits() {
+    let make = || {
+        let painter = SkiaPainter::new(300, 100).unwrap();
+        painter
+            .register_font_bytes("Japanese", 400, &font(JAPANESE))
+            .unwrap();
+        painter
+            .register_font_bytes(
+                "Arabic",
+                400,
+                &font("Noto_Sans_Arabic/NotoSansArabic-Regular.ttf"),
+            )
+            .unwrap();
+        painter.set_font("30px Japanese");
+        painter
+    };
+    let mixed = make();
+    mixed.fill_text("abc عربي 123", 5.0, 60.0).unwrap();
+    let reference = make();
+    let prefix = "abc 123 ";
+    reference.fill_text(prefix, 5.0, 60.0).unwrap();
+    let x = 5.0 + reference.measure_text_width(prefix).unwrap();
+    reference.fill_text("عربي", x, 60.0).unwrap();
+    assert!(mixed.encode_png().unwrap() == reference.encode_png().unwrap());
+}
+
+#[test]
+fn positioned_arabic_keeps_its_logical_text_in_pdf() {
+    let bytes = font("Noto_Sans_Arabic/NotoSansArabic-Regular.ttf");
+    let text = "سلام";
+    let painter = SkiaPainter::new_recording(200.0, 100.0).unwrap();
+    painter.register_font_bytes("Arabic", 400, &bytes).unwrap();
+    painter.set_font("40px Arabic");
+    let positions = [(0, 63.0), (2, 54.0), (4, 39.0), (6, 20.0)];
+    assert!(painter
+        .try_fill_shaped_text(text, &positions, 60.0)
+        .unwrap());
+    let pdf = SkiaPainter::encode_pdf(&[painter]).unwrap();
+    let doc = lopdf::Document::load_mem(&pdf).unwrap();
+    assert_eq!(doc.extract_text(&[1]).unwrap().trim(), text);
+}

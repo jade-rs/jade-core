@@ -1564,7 +1564,7 @@ fn draw_text_run_glyphs<P: Painter>(
     // individually measured glyphs used during layout. This mismatch causes
     // visible paragraph expansion/contraction when cache-replayed commands are
     // drawn at positions computed from individual glyph measurements.
-    if fonts.iter().any(|font| font_state.font_has_features(font))
+    if (text_has_arabic(text) || fonts.iter().any(|font| font_state.font_has_features(font)))
         && try_fill_featured_glyph_run(context, text, x, y, fonts, glyphs, font_state)?
     {
         record_replay_batch_run(glyphs.len() as u64);
@@ -1628,14 +1628,17 @@ pub(crate) struct PlacedCharacter<'a> {
     pub x_offset: f64,
 }
 
-/// Draws a run whose fonts carry OpenType features (Word 2010 typography:
-/// ligatures, figure styles, stylistic sets) shaped a font's stretch at a
-/// time, so a ligature is drawn as the font's ligature glyph rather than its
-/// letters side by side. Each character keeps the x layout gave it.
+#[inline]
+pub(crate) fn text_has_arabic(text: &str) -> bool {
+    !text.is_ascii() && text.chars().any(jade_painter::is_arabic)
+}
+
+/// Shapes Arabic joining and requested OpenType features a font span at a
+/// time. Each cluster keeps the x supplied by layout, including RTL spans
+/// whose glyph steps arrive in visual order.
 ///
-/// `Ok(false)` — nothing drawn — when no font in the run carries features;
-/// the caller draws it as before. A stretch the painter cannot shape is
-/// drawn a character at a time.
+/// Returns `Ok(false)` when there is no shaping to try. A span the painter
+/// declines is drawn at its existing character positions.
 pub(crate) fn try_fill_featured_text<P: Painter>(
     context: &P,
     text: &str,
@@ -1644,34 +1647,62 @@ pub(crate) fn try_fill_featured_text<P: Painter>(
     characters: &[PlacedCharacter<'_>],
     set_font: &mut dyn FnMut(&P, &str),
 ) -> Result<bool, P::Error> {
-    if !characters
-        .iter()
-        .any(|character| jade_painter::font_features::has_features(character.font))
+    if !text_has_arabic(text)
+        && !characters
+            .iter()
+            .any(|character| jade_painter::font_features::has_features(character.font))
     {
         return Ok(false);
     }
     let mut index = 0;
     while index < characters.len() {
         let first = &characters[index];
+        let is_arabic = |character: &PlacedCharacter<'_>| {
+            text.get(character.start..character.end)
+                .is_some_and(|glyph| glyph.starts_with(jade_painter::is_arabic))
+        };
+        let arabic = is_arabic(first);
+        let rtl = arabic
+            && characters
+                .get(index + 1)
+                .is_some_and(|next| next.end == first.start);
         let mut end = index + 1;
         while end < characters.len()
             && characters[end].font == first.font
-            && characters[end].start == characters[end - 1].end
+            && is_arabic(&characters[end]) == arabic
+            && if rtl {
+                characters[end].end == characters[end - 1].start
+            } else {
+                characters[end].start == characters[end - 1].end
+            }
         {
             end += 1;
         }
         let group = &characters[index..end];
         set_font(context, first.font);
-        let shaped = if jade_painter::font_features::has_features(first.font) {
-            let start = first.start;
-            let stop = group[group.len() - 1].end;
+        let shaped = if arabic || jade_painter::font_features::has_features(first.font) {
+            let last = &group[group.len() - 1];
+            let start = if rtl { last.start } else { first.start };
+            let stop = if rtl { first.end } else { last.end };
             match text.get(start..stop) {
                 Some(stretch) => {
-                    let clusters: Vec<(usize, f64)> = group
+                    let mut clusters: Vec<_> = group
                         .iter()
                         .map(|character| (character.start - start, x + character.x_offset))
                         .collect();
-                    context.try_fill_shaped_text(stretch, &clusters, y)?
+                    if rtl {
+                        clusters.reverse();
+                    }
+                    if context.try_fill_shaped_text(stretch, &clusters, y)? {
+                        true
+                    } else if arabic {
+                        // A platform canvas shapes the complete span itself.
+                        // The x of the first visual cluster is its left edge.
+                        context.fill_text(stretch, x + first.x_offset, y)?;
+                        true
+                    } else {
+                        false
+                    }
                 }
                 None => false,
             }
