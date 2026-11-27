@@ -24547,36 +24547,48 @@ mod tests {
 
     #[test]
     fn mac_century_ascii_walk_keeps_word_widths_with_host_substitution() {
-        use crate::line_metrics::WordLayoutPlatform;
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
         // Original Word PDFs use 1139/2048 em digits and 569/2048 em
-        // periods, regardless of the host's substitute for Century.
-        for (platform, descriptor, scale, requested_metrics) in [
-            (WordLayoutPlatform::Mac, "10.50pt Century, serif", 1.0, true),
+        // periods. Word for Mac emboldens Century with a further 1/50 em.
+        for (platform, descriptor, scale, synthetic_em) in [
+            (
+                WordLayoutPlatform::Mac,
+                "10.50pt Century, serif",
+                1.0,
+                Some(0.0),
+            ),
             (
                 WordLayoutPlatform::Mac,
                 "10.50pt 'Century', serif",
                 0.8,
-                true,
+                Some(0.0),
             ),
             (
                 WordLayoutPlatform::Mac,
                 "bold 10.50pt Century, serif",
                 1.0,
-                false,
+                Some(0.02),
             ),
             (
                 WordLayoutPlatform::Mac,
                 "italic 10.50pt Century, serif",
                 1.0,
-                false,
+                None,
             ),
             (
                 WordLayoutPlatform::Windows,
                 "10.50pt Century, serif",
                 1.0,
-                false,
+                None,
+            ),
+            (
+                WordLayoutPlatform::Windows,
+                "bold 10.50pt Century, serif",
+                1.0,
+                None,
             ),
         ] {
+            set_word_layout_platform(platform);
             let ctx = CountingKerningContext::new(false);
             let style = ResolvedRunStyle::new(
                 descriptor, descriptor, descriptor, descriptor, 0.0, scale, false, None,
@@ -24588,18 +24600,28 @@ mod tests {
             let mut cache = FxHashMap::default();
             walk_text_advance_steps(
                 &ctx,
-                "2024.10q",
+                "2024.10 q",
                 &style,
                 Some(&paragraph),
                 &TextAdvanceState::default(),
                 None,
                 &mut cache,
                 |step| {
-                    let expected = if requested_metrics && step.grapheme != "q" {
-                        14.0 * if step.grapheme == "." { 569.0 } else { 1139.0 } / 2048.0
+                    let extra = if step.grapheme == " " {
+                        0.0
+                    } else {
+                        synthetic_em.unwrap_or(0.0) * 14.0
+                    };
+                    let nominal = if synthetic_em.is_some() && step.grapheme != "q" {
+                        14.0 * if matches!(step.grapheme, "." | " ") {
+                            569.0
+                        } else {
+                            1139.0
+                        } / 2048.0
                     } else {
                         6.0
-                    } * scale;
+                    };
+                    let expected = (nominal + extra) * scale;
                     assert!(
                         (step.advance.glyph_width - expected).abs() < 1e-9,
                         "{platform:?} {descriptor} {}: {} vs {expected}",
