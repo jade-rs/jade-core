@@ -7,7 +7,7 @@ pub(super) struct GlyphRun {
 }
 
 pub(super) fn shape(font: &Font, text: &str) -> Option<GlyphRun> {
-    if !text.starts_with(jade_painter::is_thai) {
+    if !text.starts_with(|ch| jade_painter::is_thai(ch) || jade_painter::is_arabic(ch)) {
         return None;
     }
     let data = SkiaPainter::shaping_data(&font.typeface())?;
@@ -35,16 +35,31 @@ impl GlyphRun {
             .sum()
     }
 
-    fn positioned<'a>(&'a self, font: &'a Font) -> impl Iterator<Item = (u16, Point)> + 'a {
+    fn positioned<'a>(
+        &'a self,
+        font: &'a Font,
+        clusters: &'a [(usize, f64)],
+    ) -> impl Iterator<Item = (u16, Point)> + 'a {
         let mut pen = 0.0;
+        let mut cluster = None;
+        let mut cluster_shift = 0.0;
         let x_scale = self.scale * font.scale_x();
         self.glyphs
             .glyph_infos()
             .iter()
             .zip(self.glyphs.glyph_positions())
             .map(move |(info, pos)| {
+                if !clusters.is_empty() {
+                    let index = clusters
+                        .partition_point(|&(start, _)| start <= info.cluster as usize)
+                        .saturating_sub(1);
+                    if cluster != Some(index) {
+                        cluster_shift = clusters[index].1 as f32 - pen;
+                        cluster = Some(index);
+                    }
+                }
                 let y = -(pos.y_offset as f32) * self.scale;
-                let x = pen + pos.x_offset as f32 * x_scale + y * font.skew_x();
+                let x = pen + cluster_shift + pos.x_offset as f32 * x_scale + y * font.skew_x();
                 pen += pos.x_advance as f32 * x_scale;
                 (info.glyph_id as u16, Point::new(x, y))
             })
@@ -52,7 +67,7 @@ impl GlyphRun {
 
     pub(super) fn bounds(&self, font: &Font, paint: &Paint) -> Rect {
         let mut ink = Rect::default();
-        for (glyph, position) in self.positioned(font) {
+        for (glyph, position) in self.positioned(font, &[]) {
             let mut bounds = [Rect::default()];
             font.get_bounds(&[glyph], &mut bounds, Some(paint));
             if !bounds[0].is_empty() {
@@ -63,24 +78,24 @@ impl GlyphRun {
     }
 
     pub(super) fn scalar_advances(&self, font: &Font, text: &str) -> Vec<f32> {
-        let mut glyphs = self
+        let mut scalars: Vec<_> = text
+            .char_indices()
+            .map(|(offset, _)| (offset, 0.0))
+            .collect();
+        let x_scale = self.scale * font.scale_x();
+        for (info, position) in self
             .glyphs
             .glyph_infos()
             .iter()
             .zip(self.glyphs.glyph_positions())
-            .peekable();
-        let x_scale = self.scale * font.scale_x();
-        text.char_indices()
-            .map(|(offset, _)| {
-                let mut width = 0.0;
-                while let Some((_, position)) =
-                    glyphs.next_if(|(info, _)| info.cluster as usize == offset)
-                {
-                    width += position.x_advance as f32 * x_scale;
-                }
-                width
-            })
-            .collect()
+        {
+            if let Ok(index) =
+                scalars.binary_search_by_key(&(info.cluster as usize), |&(byte, _)| byte)
+            {
+                scalars[index].1 += position.x_advance as f32 * x_scale;
+            }
+        }
+        scalars.into_iter().map(|(_, width)| width).collect()
     }
 
     pub(super) fn draw_outline(
@@ -89,9 +104,10 @@ impl GlyphRun {
         font: &Font,
         origin: (f32, f32),
         paint: &Paint,
+        clusters: &[(usize, f64)],
     ) {
         let mut path = Path::new();
-        for (glyph, point) in self.positioned(font) {
+        for (glyph, point) in self.positioned(font, clusters) {
             if let Some(outline) = font.get_path(glyph) {
                 path.add_path(&outline, point, None);
             }
@@ -102,10 +118,17 @@ impl GlyphRun {
         canvas.restore();
     }
 
-    pub(super) fn draw(&self, canvas: &Canvas, font: &Font, origin: (f32, f32), paint: &Paint) {
+    pub(super) fn draw(
+        &self,
+        canvas: &Canvas,
+        font: &Font,
+        origin: (f32, f32),
+        paint: &Paint,
+        clusters: &[(usize, f64)],
+    ) {
         let mut builder = TextBlobBuilder::new();
         let (glyphs, points) = builder.alloc_run_pos(font, self.glyphs.len(), None);
-        for (i, (glyph, point)) in self.positioned(font).enumerate() {
+        for (i, (glyph, point)) in self.positioned(font, clusters).enumerate() {
             glyphs[i] = glyph;
             points[i] = point;
         }

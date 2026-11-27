@@ -19,6 +19,7 @@
 //! the renderer paints from `&self` methods throughout. Backends that need
 //! mutable state use interior mutability.
 
+pub mod bidi;
 pub mod capture;
 pub mod font_features;
 pub mod paper;
@@ -29,6 +30,25 @@ pub mod recording;
 /// that also covers the surrounding Latin letters.
 pub fn is_thai(ch: char) -> bool {
     matches!(ch, '\u{0e01}'..='\u{0e3a}' | '\u{0e40}'..='\u{0e5b}')
+}
+
+/// Whether a scalar can participate in an Arabic shaping span, including
+/// vowel marks, punctuation, and Arabic-Indic numerals.
+pub fn is_arabic(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{0600}'..='\u{06ff}'
+            | '\u{0750}'..='\u{077f}'
+            | '\u{0870}'..='\u{089f}'
+            | '\u{08a0}'..='\u{08ff}'
+            | '\u{fb50}'..='\u{fdff}'
+            | '\u{fe70}'..='\u{fefc}'
+    )
+}
+
+/// Whether a zero-width control affects joining within the current span.
+pub fn is_join_control(ch: char) -> bool {
+    matches!(ch, '\u{200c}' | '\u{200d}' | '\u{061c}')
 }
 
 /// Destination geometry for an encoded image, in the current painter coordinates.
@@ -378,8 +398,10 @@ pub trait Painter {
     /// layout's justification and spacing survive, and a ligature spanning
     /// several characters is drawn at the first one's x.
     ///
-    /// `Ok(false)` when the backend cannot shape this run (no features, no
-    /// shaper, a character its face lacks); the caller then draws it a
+    /// Arabic spans may require shaping even when the font descriptor has
+    /// no optional features. The caller supplies clusters in logical byte order.
+    ///
+    /// `Ok(false)` when the backend declines or cannot shape the run; the caller draws it a
     /// character at a time.
     fn try_fill_shaped_text(
         &self,

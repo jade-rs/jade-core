@@ -6,3 +6,5 @@ license = "MIT"
 
 [dependencies]
 memchr = "2.7"
+unicode-bidi = "0.3"
+unicode-bidi-mirroring = "0.4"

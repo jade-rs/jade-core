@@ -617,6 +617,8 @@ name = "jade-painter"
 version = "0.1.0"
 dependencies = [
  "memchr",
+ "unicode-bidi",
+ "unicode-bidi-mirroring",
 ]
 
 [[package]]

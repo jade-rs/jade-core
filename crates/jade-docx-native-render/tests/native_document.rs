@@ -417,3 +417,50 @@ fn a_shell_command_is_undoable_and_finds_cells_in_a_second_table() {
         "both tables undone"
     );
 }
+
+#[test]
+fn native_rtl_document_paints_the_arabic_fallback_and_keeps_pdf_text() {
+    let donor = std::fs::read(repo_path("contract.docx")).unwrap();
+    let mut package = jade_opc::OpcPackage::open(&donor).unwrap();
+    package.replace(
+        "word/document.xml",
+        r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body><w:p><w:pPr><w:bidi/></w:pPr><w:r><w:rPr>
+          <w:rFonts w:ascii="Noto Sans JP" w:hAnsi="Noto Sans JP" w:cs="Noto Sans JP"/>
+          <w:rtl/><w:sz w:val="60"/><w:szCs w:val="60"/>
+        </w:rPr><w:t>سلام</w:t></w:r></w:p><w:sectPr/></w:body>
+        </w:document>"#
+            .as_bytes()
+            .to_vec(),
+    );
+    let bytes = package.write().unwrap();
+    let regular = repo_path("fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf");
+    let arabic = repo_path("fonts/Noto_Sans_Arabic/NotoSansArabic-Regular.ttf");
+    let faces = [
+        FaceSpec {
+            family: "Noto Sans JP",
+            weight: 400,
+            path: &regular,
+        },
+        FaceSpec {
+            family: "Noto Sans Arabic",
+            weight: 400,
+            path: &arabic,
+        },
+    ];
+    let open = |faces| NativeDocument::open(&bytes, PAGE_WIDTH_PX, PAGE_HEIGHT_PX, faces).unwrap();
+    let doc = open(&faces);
+    assert!(doc.page_pixels(0).unwrap().0 != open(&faces[..1]).page_pixels(0).unwrap().0);
+    assert_eq!(doc.paragraph_text(0).as_deref(), Some("سلام"));
+
+    let pdf = doc.export_pdf().unwrap();
+    let parsed = lopdf::Document::load_mem(&pdf).unwrap();
+    let extracted = parsed.extract_text(&[1]).unwrap();
+    assert!(
+        extracted
+            .split_whitespace()
+            .collect::<String>()
+            .contains("سلام"),
+        "{extracted:?}"
+    );
+}
