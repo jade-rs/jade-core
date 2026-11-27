@@ -1,7 +1,7 @@
 //! Visual text order for direct paint operations without layout positions.
 
 use std::borrow::Cow;
-use unicode_bidi::{BidiInfo, Level};
+use unicode_bidi::{bidi_class, BidiClass, BidiInfo, Level};
 
 use crate::{is_arabic, is_join_control};
 
@@ -14,7 +14,7 @@ pub struct VisualText<'a> {
 
 impl<'a> VisualText<'a> {
     pub fn new(text: &'a str) -> Self {
-        if text.is_ascii() || !text.chars().any(is_arabic) {
+        if text.is_ascii() || !text.chars().any(is_arabic) || is_single_arabic_span(text) {
             return Self {
                 unidirectional: Some(text),
                 runs: Vec::new(),
@@ -92,9 +92,35 @@ impl<'a> VisualText<'a> {
     }
 }
 
+/// A leading strong letter keeps its following marks and join controls in
+/// the same bidi run. Digits, punctuation and direction controls need UAX #9.
+fn is_single_arabic_span(text: &str) -> bool {
+    let arabic_glyph = |ch| ch != '\u{061c}' && is_arabic(ch);
+    let mut chars = text.chars();
+    chars
+        .next()
+        .is_some_and(|ch| arabic_glyph(ch) && bidi_class(ch) == BidiClass::AL)
+        && chars.all(|ch| {
+            matches!(ch, '\u{200c}' | '\u{200d}')
+                || (arabic_glyph(ch) && matches!(bidi_class(ch), BidiClass::AL | BidiClass::NSM))
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn joined_arabic_word_borrows_the_complete_source_span() {
+        for text in ["سلام", "لَا", "س\u{200c}لام"] {
+            let visual = VisualText::new(text);
+            assert_eq!(visual.unidirectional, Some(text));
+            assert!(visual.runs.is_empty());
+        }
+        for text in ["س١", "س\u{061c}", "س ل", "\u{0651}س", "\u{200c}س"] {
+            assert!(VisualText::new(text).unidirectional.is_none());
+        }
+    }
 
     #[test]
     fn mixed_canvas_line_orders_words_and_digits_but_retains_joining_sources() {
