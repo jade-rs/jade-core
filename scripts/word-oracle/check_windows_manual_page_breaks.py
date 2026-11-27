@@ -13,6 +13,9 @@ from check_platform_coordinates import (
     extract_fonts, pdf_origins, require,
 )
 from check_windows_font_coordinates import require_original_font_programs_registered
+from generate_windows_floating_tab_stop_cases import (
+    PREFIX as FLOATING_TAB_STOP_PREFIX, cases as floating_tab_stop_cases,
+)
 from generate_windows_floating_line_ending_cases import (
     PREFIX as FLOATING_LINE_ENDING_PREFIX, cases as floating_line_ending_cases,
 )
@@ -446,6 +449,8 @@ CAPTURES = (
      FLOATING_TERMINAL_RUN_PREFIX, floating_terminal_run_cases, ('--unclipped-tables',)),
     ('floating-table-line-endings', 'e5c3d1d04f125aacf6f7819f2146ae5a9c82a725aaf21618853527b3e6a8a9ce',
      FLOATING_LINE_ENDING_PREFIX, floating_line_ending_cases, ('--unclipped-tables',)),
+    ('floating-table-authored-tabs', '85638f4667ee2656cf9640430e49ec3d4cf396cae2ddafe57a890a37759872b8',
+     FLOATING_TAB_STOP_PREFIX, floating_tab_stop_cases, ('--unclipped-tables',)),
 )
 
 
@@ -485,6 +490,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'floating-table-default-frame', 'floating-table-terminal-marks', 'floating-table-terminal-gap-sweep',
         'floating-table-terminal-runs',
         'floating-table-line-endings',
+        'floating-table-authored-tabs',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))

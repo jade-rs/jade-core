@@ -29332,7 +29332,11 @@ where
             );
             line_layout.allowed_trailing_overflow_width = line_layout
                 .allowed_trailing_overflow_width
-                .max(hanging_float_mark);
+                .max(hanging_float_mark)
+                .max(wrapped_line.authored_float_tab_overhang_px(
+                    base_x + first_line_offset,
+                    available_for_line,
+                ));
             let right_aligned_float_tab = paragraph_style.word_platform
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
                 && !paragraph_style.float_line_segments.is_empty()

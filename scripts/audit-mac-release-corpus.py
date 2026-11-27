@@ -109,7 +109,12 @@ def structural_sequence(
             if element.tag in BOOLEAN_TAGS and WORD + "val" not in element.attrib:
                 attributes.append((WORD + "val", "true"))
             sequence.append((element.tag, tuple(sorted(attributes))))
-        children = [visit(child) for child in element]
+        ordered_children = list(element)
+        if source and not include_run_properties and element.tag == WORD + "p":
+            # The exporter places paragraph properties before all inline content.
+            # Preserve the relative order of every other paragraph child.
+            ordered_children.sort(key=lambda child: child.tag != WORD + "pPr")
+        children = [visit(child) for child in ordered_children]
         if element.tag in PROPERTY_CONTAINERS and not include_run_properties:
             children.sort()
         for child in children:

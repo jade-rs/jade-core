@@ -90,6 +90,19 @@ class CorpusAuditTests(unittest.TestCase):
             audit.structural_sequence(document("B", "A"), False),
         )
 
+    def test_source_paragraph_properties_are_normalized_before_inline_markers(self) -> None:
+        def paragraph(content: str) -> bytes:
+            return f'<w:p xmlns:w="{audit.WORD[1:-1]}">{content}</w:p>'.encode()
+
+        start = '<w:bookmarkStart w:id="1" w:name="boundary"/>'
+        end = '<w:bookmarkEnd w:id="1"/>'
+        props = '<w:pPr><w:jc w:val="left"/></w:pPr>'
+        source = paragraph(start + props + end)
+        expected = audit.structural_sequence(source, False, source=True)
+        self.assertEqual(expected, audit.structural_sequence(paragraph(props + start + end), False))
+        self.assertNotEqual(expected, audit.structural_sequence(source, False))
+        self.assertNotEqual(expected, audit.structural_sequence(paragraph(props + end + start), False))
+
     def test_text_typed_beside_an_object_may_take_its_own_run(self) -> None:
         def document(runs: str) -> bytes:
             return (
