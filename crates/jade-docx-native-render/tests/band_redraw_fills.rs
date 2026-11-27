@@ -516,7 +516,12 @@ fn typing_over_a_text_watermark_matches_a_full_repaint() {
         r##"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="{W}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><w:p><w:r><w:pict><v:shape id="PowerPlusWaterMarkObject1" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:412.4pt;height:247.45pt;rotation:315;z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" fillcolor="silver" stroked="f"><v:fill opacity=".5"/><v:textpath style="font-family:&quot;Noto Sans JP&quot;;font-size:1pt" string="DRAFT"/></v:shape></w:pict></w:r></w:p></w:hdr>"##
     );
     let body: String = (0..24)
-        .map(|index| text_paragraph("", &format!("{index} Body text with descenders, gypsy quay")))
+        .map(|index| {
+            text_paragraph(
+                "",
+                &format!("{index} Body text with descenders, gypsy quay"),
+            )
+        })
         .collect();
     let bytes = package_with_header(&body, "", Some(&header));
     let mut taken = 0;
