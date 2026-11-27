@@ -1021,6 +1021,21 @@ pub struct ParagraphLayoutResult {
     /// Whether the paragraph painted marks below its lines' measured ink: a
     /// wave underline's crests or an under-dot emphasis mark.
     pub ink_below_lines: bool,
+    /// The fonts of the formatting marks (¶, a line break's ↵, an anchor)
+    /// the paragraph painted, when it painted one. A mark is drawn outside
+    /// its line's clip, so it reaches past an exact-height line's box.
+    pub control_mark_fonts: Option<Rc<[ControlMarkFont]>>,
+}
+
+/// A font a formatting mark was painted in: the run's font for each font
+/// slot, its size and its baseline shift.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ControlMarkFont {
+    /// Font descriptors for the Latin ASCII, Latin high-ANSI, East Asian and
+    /// complex-script slots.
+    pub descriptors: [Rc<str>; 4],
+    pub font_size_pt: f32,
+    pub baseline_shift_px: f64,
 }
 
 impl ParagraphLayoutResult {
@@ -1056,6 +1071,7 @@ impl ParagraphLayoutResult {
             height: end_y - start_y,
             overflow_erasure: None,
             ink_below_lines: false,
+            control_mark_fonts: None,
         }
     }
 

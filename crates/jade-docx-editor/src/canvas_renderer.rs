@@ -22,7 +22,7 @@ use jade_docx_layout::font_resolver::{
     ResolvedRunStyle,
 };
 use jade_docx_layout::layout_cache::{
-    compute_paragraph_hash, CaretRect, ContentHash, DirtyRect, DirtyRegionTracker,
+    compute_paragraph_hash, CaretRect, ContentHash, ControlMarkFont, DirtyRect, DirtyRegionTracker,
     ParagraphLayoutCache, ParagraphLayoutCacheStats, ParagraphLayoutResult, SelectionOverlay,
     SelectionRect, TextMeasureCache, TextMeasurer,
 };
@@ -672,6 +672,18 @@ fn band_ink_escapes_band(band_top: f64, band_bottom: f64, ink_top: f64, ink_bott
     // Real overflows (e.g. tight exact spacing) must still escalate.
     const ROUNDING_EPS: f64 = 1e-7;
     ink_bottom - band_bottom > ROUNDING_EPS || band_top - ink_top > ROUNDING_EPS
+}
+
+/// Page-local `(top, bottom)` of the formatting mark `line` may paint, for
+/// a paragraph whose marks reach `mark` about their baselines; `offset` is
+/// the page's absolute top.
+fn band_line_mark_ink(
+    line: &jade_docx_layout::selection::LineLayout,
+    offset: f64,
+    (top, bottom): (f64, f64),
+) -> (f64, f64) {
+    let baseline = line.baseline + (line.absolute_top - line.top) - offset;
+    (baseline + top, baseline + bottom)
 }
 
 fn segment_text_is_whitespace(text: &str) -> bool {
@@ -5595,6 +5607,12 @@ where
     text_measure_cache: RefCell<TextMeasureCache>,
     /// Cache for font vertical metrics (ascent/descent) keyed by font descriptor.
     font_vertical_metrics_cache: RefCell<FxHashMap<String, (f64, f64)>>,
+    /// The fonts of the formatting marks the paragraph being painted drew,
+    /// kept on its layout cache entry like [`BandPaintMarks`].
+    band_control_mark_fonts: RefCell<Vec<ControlMarkFont>>,
+    /// Whether the paragraph being painted has exact line spacing, whose
+    /// formatting marks [`Self::note_control_mark_font`] notes.
+    band_note_control_marks: Cell<bool>,
     /// Cache for trailing ink overhang keyed by a hash of (font descriptor, text).
     ///
     /// `measure_trailing_overhang` is invoked once per grapheme during wrapping
@@ -11485,6 +11503,8 @@ where
             render_pass_arena: Rc::new(RefCell::new(Bump::new())),
             text_measure_cache: RefCell::new(TextMeasureCache::default()),
             font_vertical_metrics_cache: RefCell::new(FxHashMap::default()),
+            band_control_mark_fonts: RefCell::new(Vec::new()),
+            band_note_control_marks: Cell::new(false),
             trailing_overhang_cache: RefCell::new(FxHashMap::default()),
             font_line_box_height_cache: RefCell::new(FxHashMap::default()),
             paragraph_wrap_cache: Rc::new(RefCell::new(ParagraphWrapCache::default())),
@@ -15652,17 +15672,27 @@ where
         // the device-aligned clip often reaches a neighbour's ink. A band clear
         // there is safe only when this pass repaints that neighbour under the
         // clip; otherwise it would erase ink the pass never repaints.
+        // A formatting mark paints outside its line's clip, at the line's
+        // baseline, so on an exact-height line it rises above the line's
+        // ink.
+        let next_mark_ink = self.band_control_mark_ink(edited.saturating_add(1));
         let next_line_ink_top = paragraphs
             .get(edited.saturating_add(1))
             .and_then(|paragraph| {
                 paragraph
                     .lines
                     .iter()
-                    .map(|line| line.absolute_content_top)
-                    .filter(|value| value.is_finite())
+                    .filter(|line| line.absolute_content_top.is_finite())
+                    .map(|line| {
+                        let content_top = line.absolute_content_top - layout.start_page_offset_y;
+                        match next_mark_ink {
+                            Some(mark) => content_top
+                                .min(band_line_mark_ink(line, layout.start_page_offset_y, mark).0),
+                            None => content_top,
+                        }
+                    })
                     .reduce(f64::min)
-            })
-            .map(|absolute| absolute - layout.start_page_offset_y);
+            });
         // The next paragraph's numbering marker paints with its first line and
         // can rise above that line's ink. A marker of unknown extent counts as
         // reached, so the scan below decides (and refuses).
@@ -16010,6 +16040,7 @@ where
         };
         let fill = self.band_paragraph_fill_extent(paragraph, index, layout);
         let offset = layout.start_page_offset_y;
+        let control_mark_ink = self.band_control_mark_ink(index);
         let mut reached: Vec<_> = lines
             .iter()
             .enumerate()
@@ -16025,6 +16056,13 @@ where
                 } else {
                     (content_top, content_bottom)
                 };
+                let (top, bottom) = match control_mark_ink {
+                    Some(mark) => {
+                        let (mark_top, mark_bottom) = band_line_mark_ink(line, offset, mark);
+                        (top.min(mark_top), bottom.max(mark_bottom))
+                    }
+                    None => (top, bottom),
+                };
                 (*line_index == 0 && marker_reached) || reaches(top, bottom)
             })
             .map(|(_, line)| line)
@@ -16033,6 +16071,55 @@ where
             reached.extend(if below { lines.first() } else { lines.last() });
         }
         Some(reached)
+    }
+
+    /// Where paragraph `index`'s formatting marks reached about their
+    /// lines' baselines when it was last painted, if it painted any: the
+    /// font box of each mark's fonts (as [`Self::numbering_marker_ink_offsets`]
+    /// measures a numbering marker's), scaled by `CONTROL_MARK_FONT_SCALE`
+    /// and lifted by half the size it lost, as [`Self::draw_control_mark`]
+    /// draws it. A mark is drawn outside its line's clip, so on an
+    /// exact-height line it reaches past the line's ink. A font whose box is
+    /// unknown reaches everything.
+    fn band_control_mark_ink(&self, index: usize) -> Option<(f64, f64)> {
+        let fonts = self
+            .paragraph_layout_cache
+            .borrow()
+            .get_entry(index)?
+            .control_mark_fonts
+            .clone()?;
+        let scale = CONTROL_MARK_FONT_SCALE;
+        fonts
+            .iter()
+            .map(|font| {
+                let font_px = points_to_px(font.font_size_pt);
+                let lift = points_to_px(
+                    font.font_size_pt * ((1.0 - CONTROL_MARK_FONT_SCALE) * 0.5) as f32,
+                );
+                font.descriptors
+                    .iter()
+                    .map(|descriptor| {
+                        self.font_vertical_metrics_cached(
+                            descriptor,
+                            (font_px * 0.8).max(1.0),
+                            (font_px * 0.25).max(0.0),
+                        )
+                        .ok()
+                        .map(|(ascent, descent)| {
+                            (
+                                (font.baseline_shift_px - ascent) * scale - lift,
+                                (font.baseline_shift_px + descent) * scale - lift,
+                            )
+                        })
+                        .filter(|(top, bottom)| top.is_finite() && bottom.is_finite())
+                        .unwrap_or((f64::NEG_INFINITY, f64::INFINITY))
+                    })
+                    .fold(
+                        (f64::INFINITY, f64::NEG_INFINITY),
+                        |(top, bottom), (t, b)| (top.min(t), bottom.max(b)),
+                    )
+            })
+            .reduce(|(top, bottom), (t, b)| (top.min(t), bottom.max(b)))
     }
 
     /// Page-local vertical ink extent `(top, bottom)` of the numbering marker
@@ -18115,6 +18202,10 @@ where
         } else {
             self.selection.take_cell_layouts()
         };
+        // No parked tail outlives the pass that parked it (a handed-over one
+        // is detached into `EditDownstream`). One left by a bug would make
+        // every later park take its tail instead, copying it per keystroke.
+        self.selection.discard_parked_selection_suffix();
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
@@ -19355,9 +19446,16 @@ where
         if !self.last_fast_replay_stable && stable_downstream_request.is_some() {
             // The edit asked for its downstream and the stable path, which
             // set it aside, did not prove it unchanged: hand it over.
-            if let (Some((from, selection)), Some(cells)) =
-                (selection_suffix.take(), stable_cells.take())
-            {
+            // Only with the cells (a completed-pagination edit) is there a
+            // downstream to hand over. Without them the selection tail stays
+            // in `selection_suffix` and is discarded below, not dropped
+            // while still parked.
+            let handover = stable_cells.take().and_then(|cells| {
+                selection_suffix
+                    .take()
+                    .map(|(from, selection)| (from, selection, cells))
+            });
+            if let Some((from, selection, cells)) = handover {
                 let hyperlinks = match self.hyperlinks_aside.take() {
                     Some(aside) => aside.finish_unstable(&mut self.hyperlink_regions, true),
                     None => hyperlink_suffix
@@ -21764,6 +21862,8 @@ where
             self.last_line_baseline + self.page_offset_y;
         let cache_start_y = self.current_y;
         self.band_paint_marks.set(BandPaintMarks::default());
+        self.band_control_mark_fonts.borrow_mut().clear();
+        self.band_note_control_marks.set(false);
         let cache_spacing_after_input =
             self.paragraph_spacing_after_input(paragraph, body_element_index, section_index);
         let cache_line_number_state = self.has_any_line_numbering().then_some(LineNumberState {
@@ -23150,6 +23250,10 @@ where
             spacing_ref.and_then(|spacing| spacing.line_rule.as_deref()),
             Some("exact" | "exactly")
         );
+        // Only an exact line clips its ink to its box, so only there can its
+        // formatting marks, drawn past that clip, reach past its ink.
+        self.band_note_control_marks
+            .set(paragraph_style.exact_line_spacing);
         let snap_to_grid = self.resolve_paragraph_snap_to_grid(paragraph);
         // The line-height prepass also measures the implicit line box, which
         // synchronizes the renderer's tracked font/fill with the canvas before
@@ -25667,6 +25771,20 @@ where
                 .overflow_erasure
                 .map(|(top, bottom)| (top - result.start_y, bottom - result.start_y));
             result.ink_below_lines = marks.ink_below_lines;
+            // The fonts are kept from the paragraph's last paint when they are
+            // the same, as they are while typing, so that a paint allocates
+            // nothing for them.
+            let mut mark_fonts = self.band_control_mark_fonts.borrow_mut();
+            result.control_mark_fonts = (!mark_fonts.is_empty()).then(|| {
+                self.paragraph_layout_cache
+                    .borrow()
+                    .get_entry(paragraph_index)
+                    .and_then(|old| old.control_mark_fonts.clone())
+                    .filter(|old| **old == *mark_fonts)
+                    .unwrap_or_else(|| Rc::from(mark_fonts.as_slice()))
+            });
+            mark_fonts.clear();
+            drop(mark_fonts);
             self.paragraph_layout_cache
                 .borrow_mut()
                 .insert(paragraph_index, result);
@@ -41304,6 +41422,44 @@ where
         Ok(())
     }
 
+    /// Notes, for a band redraw next to this paragraph, the fonts the
+    /// formatting mark [`Self::draw_control_mark`] paints in `style` with,
+    /// for [`Self::band_control_mark_ink`] to measure. Nothing is measured
+    /// here: the paint must not touch the painter for it.
+    fn note_control_mark_font(&self, style: &AppliedRunStyle) {
+        // A line that does not clip its ink measures the mark's font in its
+        // ink box: the mark, smaller and at the same baseline, stays inside.
+        if !self.band_note_control_marks.get() {
+            return;
+        }
+        let descriptors = [
+            ResolvedFontSlot::LatinAscii,
+            ResolvedFontSlot::LatinHansi,
+            ResolvedFontSlot::EastAsia,
+            ResolvedFontSlot::Complex,
+        ]
+        .map(|slot| style.resolved.descriptor_for_slot(slot));
+        let mut fonts = self.band_control_mark_fonts.borrow_mut();
+        // A paragraph's marks are nearly always in one style: compare before
+        // cloning anything.
+        if fonts.iter().any(|font| {
+            font.font_size_pt.to_bits() == style.font_size_pt.to_bits()
+                && font.baseline_shift_px.to_bits() == style.baseline_shift_px.to_bits()
+                && font
+                    .descriptors
+                    .iter()
+                    .zip(descriptors)
+                    .all(|(noted, descriptor)| noted == descriptor)
+        }) {
+            return;
+        }
+        fonts.push(ControlMarkFont {
+            descriptors: descriptors.map(Rc::clone),
+            font_size_pt: style.font_size_pt,
+            baseline_shift_px: style.baseline_shift_px,
+        });
+    }
+
     fn draw_control_mark<P>(
         &self,
         context: &P,
@@ -41319,6 +41475,7 @@ where
         if symbol.is_empty() {
             return Ok(0.0);
         }
+        self.note_control_mark_font(style);
         // An undrawn line still needs the mark's width for its line end. The
         // width depends only on `style`, so skip the painter state the mark
         // would borrow: the save, colour, font and restore, and the tracker
