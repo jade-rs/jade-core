@@ -681,6 +681,18 @@ impl ParagraphStyle {
             && self.line_base_width(width, line_index) < width - f64::EPSILON
     }
 
+    fn uses_legacy_windows_float_tab_grid(&self) -> bool {
+        !self.float_line_segments.is_empty()
+            && self.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+            && matches!(self.east_asian_rules.compatibility_mode, Some(12 | 14))
+            && !self.bidi
+            && self.tab_stops.is_empty()
+            && self
+                .positional_tabs
+                .as_ref()
+                .is_none_or(|tabs| tabs.is_empty())
+    }
+
     /// Whether this line continues the previous line's physical band on the
     /// far side of a `bothSides` object (same top, no line advance).
     pub fn line_shares_float_band(&self, line_index: usize) -> bool {
@@ -4991,11 +5003,11 @@ impl WrappedLine {
         line_index: usize,
         natural_width: f64,
         available_width: f64,
+        followed_by_tab: bool,
     ) -> f64 {
-        if self.break_kind != LineBreakKind::ParagraphEnd
-            || !self.tab_stops.is_empty()
-            || paragraph.float_line_segments.is_empty()
-        {
+        let ends_text = self.break_kind == LineBreakKind::ParagraphEnd
+            || self.break_kind == LineBreakKind::Soft && followed_by_tab;
+        if !ends_text || !self.tab_stops.is_empty() || paragraph.float_line_segments.is_empty() {
             return 0.0;
         }
         // A preserved ASCII space after the mark hangs outside the text extent.
@@ -5017,6 +5029,76 @@ impl WrappedLine {
             mark.width
         } else {
             0.0
+        }
+    }
+
+    pub fn starts_with_tab(&self) -> bool {
+        self.clusters
+            .first()
+            .is_some_and(|cluster| cluster.kind == InlineClusterKind::Tab)
+    }
+
+    /// Width through the trailing tab, excluding ASCII spaces after it.
+    pub fn width_through_trailing_tab_px(&self) -> Option<f64> {
+        let index = self
+            .clusters
+            .iter()
+            .rposition(|cluster| cluster.text != " ")?;
+        (self.clusters[index].kind == InlineClusterKind::Tab).then(|| {
+            self.clusters[..=index]
+                .iter()
+                .map(|cluster| cluster.width)
+                .sum()
+        })
+    }
+
+    /// Word's default tab grid stays fixed when wrap repair prepends part of a word.
+    fn reconcile_windows_float_tabs(
+        &mut self,
+        paragraph: &ParagraphStyle,
+        base_x: f64,
+        line_index: usize,
+    ) {
+        if self.tab_stops.is_empty() || !paragraph.uses_legacy_windows_float_tab_grid() {
+            return;
+        }
+        let tab_base = paragraph.line_base_x(base_x, line_index);
+        if (tab_base - base_x).abs() <= f64::EPSILON {
+            return;
+        }
+        let origin = tab_base + paragraph.line_indent(line_index);
+        let mut width = 0.0;
+        let mut stops = self.tab_stops.iter_mut().peekable();
+        for cluster in &mut self.clusters {
+            if cluster.kind == InlineClusterKind::Tab {
+                if let Some(tab) = stops.next_if(|tab| tab.start_offset == cluster.start) {
+                    let cursor = origin + width;
+                    let (target, alignment, _) =
+                        find_next_tab_stop(paragraph, tab_base, cursor, &[]);
+                    let target_width = tab_segment_start_width(
+                        target,
+                        origin,
+                        width,
+                        0.0,
+                        None,
+                        alignment,
+                        paragraph.default_tab_width,
+                    );
+                    let advance = (target_width - width).max(0.0);
+                    let delta = advance - cluster.width;
+                    if let Some(segment) = self
+                        .segments
+                        .iter_mut()
+                        .find(|segment| segment.start >= tab.end_offset)
+                    {
+                        segment.leading_width += delta;
+                    }
+                    tab.start_x = cursor;
+                    tab.end_x = cursor + advance;
+                    cluster.width = advance;
+                }
+            }
+            width += cluster.width;
         }
     }
 
@@ -8934,11 +9016,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     }
     let right_limit = column_right_edge - paragraph_style.right_indent;
     let base_available = right_limit - base_x;
-    let float_terminal_text = if paragraph_style.float_line_segments.is_empty() {
-        text
-    } else {
-        text.trim_end_matches(' ')
+    let float_text_end = |start: usize| {
+        if paragraph_style.float_line_segments.is_empty() {
+            return text.len();
+        }
+        let tail = &text[start..];
+        let before_tab = tail.split_once('\t').map_or(tail, |(before, _)| before);
+        start + before_tab.trim_end_matches(' ').len()
     };
+    let mut float_terminal_end = float_text_end(0);
     let mut current_available = paragraph_style
         .available_width_for_line(base_available, 0)
         .max(1.0);
@@ -9175,6 +9261,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
             }
 
             if grapheme == "\t" {
+                float_terminal_end = float_text_end(grapheme_end_abs - base_offset);
                 if !buffer.is_empty() {
                     let segment_text = std::mem::take(&mut buffer);
                     push_text_segment(
@@ -9225,27 +9312,34 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && paragraph_style.word_platform
                         == crate::line_metrics::WordLayoutPlatform::Mac
                     && positional.is_none();
-                let tab_target = |cursor_x: f64, line_origin: f64| match &positional {
-                    Some(stop) => {
-                        positional_tab_target(stop, paragraph_style, base_x, column_right_edge)
-                    }
-                    None if mirror_tab => {
-                        let indent = paragraph_style.right_indent + line_origin - base_x;
-                        let (position, alignment, leader) = find_next_tab_stop(
+                let legacy_float_default_tabs =
+                    paragraph_style.uses_legacy_windows_float_tab_grid();
+                let tab_target =
+                    |cursor_x: f64, line_origin: f64, line_index: usize| match &positional {
+                        Some(stop) => {
+                            positional_tab_target(stop, paragraph_style, base_x, column_right_edge)
+                        }
+                        None if mirror_tab => {
+                            let indent = paragraph_style.right_indent + line_origin - base_x;
+                            let (position, alignment, leader) = find_next_tab_stop(
+                                paragraph_style,
+                                -paragraph_style.tab_origin_offset,
+                                indent + cursor_x - line_origin,
+                                &paragraph_style.tab_stops,
+                            );
+                            (line_origin + position - indent, alignment, leader)
+                        }
+                        None => find_next_tab_stop(
                             paragraph_style,
-                            -paragraph_style.tab_origin_offset,
-                            indent + cursor_x - line_origin,
+                            if legacy_float_default_tabs {
+                                paragraph_style.line_base_x(base_x, line_index)
+                            } else {
+                                base_x
+                            },
+                            cursor_x,
                             &paragraph_style.tab_stops,
-                        );
-                        (line_origin + position - indent, alignment, leader)
-                    }
-                    None => find_next_tab_stop(
-                        paragraph_style,
-                        base_x,
-                        cursor_x,
-                        &paragraph_style.tab_stops,
-                    ),
-                };
+                        ),
+                    };
                 let decimal_prefix_width = decimal_prefix_width.map(|prefix| {
                     if mirror_tab {
                         segment_width - prefix
@@ -9253,7 +9347,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         prefix
                     }
                 });
-                let (target_x, alignment, mut leader_kind) = tab_target(cursor_x, line_origin);
+                let (target_x, alignment, mut leader_kind) =
+                    tab_target(cursor_x, line_origin, lines.len());
 
                 let mut previous_width = current_width;
                 let mut desired_width = tab_segment_start_width(
@@ -9283,7 +9378,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     let next_line_origin =
                         paragraph_style.line_base_x(base_x, next_line_index) + next_line_indent;
                     let (next_target_x, next_alignment, next_leader_kind) =
-                        tab_target(next_line_origin, next_line_origin);
+                        tab_target(next_line_origin, next_line_origin, next_line_index);
                     let next_desired_width = tab_segment_start_width(
                         next_target_x,
                         next_line_origin,
@@ -9748,7 +9843,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && next_grapheme.is_some_and(is_arabic_letter_cluster);
                 let fits_with_windows_float_mark = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && current_line_tab_stops.is_empty()
-                    && if grapheme_end_abs == base_offset + float_terminal_text.len() {
+                    && if grapheme_end_abs == base_offset + float_terminal_end {
                         current_width <= effective_available + WINDOWS_FLOAT_MARK_ROUNDING_PX
                             && paragraph_style.accepts_float_terminal_mark(
                                 grapheme,
@@ -9758,8 +9853,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     } else {
                         candidate_overflow <= WINDOWS_FLOAT_MARK_ROUNDING_PX
                             && paragraph_style.accepts_float_terminal_mark(
-                                float_terminal_text
-                                    .get(grapheme_end_abs - base_offset..)
+                                text.get(grapheme_end_abs - base_offset..float_terminal_end)
                                     .unwrap_or(""),
                                 base_available,
                                 lines.len(),
@@ -10154,7 +10248,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     )?;
 
     let single_line = lines.len() == 1;
-    for (epoch, line) in lines.iter_mut().enumerate() {
+    let mut line_iter = lines.iter_mut().enumerate().peekable();
+    while let Some((epoch, line)) = line_iter.next() {
+        line.reconcile_windows_float_tabs(paragraph_style, base_x, epoch);
         let reorder_gaps =
             !fitted_visual_gaps.is_empty() && requires_bidi_resolution(line, paragraph_style.bidi);
         if SHAPE_ARABIC
@@ -10235,8 +10331,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         if reorder_gaps {
             reorder_fitted_visual_gaps(line, &mut fitted_visual_gaps, epoch);
         }
+        let followed_by_tab = line_iter
+            .peek()
+            .is_some_and(|(_, next)| next.starts_with_tab());
         if !paragraph_style.float_line_segments.is_empty()
-            && line.break_kind == LineBreakKind::ParagraphEnd
+            && (line.break_kind == LineBreakKind::ParagraphEnd || followed_by_tab)
         {
             let available = paragraph_style.available_width_for_line(base_available, epoch);
             let width: f64 = line.clusters.iter().map(|cluster| cluster.width).sum();
@@ -10246,10 +10345,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 epoch,
                 width,
                 available,
+                followed_by_tab,
             );
             if mark > 0.0 {
-                let trailing_space = trailing_whitespace_width(&line.clusters);
-                line.expand_interior_word_spaces(available + mark + trailing_space);
+                let terminal_space = if line.break_kind == LineBreakKind::ParagraphEnd {
+                    trailing_whitespace_width(&line.clusters)
+                } else {
+                    0.0
+                };
+                line.expand_interior_word_spaces(available + mark + terminal_space);
             }
         }
     }
@@ -11656,6 +11760,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
         if character_borders {
             apply_character_border_inline_spacing(&mut lines[line_index]);
         }
+        lines[line_index].reconcile_windows_float_tabs(paragraph_style, column.start, line_index);
         let mut width = measure_wrapped_line_width::<C, SHAPE_ARABIC>(
             ctx,
             &lines[line_index],
@@ -11721,6 +11826,9 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
                     line_index,
                     width,
                     effective_available,
+                    lines
+                        .get(line_index + 1)
+                        .is_some_and(WrappedLine::starts_with_tab),
                 ) > 0.0
             {
                 break;

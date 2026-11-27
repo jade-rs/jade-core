@@ -29326,11 +29326,29 @@ where
                 line_index,
                 line_width,
                 available_for_line,
+                lines
+                    .get(line_index + 1)
+                    .is_some_and(|next| next.starts_with_tab()),
             );
             line_layout.allowed_trailing_overflow_width = line_layout
                 .allowed_trailing_overflow_width
                 .max(hanging_float_mark);
-            let alignment_width = if trim_mac_soft_spaces {
+            let right_aligned_float_tab = paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                && !paragraph_style.float_line_segments.is_empty()
+                && matches!(
+                    resolve_physical_paragraph_alignment(
+                        &paragraph_style.alignment,
+                        paragraph_style.bidi
+                    ),
+                    PhysicalParagraphAlignment::Right
+                );
+            let alignment_width = if let Some(width) = right_aligned_float_tab
+                .then(|| wrapped_line.width_through_trailing_tab_px())
+                .flatten()
+            {
+                width
+            } else if trim_mac_soft_spaces {
                 wrapped_line.soft_line_alignment_width_px(line_width)
             } else {
                 wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform)
