@@ -1,5 +1,8 @@
 //! Capture the native renderer's unaligned glyph origins in PDF points.
-//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables | --painted-table-headers] [--password-file file] [--fonts-directory directory] [--line-details] [--without-formatting-marks]
+//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf]
+//! [--unclipped-tables | --painted-table-headers] [--password-file file]
+//! [--fonts-directory directory] [--line-details] [--without-formatting-marks]
+//! [--final-view] [--without-page-image]
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_native_render::{
     system_fonts, FontFace, NativeDocument, PdfExportOptions, PdfRenderingMode,
@@ -33,6 +36,10 @@ fn main() {
     args.retain(|arg| arg != "--line-details");
     let without_formatting_marks = args.iter().any(|arg| arg == "--without-formatting-marks");
     args.retain(|arg| arg != "--without-formatting-marks");
+    let final_view = args.iter().any(|arg| arg == "--final-view");
+    args.retain(|arg| arg != "--final-view");
+    let without_page_image = args.iter().any(|arg| arg == "--without-page-image");
+    args.retain(|arg| arg != "--without-page-image");
     let unclipped_tables = args.iter().any(|arg| arg == "--unclipped-tables");
     args.retain(|arg| arg != "--unclipped-tables");
     let painted_table_headers = args.iter().any(|arg| arg == "--painted-table-headers");
@@ -97,6 +104,10 @@ fn main() {
         system_fonts::word_document_faces(&bytes, &fallback)
     };
     let mut doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+    if final_view {
+        doc.set_revision_display(false, false, Default::default())
+            .unwrap();
+    }
     if without_formatting_marks {
         doc.set_formatting_marks(false).unwrap();
     }
@@ -142,14 +153,16 @@ fn main() {
             .unwrap();
         std::fs::write(pdf_path, pdf).unwrap();
     }
-    if let Some((pixels, width, height)) = doc.page_pixels(0) {
-        image::save_buffer(
-            PathBuf::from(&args[2]).with_extension("png"),
-            &pixels,
-            width as u32,
-            height as u32,
-            image::ColorType::Rgba8,
-        )
-        .unwrap();
+    if !without_page_image {
+        if let Some((pixels, width, height)) = doc.page_pixels(0) {
+            image::save_buffer(
+                PathBuf::from(&args[2]).with_extension("png"),
+                &pixels,
+                width as u32,
+                height as u32,
+                image::ColorType::Rgba8,
+            )
+            .unwrap();
+        }
     }
 }
