@@ -218,6 +218,8 @@ pub struct ParagraphStyle {
     /// Windows Word keeps page and column controls in the editable cell text
     /// without letting them end a line.
     pub ignore_page_and_column_breaks: bool,
+    /// Fit the text to the advances used by the table's AutoFit minimum.
+    pub fit_on_glyph_advances: bool,
     pub first_line_available_adjustment: f64,
     pub continuation_available_adjustment: f64,
     pub right_indent: f64,
@@ -339,6 +341,7 @@ impl Default for ParagraphStyle {
             first_line_indent: 0.0,
             leading_page_breaks: 0,
             ignore_page_and_column_breaks: false,
+            fit_on_glyph_advances: false,
             first_line_available_adjustment: 0.0,
             continuation_available_adjustment: 0.0,
             right_indent: 0.0,
@@ -662,6 +665,20 @@ impl ParagraphStyle {
             .get(line_index)
             .map(|segment| segment.width)
             .unwrap_or(default_width)
+    }
+
+    /// Windows Word 12 and 14 keep a final comma or period beside a float
+    /// when the mark starts inside the available line segment.
+    fn accepts_float_terminal_mark(&self, mark: &str, width: f64, line_index: usize) -> bool {
+        matches!(mark, "." | ",")
+            && self.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+            && matches!(self.east_asian_rules.compatibility_mode, Some(12 | 14))
+            && !self.bidi
+            && matches!(
+                resolve_physical_paragraph_alignment(&self.alignment, self.bidi),
+                PhysicalParagraphAlignment::Left | PhysicalParagraphAlignment::Right
+            )
+            && self.line_base_width(width, line_index) < width - f64::EPSILON
     }
 
     /// Whether this line continues the previous line's physical band on the
@@ -4933,6 +4950,10 @@ impl WrappedLine {
         if !justified_break || !self.tab_stops.is_empty() {
             return;
         }
+        self.expand_interior_word_spaces(available_width);
+    }
+
+    fn expand_interior_word_spaces(&mut self, available_width: f64) {
         let interior_end = self
             .clusters
             .iter()
@@ -4958,6 +4979,44 @@ impl WrappedLine {
                     layout.glyph_box_width += per_space;
                 }
             }
+        }
+    }
+
+    /// Amount of the last glyph that can extend beyond a legacy Windows float
+    /// segment when its leading edge still fits.
+    pub fn hanging_windows_float_mark_width_px(
+        &self,
+        paragraph: &ParagraphStyle,
+        base_width: f64,
+        line_index: usize,
+        natural_width: f64,
+        available_width: f64,
+    ) -> f64 {
+        if self.break_kind != LineBreakKind::ParagraphEnd
+            || !self.tab_stops.is_empty()
+            || paragraph.float_line_segments.is_empty()
+        {
+            return 0.0;
+        }
+        // A preserved ASCII space after the mark hangs outside the text extent.
+        let Some(mark) = self
+            .clusters
+            .iter()
+            .rev()
+            .find(|cluster| cluster.text != " ")
+        else {
+            return 0.0;
+        };
+        if !paragraph.accepts_float_terminal_mark(&mark.text, base_width, line_index) {
+            return 0.0;
+        }
+        let content_width = natural_width - trailing_whitespace_width(&self.clusters);
+        if content_width >= available_width - WINDOWS_FLOAT_MARK_ROUNDING_PX
+            && content_width - mark.width <= available_width + WINDOWS_FLOAT_MARK_ROUNDING_PX
+        {
+            mark.width
+        } else {
+            0.0
         }
     }
 
@@ -8875,6 +8934,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     }
     let right_limit = column_right_edge - paragraph_style.right_indent;
     let base_available = right_limit - base_x;
+    let float_terminal_text = if paragraph_style.float_line_segments.is_empty() {
+        text
+    } else {
+        text.trim_end_matches(' ')
+    };
     let mut current_available = paragraph_style
         .available_width_for_line(base_available, 0)
         .max(1.0);
@@ -9483,6 +9547,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     None => isolated_width.max(0.0),
                 };
                 let trailing_overhang = if computed.monospace_cell
+                    || paragraph_style.fit_on_glyph_advances
                     || !crate::line_metrics::word_wraps_on_trailing_ink(
                         paragraph_style.word_platform,
                     ) {
@@ -9681,6 +9746,25 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         .last()
                         .is_some_and(|cluster| is_arabic_letter_cluster(&cluster.text))
                     && next_grapheme.is_some_and(is_arabic_letter_cluster);
+                let fits_with_windows_float_mark = candidate_overflow > WRAP_FIT_TOLERANCE_PX
+                    && current_line_tab_stops.is_empty()
+                    && if grapheme_end_abs == base_offset + float_terminal_text.len() {
+                        current_width <= effective_available + WINDOWS_FLOAT_MARK_ROUNDING_PX
+                            && paragraph_style.accepts_float_terminal_mark(
+                                grapheme,
+                                base_available,
+                                lines.len(),
+                            )
+                    } else {
+                        candidate_overflow <= WINDOWS_FLOAT_MARK_ROUNDING_PX
+                            && paragraph_style.accepts_float_terminal_mark(
+                                float_terminal_text
+                                    .get(grapheme_end_abs - base_offset..)
+                                    .unwrap_or(""),
+                                base_available,
+                                lines.len(),
+                            )
+                    };
                 // Word for Mac can place an invisible break opportunity on
                 // its own line between overwide glyphs.
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
@@ -9705,6 +9789,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && !fits_with_justified_space_shrink
                     && !fits_with_mac_punctuation_squeeze
                     && !keeps_line_start_forbidden_character
+                    && !fits_with_windows_float_mark
                 {
                     if !buffer.is_empty() {
                         let segment_text = std::mem::take(&mut buffer);
@@ -10150,6 +10235,23 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         if reorder_gaps {
             reorder_fitted_visual_gaps(line, &mut fitted_visual_gaps, epoch);
         }
+        if !paragraph_style.float_line_segments.is_empty()
+            && line.break_kind == LineBreakKind::ParagraphEnd
+        {
+            let available = paragraph_style.available_width_for_line(base_available, epoch);
+            let width: f64 = line.clusters.iter().map(|cluster| cluster.width).sum();
+            let mark = line.hanging_windows_float_mark_width_px(
+                paragraph_style,
+                base_available,
+                epoch,
+                width,
+                available,
+            );
+            if mark > 0.0 {
+                let trailing_space = trailing_whitespace_width(&line.clusters);
+                line.expand_interior_word_spaces(available + mark + trailing_space);
+            }
+        }
     }
     if paragraph_style
         .alignment
@@ -10280,6 +10382,8 @@ fn punctuation_pair_blank(
 /// jade carries page sizes, margins and indents as f32 points, which leaves
 /// such a line up to ~1e-4 px over. Far below a twip (0.067 px).
 const WRAP_FIT_TOLERANCE_PX: f64 = 1e-3;
+// One unit of the Windows Word screen coordinates is 0.12 pt.
+const WINDOWS_FLOAT_MARK_ROUNDING_PX: f64 = 0.16;
 /// Each round walks every line, so a cascade takes one; the bound only stops a
 /// repair pair that keeps undoing itself.
 const MAX_KINSOKU_REFIT_ROUNDS: usize = 8;
@@ -11611,6 +11715,13 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
             if width <= effective_available + WRAP_FIT_TOLERANCE_PX
                 || fits_with_justified_space_shrink
                 || fits_with_mac_punctuation_squeeze
+                || lines[line_index].hanging_windows_float_mark_width_px(
+                    paragraph_style,
+                    base_available,
+                    line_index,
+                    width,
+                    effective_available,
+                ) > 0.0
             {
                 break;
             }
