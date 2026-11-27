@@ -449,7 +449,7 @@ CAPTURES = (
      FLOATING_TERMINAL_RUN_PREFIX, floating_terminal_run_cases, ('--unclipped-tables',)),
     ('floating-table-line-endings', 'e5c3d1d04f125aacf6f7819f2146ae5a9c82a725aaf21618853527b3e6a8a9ce',
      FLOATING_LINE_ENDING_PREFIX, floating_line_ending_cases, ('--unclipped-tables',)),
-    ('floating-table-authored-tabs', '7fc523f65b65b91a0127e357c28a62375496467267db2190d9f6310f84f33e0a',
+    ('floating-table-authored-tabs', '85638f4667ee2656cf9640430e49ec3d4cf396cae2ddafe57a890a37759872b8',
      FLOATING_TAB_STOP_PREFIX, floating_tab_stop_cases, ('--unclipped-tables',)),
 )
 

@@ -7,7 +7,7 @@ from generate_windows_floating_terminal_run_cases import FIXTURES, TARGET
 from generate_windows_page_break_cases import MODES
 
 PREFIX = 'word-windows-edge-floating-tab-stop-'
-GAPS = (80, 100)
+GAPS = (70, 80, 90, 100)
 TEXT = 'Filler paragraph 8 gives the floating table text to wrap around while the page fills'
 DEFAULT_TAB = '<w:defaultTabStop w:val="720"/>'
 
@@ -28,8 +28,13 @@ VARIANTS = {
 }
 
 
+def variants_for_gap(gap):
+    return ((name, variant) for name, variant in VARIANTS.items()
+            if gap in (80, 100) or variant[1])
+
+
 def cases():
-    return {f'{case}-gap-{gap}' for case in VARIANTS for gap in GAPS}
+    return {f'{case}-gap-{gap}' for gap in GAPS for case, _ in variants_for_gap(gap)}
 
 
 def generate(output=FIXTURES):
@@ -42,7 +47,7 @@ def generate(output=FIXTURES):
                 settings = source.read('word/settings.xml').decode()
                 if doc.count(TARGET) != 1 or settings.count(DEFAULT_TAB) != 1:
                     raise ValueError(f'{name}: unexpected floating-table template')
-                for variant, (interval, authored, align, suffix) in VARIANTS.items():
+                for variant, (interval, authored, align, suffix) in variants_for_gap(gap):
                     tabs = f'<w:tabs>{authored}</w:tabs>' if authored else ''
                     tail = f'<w:t>{suffix}</w:t>' if suffix else ''
                     paragraph = (f'<w:p><w:pPr>{tabs}<w:jc w:val="{align}"/></w:pPr>'
