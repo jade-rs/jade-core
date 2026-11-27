@@ -6,10 +6,43 @@ pub(crate) struct RecordedText {
     pub text: String,
     pub postscript_name: Option<String>,
     pub font_size: f32,
-    pub widths: Vec<f32>,
+    pub widths: Widths,
     pub ascent: f32,
     pub descent: f32,
     pub transform: [f32; 6],
+}
+
+pub(crate) enum Widths {
+    Scalars(Vec<f32>),
+    Cluster(f32),
+}
+
+impl RecordedText {
+    fn units(&self) -> impl Iterator<Item = (&str, f32)> {
+        let (widths, cluster) = match &self.widths {
+            Widths::Scalars(widths) => (widths.as_slice(), None),
+            Widths::Cluster(width) => (&[][..], Some((self.text.as_str(), *width))),
+        };
+        self.text
+            .char_indices()
+            .map(|(at, ch)| &self.text[at..at + ch.len_utf8()])
+            .zip(widths.iter().copied())
+            .chain(cluster)
+    }
+}
+
+fn text_key<'a>(
+    text: &'a str,
+    width: f32,
+    run: &RecordedText,
+) -> (&'a str, u32, u32, u32, Option<String>) {
+    (
+        text,
+        (width / run.font_size * 1000.0).to_bits(),
+        (run.ascent / run.font_size * 1000.0).to_bits(),
+        (run.descent / run.font_size * 1000.0).to_bits(),
+        run.postscript_name.clone(),
+    )
 }
 
 fn unicode(text: &str, bom: bool) -> Vec<u8> {
@@ -33,19 +66,10 @@ pub(crate) fn append(
     if runs.is_empty() {
         return Ok(());
     }
-    let key = |ch: char, width: f32, run: &RecordedText| {
-        (
-            ch,
-            (width / run.font_size * 1000.0).to_bits(),
-            (run.ascent / run.font_size * 1000.0).to_bits(),
-            (run.descent / run.font_size * 1000.0).to_bits(),
-            run.postscript_name.clone(),
-        )
-    };
     let mut keys = BTreeMap::new();
     for run in runs {
-        for (ch, width) in run.text.chars().zip(&run.widths) {
-            let key = key(ch, *width, run);
+        for (text, width) in run.units() {
+            let key = text_key(text, width, run);
             keys.insert(
                 key.clone(),
                 (
@@ -95,10 +119,7 @@ pub(crate) fn append(
             max_width = max_width.max(*width);
             max_ascent = max_ascent.max(*ascent);
             max_descent = max_descent.max(*descent);
-            mappings.push(format!(
-                "<{code:02X}> <{}>",
-                hex(&unicode(&key.0.to_string(), false))
-            ));
+            mappings.push(format!("<{code:02X}> <{}>", hex(&unicode(key.0, false))));
             codes.insert((*key).clone(), (name.clone(), code));
         }
         let mut cmap = String::from("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /JadeUnicode def\n/CMapType 2 def\n1 begincodespacerange\n<00> <FF>\nendcodespacerange\n");
@@ -166,8 +187,8 @@ pub(crate) fn append(
         ));
         let [a, b, c, d, e, f] = run.transform.map(f64::from);
         let mut advance = 0.0_f64;
-        for (ch, width) in run.text.chars().zip(&run.widths) {
-            let (name, code) = &codes[&key(ch, *width, run)];
+        for (text, width) in run.units() {
+            let (name, code) = &codes[&text_key(text, width, run)];
             commands.push_str(&format!(
                 "/{name} {} Tf\n{} {} {} {} {} {} Tm\n<{code:02X}> Tj\n",
                 run.font_size,
@@ -178,7 +199,7 @@ pub(crate) fn append(
                 (e + a * advance) * 0.75,
                 height - (f + b * advance) * 0.75
             ));
-            advance += f64::from(*width);
+            advance += f64::from(width);
         }
         commands.push_str("EMC\n");
     }
