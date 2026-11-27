@@ -1411,31 +1411,30 @@ impl StylesPart {
                     }
                 }
             }
-            b"w:autoSpaceDE" => {
-                if state.in_paragraph_properties {
-                    if let Some(style) = current_style.as_mut() {
-                        let props = style
+            b"w:autoSpaceDE" | b"w:autoSpaceDN" => {
+                let props = if state.in_paragraph_properties {
+                    current_style.as_mut().map(|style| {
+                        style
                             .paragraph_properties
-                            .get_or_insert_with(ParagraphProperties::default);
-                        let east_asian = props
-                            .east_asian_settings
-                            .get_or_insert_with(EastAsianLineBreakingSettings::default);
-                        east_asian.use_east_asian_layout = true;
-                        east_asian.auto_space_de = Some(parse_on_off_attr(element, b"w:val"));
-                    }
-                }
-            }
-            b"w:autoSpaceDN" => {
-                if state.in_paragraph_properties {
-                    if let Some(style) = current_style.as_mut() {
-                        let props = style
-                            .paragraph_properties
-                            .get_or_insert_with(ParagraphProperties::default);
-                        let east_asian = props
-                            .east_asian_settings
-                            .get_or_insert_with(EastAsianLineBreakingSettings::default);
-                        east_asian.use_east_asian_layout = true;
-                        east_asian.auto_space_dn = Some(parse_on_off_attr(element, b"w:val"));
+                            .get_or_insert_with(ParagraphProperties::default)
+                    })
+                } else if state.in_doc_default_paragraph_properties {
+                    self.doc_default_paragraph_properties.as_mut()
+                } else {
+                    None
+                };
+                if let Some(props) = props {
+                    let east_asian = props
+                        .east_asian_settings
+                        .get_or_insert_with(EastAsianLineBreakingSettings::default);
+                    // Document defaults control the gaps when East Asian layout
+                    // applies. They do not turn it on for every paragraph.
+                    east_asian.use_east_asian_layout |= state.in_paragraph_properties;
+                    let enabled = Some(parse_on_off_attr(element, b"w:val"));
+                    if element.name().as_ref() == b"w:autoSpaceDE" {
+                        east_asian.auto_space_de = enabled;
+                    } else {
+                        east_asian.auto_space_dn = enabled;
                     }
                 }
             }
@@ -4438,6 +4437,8 @@ mod tests {
     <w:rPrDefault><w:rPr><w:sz w:val="21"/></w:rPr></w:rPrDefault>
     <w:pPrDefault>
       <w:pPr>
+        <w:autoSpaceDE w:val="0"/>
+        <w:autoSpaceDN w:val="0"/>
         <w:ind w:left="420" w:firstLineChars="100"/>
         <w:spacing w:after="160"/>
         <w:jc w:val="both"/>
@@ -4459,6 +4460,13 @@ mod tests {
         let spacing = defaults.spacing.as_ref().expect("default spacing");
         assert_eq!(spacing.after, Some(8.0), "160 twips = 8pt");
         assert_eq!(defaults.alignment.as_deref(), Some("both"));
+        let east_asian = defaults
+            .east_asian_settings
+            .as_ref()
+            .expect("default autospacing");
+        assert_eq!(east_asian.auto_space_de, Some(false));
+        assert_eq!(east_asian.auto_space_dn, Some(false));
+        assert!(!east_asian.use_east_asian_layout);
 
         // The defaults must not leak into named styles (and vice versa).
         let style = part
@@ -4467,6 +4475,7 @@ mod tests {
             .expect("style props");
         assert_eq!(style.alignment.as_deref(), Some("center"));
         assert!(style.indent.is_none());
+        assert!(style.east_asian_settings.is_none());
         assert!(part
             .doc_default_run_properties()
             .and_then(|props| props.font_size)
