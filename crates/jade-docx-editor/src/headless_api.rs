@@ -752,6 +752,17 @@ fn snapshot_delete_effect(
     }
 }
 
+// InsertTextCommand folds CRLF to one model line break; snapshot coordinates
+// must advance by the same UTF-8 byte length after applying that command.
+fn normalized_inserted_text_len(text: &str) -> usize {
+    text.len()
+        - text
+            .as_bytes()
+            .windows(2)
+            .filter(|pair| *pair == b"\r\n")
+            .count()
+}
+
 fn snapshot_effect(
     word_doc: &WordDocument,
     index: usize,
@@ -1656,7 +1667,7 @@ fn applied_snapshot_transform(
                     Some(AppliedSnapshotTransform::TextInsert {
                         original_at,
                         current_at,
-                        inserted_len: text.len(),
+                        inserted_len: normalized_inserted_text_len(text),
                     })
                 }
                 HeadlessCommand::InsertCitation { .. } => {
@@ -1684,7 +1695,7 @@ fn applied_snapshot_transform(
             current_start,
             current_end,
             inserted_len: match command {
-                HeadlessCommand::ReplaceRange { text, .. } => text.len(),
+                HeadlessCommand::ReplaceRange { text, .. } => normalized_inserted_text_len(text),
                 HeadlessCommand::DeleteText { .. } => 0,
                 HeadlessCommand::InsertCitation { .. } => inserted_len.unwrap_or_default(),
                 _ => 0,
@@ -1969,6 +1980,15 @@ fn try_apply_headless_text_command(
             // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
             // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
             let original_end_offset = *end_offset;
+            // Normalize before comparing unchanged prefixes/suffixes, so a
+            // replacement with equivalent line endings remains a history no-op.
+            let normalized_text;
+            let text = if text.contains('\r') {
+                normalized_text = text.replace("\r\n", "\n").replace('\r', "\n");
+                &normalized_text
+            } else {
+                text
+            };
             let (start_offset, end_offset, text) = trimmed_replacement(
                 word_doc,
                 *start_paragraph,

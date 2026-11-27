@@ -1,0 +1,26 @@
+[package]
+name = "jade-docx-edit-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+futures = "0.3"
+jade-docx-document-core = { path = "../crates/jade-docx-document-core" }
+jade-docx-headless-editor = { path = "../crates/jade-docx-headless-editor" }
+roxmltree = "0.20"
+zip = { version = "9.0", default-features = false, features = ["deflate"] }
+
+[[bin]]
+name = "edit_docx"
+path = "fuzz_targets/edit_docx.rs"
+test = false
+doc = false
+bench = false

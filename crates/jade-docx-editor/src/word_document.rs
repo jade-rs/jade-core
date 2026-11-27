@@ -12886,6 +12886,12 @@ impl WordDocument {
     /// keep theirs.
     pub fn recording_revision_session(&self) -> Option<RevisionSession> {
         let mut session = self.revision_session.clone()?;
+        // CT_TrackChange requires an author on every new revision. Match the
+        // default used when loading a document with change tracking enabled;
+        // starting and editing in one batch must be just as valid after save.
+        if session.author.is_none() {
+            session.author = Some("jade".to_string());
+        }
         if session.date.is_none() {
             if let Some((date, date_utc)) = crate::revision_clock::revision_date_now() {
                 session.date = Some(date);
@@ -32317,6 +32323,10 @@ impl WordDocument {
         initials: Option<String>,
         date: Option<String>,
     ) -> Result<String, String> {
+        // CT_TrackChange (the base of CT_Comment) requires w:author. An
+        // anonymous comment still needs the attribute; an empty value avoids
+        // inventing an identity and keeps the saved/reloaded model consistent.
+        let author = Some(author.unwrap_or_default());
         let existing = self
             .read_xml_part_content(comments_part_path)
             .ok_or_else(|| format!("missing {comments_part_path}"))?;
