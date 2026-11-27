@@ -2418,6 +2418,10 @@ pub struct TableLayoutInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub node_id: Option<u32>,
     pub column_widths: Vec<f64>,
+    #[serde(skip)]
+    resize_geometry: Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>>,
+    #[serde(skip)]
+    save_resolved_grid: bool,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub row_heights: Vec<f64>,
 }
@@ -2429,6 +2433,8 @@ impl Clone for TableLayoutInfo {
             order: self.order,
             node_id: self.node_id,
             column_widths: self.column_widths.clone(),
+            resize_geometry: self.resize_geometry.clone(),
+            save_resolved_grid: self.save_resolved_grid,
             row_heights: self.row_heights.clone(),
         }
     }
@@ -2438,6 +2444,8 @@ impl Clone for TableLayoutInfo {
         self.order = source.order;
         self.node_id = source.node_id;
         self.column_widths.clone_from(&source.column_widths);
+        self.resize_geometry.clone_from(&source.resize_geometry);
+        self.save_resolved_grid = source.save_resolved_grid;
         self.row_heights.clone_from(&source.row_heights);
     }
 }
@@ -12718,7 +12726,8 @@ where
             | (u8::from(
                 paragraph_style.word_platform
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
-            ) << 1);
+            ) << 1)
+            | (u8::from(paragraph_style.fit_on_glyph_advances) << 2);
         word_metric_policy.hash(&mut hasher);
         // The default left path needs no alignment bytes. Justification and
         // its terminal-space compression must not reuse left-aligned wraps.
@@ -29204,6 +29213,26 @@ where
             } else {
                 segment_line_width
             };
+            let hanging_float_mark = wrapped_line.hanging_windows_float_mark_width_px(
+                paragraph_style,
+                default_base_width,
+                line_index,
+                line_width,
+                available_for_line,
+            );
+            line_layout.allowed_trailing_overflow_width = line_layout
+                .allowed_trailing_overflow_width
+                .max(hanging_float_mark);
+            let alignment_width = if trim_mac_soft_spaces {
+                wrapped_line.soft_line_alignment_width_px(line_width)
+            } else {
+                wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform)
+            };
+            let alignment_width = if hanging_float_mark > 0.0 {
+                alignment_width.min(available_for_line)
+            } else {
+                alignment_width
+            };
             let line_start_x = Self::resolve_line_start(
                 paragraph_style.alignment.as_str(),
                 paragraph_style.bidi,
@@ -29212,11 +29241,7 @@ where
                 right_limit,
                 current_column_right,
                 paragraph_style.right_indent,
-                if trim_mac_soft_spaces {
-                    wrapped_line.soft_line_alignment_width_px(line_width)
-                } else {
-                    wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform)
-                },
+                alignment_width,
                 justify,
             );
             line_layout.start_x = line_start_x;
@@ -42674,6 +42699,24 @@ where
         }
     }
 
+    /// Resolved grids of Windows AutoFit body tables and measured nested tables.
+    /// The caller must use a complete layout of the document it is saving.
+    pub fn resolved_table_grids_for_docx(&self) -> Vec<(XmlNodeId, Vec<i32>)> {
+        self.table_layouts
+            .iter()
+            .filter(|table| table.save_resolved_grid)
+            .filter_map(|table| {
+                let node_id = XmlNodeId::new(table.node_id?);
+                let twips = table
+                    .column_widths
+                    .iter()
+                    .map(|width| (width * 15.0).round() as i32)
+                    .collect();
+                Some((node_id, twips))
+            })
+            .collect()
+    }
+
     /// Refresh an owned snapshot while reusing storage from previous edits.
     /// Values are still copied, so later renderer updates cannot change it.
     pub(crate) fn copy_table_resize_metadata_into(&self, target: &mut TableResizeMetadata) {
@@ -43585,19 +43628,20 @@ where
         }
     }
 
-    /// The Mac mode-14 floating-order probe includes the paragraph's space
-    /// after when it checks a floating table above its first text row. Keep
-    /// this separate from drawing look-ahead and from the table's paint frame.
-    // Mac Word16.114 and Windows Word16.0.19127.20936, mode14, floating-order:
-    // paragraph-after spacing can reach a table above the last text line.
-    // Include it in wrap eligibility while retaining the table's actual frame.
+    /// Legacy Word includes paragraph-after spacing in wrap eligibility while
+    /// retaining the table's actual frame. Windows does this in modes 12 and 14.
     fn floating_table_space_after(
         &self,
         paragraph: &Paragraph,
         body_element_index: usize,
         line_height_points: f32,
     ) -> f64 {
-        if self.document_east_asian_rules.compatibility_mode != Some(14)
+        let mode = self.document_east_asian_rules.compatibility_mode;
+        let legacy_spacing = mode == Some(14)
+            || mode == Some(12)
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+        if !legacy_spacing
             || self.pageless_mode
             || self.rendering_header_footer_story
             || self.rendering_note_story
@@ -44487,6 +44531,21 @@ where
         let height = self.measure_header_footer_story(&body, 0.0, measure_base)?;
         self.record_footer_content_height(height);
         Ok(())
+    }
+
+    /// The header and footer story heights the last render measured on a
+    /// physical page (`None` where it measured none). They are what move the
+    /// page's body edges, so a change between two renders means the body
+    /// moved: a header taller than the top margin pushes the body down.
+    pub fn header_footer_extent_for_page(
+        &self,
+        zero_based_page: usize,
+    ) -> (Option<f64>, Option<f64>) {
+        let measured = |heights: &[Option<f64>]| heights.get(zero_based_page).copied().flatten();
+        (
+            measured(&self.header_content_heights),
+            measured(&self.footer_content_heights),
+        )
     }
 
     fn record_header_content_height(&mut self, content_height: f64) {
@@ -46693,6 +46752,27 @@ where
     pub fn table_order_for(&self, table_id: usize) -> Option<usize> {
         self.table_layouts.get(table_id).map(|info| info.order)
     }
+
+    pub fn nested_column_resize_geometry(
+        &self,
+        order: usize,
+    ) -> Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>> {
+        self.table_layouts
+            .iter()
+            .find(|info| info.order == order)?
+            .resize_geometry
+            .clone()
+    }
+
+    pub fn nested_column_resize_geometry_for_node(
+        &self,
+        id: XmlNodeId,
+    ) -> Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>> {
+        self.table_layouts
+            .iter()
+            .filter(|info| info.node_id == Some(id.raw()) && info.save_resolved_grid)
+            .find_map(|info| info.resize_geometry.clone())
+    }
 }
 
 /// Constructors that name a browser host, and so only exist for the canvas
@@ -48387,6 +48467,8 @@ mod tests {
             .map(|i| TableLayoutInfo {
                 index: i + usize::from(phase),
                 order: count - i,
+                resize_geometry: None,
+                save_resolved_grid: false,
                 node_id: phase
                     .is_multiple_of(2)
                     .then_some(i as u32 + u32::from(phase)),
@@ -48502,6 +48584,8 @@ mod tests {
         let source = TableLayoutInfo {
             index: 3,
             order: 7,
+            resize_geometry: None,
+            save_resolved_grid: false,
             node_id: Some(42),
             column_widths: vec![72.0, 144.0],
             row_heights: vec![18.0, 24.0],
