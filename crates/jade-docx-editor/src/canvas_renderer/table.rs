@@ -11113,11 +11113,13 @@ fn compute_inline_body_table_x_inner(
     } else {
         (modern_leading_border_half_px(table, true) - leading_text_inset).max(0.0)
     };
-    let spaced_leading_border = if separated {
-        2.0 * leading_cell_border_half_px(table, true)
-    } else {
-        0.0
-    };
+    // Positive LTR spacing already includes this rule in the text inset.
+    let spaced_leading_border =
+        if separated && !(positive_spacing && windows_ltr_spaced_slots(table)) {
+            2.0 * leading_cell_border_half_px(table, true)
+        } else {
+            0.0
+        };
     let directed_indent = if table.bidi_visual { -indent } else { indent };
     match table.style.get("text-align").map(|value| value.trim()) {
         Some(value)
