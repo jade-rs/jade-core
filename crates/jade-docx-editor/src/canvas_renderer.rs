@@ -37495,9 +37495,10 @@ where
             prev_font_descriptor_hash = Some(layout.font_descriptor_hash);
         }
 
-        // The clusters remain in visual order for selection. Pass the logical
-        // text to the painter so Arabic joining and mark placement have context.
+        // Arabic painting uses logical text for joining and the individual
+        // visual cluster positions for spacing and marks.
         if glyph_steps.len() > 1
+            && !crate::draw_command::executor::text_has_arabic(&segment.text)
             && glyph_steps.windows(2).all(|pair| {
                 pair[0].text_start == pair[1].text_end && pair[0].font_slot == pair[1].font_slot
             })
@@ -39183,7 +39184,10 @@ where
                 context.restore();
             }
         } else {
-            if resolved_style.joins_characters || resolved_style.has_font_features {
+            if resolved_style.joins_characters
+                || resolved_style.has_font_features
+                || crate::draw_command::executor::text_has_arabic(segment_text)
+            {
                 let characters: Vec<crate::draw_command::executor::PlacedCharacter<'_>> =
                     glyph_steps
                         .iter()

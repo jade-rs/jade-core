@@ -27,8 +27,8 @@ use skia_safe::RoundOut;
 use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 mod clipped_pdf_text;
+mod contextual_text;
 mod pdf_text;
-mod thai_text;
 #[cfg(target_os = "windows")]
 mod windows_pdf_metrics;
 #[cfg(target_os = "windows")]
@@ -1155,6 +1155,15 @@ impl SkiaPainter {
     /// OpenType features and draws the glyphs the font substitutes, each at
     /// its cluster's x.
     fn fill_shaped(&self, text: &str, clusters: &[(usize, f64)], y: f64) -> bool {
+        if text.starts_with(jade_painter::is_arabic) && !clusters.is_empty() {
+            let font = self.font_covering(text);
+            let Some(shaped) = contextual_text::shape(&font, text) else {
+                return false;
+            };
+            let origin = (0.0, self.baseline_y(&font, y));
+            self.draw_contextual_text(&font, text, &shaped, origin, &self.fill_paint(), clusters);
+            return true;
+        }
         let descriptor = self.shared.style.borrow().font_descriptor.clone();
         let features = jade_painter::font_features::parse(&descriptor);
         if features.is_empty() || text.is_empty() || clusters.is_empty() {
@@ -1638,21 +1647,27 @@ impl SkiaPainter {
         fallback
     }
 
-    /// `text` split at Thai shaping boundaries and where the face changes.
+    /// `text` split at shaping boundaries and where the face changes.
     /// Each character uses
     /// [`Self::font_covering`]'s face for it — so a run mixing scripts is
     /// measured and drawn as a browser does, each in a face that has it.
     fn segments<'t>(&self, text: &'t str) -> Vec<(Font, &'t str)> {
         let mut segments: Vec<(Font, &'t str)> = Vec::new();
         let mut start = 0;
-        let mut thai = false;
+        let mut script = (false, false);
         for (at, ch) in text.char_indices() {
             let end = at + ch.len_utf8();
+            if script.1 && jade_painter::is_join_control(ch) {
+                if let Some((_, run)) = segments.last_mut() {
+                    *run = &text[start..end];
+                    continue;
+                }
+            }
             let font = self.font_covering(&text[at..end]);
-            let next_thai = jade_painter::is_thai(ch);
+            let next = (jade_painter::is_thai(ch), jade_painter::is_arabic(ch));
             match segments.last_mut() {
                 Some((current, run))
-                    if thai == next_thai
+                    if script == next
                         && current.typeface().unique_id() == font.typeface().unique_id() =>
                 {
                     *run = &text[start..end];
@@ -1660,7 +1675,7 @@ impl SkiaPainter {
                 _ => {
                     start = at;
                     segments.push((font, &text[at..end]));
-                    thai = next_thai;
+                    script = next;
                 }
             }
         }
@@ -1670,51 +1685,68 @@ impl SkiaPainter {
     /// Draws `text` from `x`, each segment in its face, on the first
     /// segment's baseline.
     fn draw_segments(&self, text: &str, x: f64, y: f64, paint: &Paint) {
-        let segments = self.segments(text);
-        let Some((first, _)) = segments.first() else {
+        let text = jade_painter::bidi::VisualText::new(text);
+        let mut segments = text.iter().flat_map(|run| self.segments(run)).peekable();
+        let Some((first, _)) = segments.peek() else {
             return;
         };
         let baseline_y = self.baseline_y(first, y);
         let mut pen = x as f32;
-        for (font, run) in &segments {
-            if let Some(shaped) = thai_text::shape(font, run) {
-                let style = self.shared.style.borrow();
-                let stroke_paths = style.stroke_text_paths;
-                let decorative = style.decorative_text;
-                drop(style);
-                let recording_scale = match &*self.shared.surface.borrow() {
-                    PaintSurface::Recording { raster_scale, .. } => Some(*raster_scale),
-                    PaintSurface::Raster(_) => None,
-                };
-                self.with_canvas(|canvas| {
-                    let origin = (pen, baseline_y);
-                    let vector_pdf = recording_scale == Some(None);
-                    let use_outline = vector_pdf
-                        || (stroke_paths && paint.style() == skia_safe::paint::Style::Stroke);
-                    // Skia's PDF cmap can lose substituted Thai marks and
-                    // decompose Sara Am. Keep the original text alongside the ink.
-                    if let Some(scale) = recording_scale.filter(|_| !decorative) {
-                        self.record_pdf_text(
-                            canvas,
-                            font,
-                            run,
-                            origin,
-                            scale,
-                            shaped.scalar_advances(font, run),
-                        );
-                    }
-                    if use_outline {
-                        shaped.draw_outline(canvas, font, origin, paint);
-                    } else {
-                        shaped.draw(canvas, font, origin, paint);
-                    }
-                });
-                pen += shaped.advance(font);
+        for (font, run) in segments {
+            if let Some(shaped) = contextual_text::shape(&font, run) {
+                self.draw_contextual_text(&font, run, &shaped, (pen, baseline_y), paint, &[]);
+                pen += shaped.advance(&font);
             } else {
-                self.draw_text(run, font, pen, baseline_y, paint);
+                self.draw_text(run, &font, pen, baseline_y, paint);
                 pen += font.measure_str(run, Some(paint)).0;
             }
         }
+    }
+
+    fn draw_contextual_text(
+        &self,
+        font: &Font,
+        text: &str,
+        shaped: &contextual_text::GlyphRun,
+        origin: (f32, f32),
+        paint: &Paint,
+        clusters: &[(usize, f64)],
+    ) {
+        let (stroke_paths, decorative) = {
+            let style = self.shared.style.borrow();
+            (style.stroke_text_paths, style.decorative_text)
+        };
+        let recording_scale = match &*self.shared.surface.borrow() {
+            PaintSurface::Recording { raster_scale, .. } => Some(*raster_scale),
+            PaintSurface::Raster(_) => None,
+        };
+        self.with_canvas(|canvas| {
+            let vector_pdf = recording_scale == Some(None);
+            let use_outline =
+                vector_pdf || (stroke_paths && paint.style() == skia_safe::paint::Style::Stroke);
+            // Visible substitutions do not always map back to the source
+            // scalars. Keep the original text alongside the ink.
+            if let Some(scale) = recording_scale.filter(|_| !decorative) {
+                let left = clusters
+                    .iter()
+                    .map(|&(_, x)| x)
+                    .reduce(f64::min)
+                    .unwrap_or(0.0);
+                self.record_pdf_text(
+                    canvas,
+                    font,
+                    text,
+                    (origin.0 + left as f32, origin.1),
+                    scale,
+                    shaped.scalar_advances(font, text),
+                );
+            }
+            if use_outline {
+                shaped.draw_outline(canvas, font, origin, paint, clusters);
+            } else {
+                shaped.draw(canvas, font, origin, paint, clusters);
+            }
+        });
     }
 
     fn font(&self) -> Font {
@@ -2284,13 +2316,14 @@ impl Painter for SkiaPainter {
 
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
         let paint = self.fill_paint();
-        Ok(self
-            .segments(text)
+        let text = jade_painter::bidi::VisualText::new(text);
+        Ok(text
             .iter()
+            .flat_map(|run| self.segments(run))
             .map(|(font, run)| {
-                f64::from(thai_text::shape(font, run).map_or_else(
+                f64::from(contextual_text::shape(&font, run).map_or_else(
                     || font.measure_str(run, Some(&paint)).0,
-                    |shaped| shaped.advance(font),
+                    |shaped| shaped.advance(&font),
                 ))
             })
             .sum())
@@ -2328,8 +2361,9 @@ impl Painter for SkiaPainter {
         // Each segment in its face, its ink box at its pen position.
         let (mut width, mut top, mut bottom, mut right) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
         let mut left = f32::INFINITY;
-        for (segment_font, run) in self.segments(text) {
-            let (advance, ink) = if let Some(shaped) = thai_text::shape(&segment_font, run) {
+        let text = jade_painter::bidi::VisualText::new(text);
+        for (segment_font, run) in text.iter().flat_map(|run| self.segments(run)) {
+            let (advance, ink) = if let Some(shaped) = contextual_text::shape(&segment_font, run) {
                 (
                     shaped.advance(&segment_font),
                     shaped.bounds(&segment_font, &paint),
