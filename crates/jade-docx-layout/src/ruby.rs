@@ -81,10 +81,12 @@ pub fn ruby_guide_baseline_shift_px(properties: &RunProperties) -> f64 {
                 Some("superscript" | "super")
             );
             let families = crate::font_resolver::resolve_font_families(Some(properties));
-            let offset = crate::line_metrics::word_script_baseline_offset_pt(
+            let offset = crate::line_metrics::word_ruby_script_baseline_offset_pt(
                 size,
                 families.latin_ascii_stack(),
                 superscript,
+                properties.bold.unwrap_or(false),
+                properties.italic.unwrap_or(false),
             );
             if superscript {
                 -offset

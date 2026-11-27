@@ -761,15 +761,18 @@ fn windows_measured_script_cell(size_pt: f32, stack: &str) -> Option<(usize, usi
     ))
 }
 
+fn is_arial_script(latin_ascii_stack: &str) -> bool {
+    latin_ascii_stack
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(['\'', '"'])
+        .eq_ignore_ascii_case("Arial")
+}
+
 fn is_windows_arial_script(latin_ascii_stack: &str) -> bool {
-    word_layout_platform() == WordLayoutPlatform::Windows
-        && latin_ascii_stack
-            .split(',')
-            .next()
-            .unwrap_or("")
-            .trim()
-            .trim_matches(['\'', '"'])
-            .eq_ignore_ascii_case("Arial")
+    word_layout_platform() == WordLayoutPlatform::Windows && is_arial_script(latin_ascii_stack)
 }
 
 /// Windows Arial and the four-family 16.0.19127.20936 sweeps retain normal
@@ -803,8 +806,7 @@ pub fn word_script_baseline_offset_pt(
     word_script_baseline_offset_for_style_pt(size_pt, latin_ascii_stack, superscript, false, false)
 }
 
-/// Face-aware form: Windows Arial's hinted script moves differ by weight
-/// and slant. The existing Mac policy remains independent of these flags.
+/// Uses measured script moves for the supplied face, weight, and slant where available.
 pub fn word_script_baseline_offset_for_style_pt(
     size_pt: f32,
     latin_ascii_stack: &str,
@@ -831,6 +833,17 @@ pub fn word_script_baseline_offset_for_style_pt(
     }
     match word_layout_platform() {
         WordLayoutPlatform::Mac => {
+            if !bold
+                && !italic
+                && (12.0..=60.0).contains(&half_points)
+                && half_points.fract() == 0.0
+                && is_arial_script(latin_ascii_stack)
+            {
+                return f32::from(
+                    MAC_ARIAL_REGULAR_SCRIPT_MOVES[usize::from(!superscript)]
+                        [half_points as usize - 12],
+                ) / 2.0;
+            }
             if let Some(half_points) =
                 word_mac_clamped_script_move_half_points(size_pt, latin_ascii_stack, superscript)
             {
@@ -845,6 +858,42 @@ pub fn word_script_baseline_offset_for_style_pt(
         _ => size_pt * WINDOWS_SUBSCRIPT_LOWER_EM,
     }
 }
+
+/// Script moves for ruby guides in points, measured separately from the ruby raise.
+pub(crate) fn word_ruby_script_baseline_offset_pt(
+    size_pt: f32,
+    latin_ascii_stack: &str,
+    superscript: bool,
+    bold: bool,
+    italic: bool,
+) -> f32 {
+    if word_layout_platform() != WordLayoutPlatform::Mac {
+        return word_script_baseline_offset_pt(size_pt, latin_ascii_stack, superscript);
+    }
+    // Regular Arial guides drop 1pt here, where ordinary subscripts stay on the baseline.
+    if !superscript
+        && !bold
+        && !italic
+        && matches!(size_pt, 9.0 | 9.5)
+        && is_arial_script(latin_ascii_stack)
+    {
+        return 1.0;
+    }
+    word_script_baseline_offset_for_style_pt(size_pt, latin_ascii_stack, superscript, bold, italic)
+}
+
+/// Regular Arial moves in half points from 6 to 30pt. See the Word for Mac
+/// 16.115.1 `mac-probes-20261108/arial-script-sweep` reference.
+const MAC_ARIAL_REGULAR_SCRIPT_MOVES: [[u8; 49]; 2] = [
+    [
+        5, 5, 5, 5, 6, 6, 6, 7, 7, 8, 9, 9, 8, 10, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13,
+        13, 13, 13, 14, 15, 15, 16, 16, 16, 16, 17, 17, 18, 18, 17, 18, 19, 19, 20, 20, 19, 20, 22,
+    ],
+    [
+        0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 2, 2, 3, 3, 3, 3, 4, 3,
+        3, 3, 3, 4, 4, 3, 3, 4, 4, 4, 4, 4, 5, 4, 4, 4, 4, 4, 4,
+    ],
+];
 
 /// Word for Mac 16.114.3's moves, in half points, where it clamps the face's
 /// OS/2 offset: `word-mac-probe-vert-align-sweep`, 6 to 30pt by half points.
@@ -6001,6 +6050,14 @@ mod tests {
         let near = |value: f32, expected: f32| (value - expected).abs() < 1e-4;
         assert!(near(
             word_script_baseline_offset_pt(20.0, "Arial", true),
+            6.5
+        ));
+        assert!(near(
+            word_script_baseline_offset_for_style_pt(20.0, "Arial", true, true, false),
+            7.0
+        ));
+        assert!(near(
+            word_ruby_script_baseline_offset_pt(20.0, "Arial", true, false, true),
             7.0
         ));
         set_word_layout_platform(WordLayoutPlatform::Windows);
@@ -6014,6 +6071,50 @@ mod tests {
             1.5
         ));
         set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn mac_arial_script_baselines_match_word() {
+        use jade_docx_reader::document::RunProperties;
+
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let reference = include_str!(
+            "../../../tests/word-oracle/mac-probes-20261108/arial-script-sweep/word-baselines.csv"
+        );
+        let mut mismatches = Vec::new();
+        for row in reference.lines().skip(1) {
+            let fields: Vec<_> = row.split(',').collect();
+            let [context, script, size, expected] = fields.as_slice() else {
+                panic!("invalid sweep row: {row}");
+            };
+            let size = size.parse::<f32>().unwrap() / 2.0;
+            let expected = expected.parse::<f64>().unwrap();
+            let superscript = *script == "superscript";
+            let actual = if *context == "ruby" {
+                let properties = RunProperties {
+                    font_family: Some("Arial".into()),
+                    font_size: Some(size),
+                    baseline: Some((*script).into()),
+                    ..RunProperties::default()
+                };
+                15.0 - crate::ruby::ruby_guide_baseline_shift_px(&properties) * 72.0 / 96.0
+            } else {
+                let offset = word_script_baseline_offset_pt(size, "Arial", superscript);
+                f64::from(if superscript { offset } else { -offset })
+            };
+            if (actual - expected).abs() > 0.375 {
+                mismatches.push(format!("{row}: {actual:.4} pt"));
+            }
+        }
+        set_word_layout_platform(previous);
+        assert_eq!(reference.lines().count() - 1, 196);
+        assert!(
+            mismatches.is_empty(),
+            "{} Word baseline differences, first six: {:?}",
+            mismatches.len(),
+            &mismatches[..mismatches.len().min(6)],
+        );
     }
 
     /// Word for Mac 16.114.3's `word-mac-probe-vert-align-sweep`: four faces,
@@ -6134,16 +6235,26 @@ mod tests {
             }
         }
         assert_eq!(faces, 4);
-        // The style-aware API must preserve the existing Mac policy.
+        // Regular Arial has its own Mac reference. The other faces and styled
+        // Arial still use the prior Mac policy.
         set_word_layout_platform(WordLayoutPlatform::Mac);
         for stack in ["Arial", "Calibri", "Century", "MS Mincho", "Yu Mincho"] {
             for half_points in 12..=60 {
                 for superscript in [false, true] {
                     let size = half_points as f32 / 2.0;
-                    let expected = word_script_baseline_offset_pt(size, stack, superscript);
+                    let expected = word_script_baseline_offset_for_style_pt(
+                        size,
+                        stack,
+                        superscript,
+                        true,
+                        false,
+                    );
                     for (bold, italic) in
                         [(false, false), (true, false), (false, true), (true, true)]
                     {
+                        if stack == "Arial" && !bold && !italic {
+                            continue;
+                        }
                         assert_eq!(
                             word_script_baseline_offset_for_style_pt(
                                 size,
