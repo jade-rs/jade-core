@@ -5,19 +5,21 @@
 //! an edit cheap. That sequence is not obvious and is easy to get wrong in ways
 //! that still produce a picture, so it lives here rather than in each caller.
 
-use crate::SkiaRenderHost;
+use crate::{FontEnvironment, SkiaRenderHost};
 use futures::executor::block_on;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::canvas_renderer::{CanvasRenderer, FieldShading, FullLayoutDebugSnapshot};
-use jade_docx_editor::commands::resize_table_column::ResizeTableColumnCommand;
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{
-    Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
+    Command, CommandContext, CommandError, CommandExecutor, HistoryRenderFootprint,
 };
+use jade_docx_editor::document::BodyElement;
 use jade_docx_editor::field_datetime::FieldDateTime;
 use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
-    apply_headless_commands_with_executor_to_document, execute_headless_queries_on_document,
+    apply_headless_commands_with_executor_to_document,
+    apply_headless_commands_with_resize_measurement, execute_headless_queries_on_document,
+    ResizeMeasurement,
 };
 use jade_docx_editor::word_document::{
     FloatingObjectKind, FloatingObjectTarget, FloatingObjectTransform, WordDocument,
@@ -27,8 +29,10 @@ use jade_docx_headless_api::{
     HeadlessBorderEdge, HeadlessCommand, HeadlessDeleteDirection, HeadlessEditRequest,
     HeadlessQuery, HeadlessQueryRequest, HeadlessQueryResult, HeadlessRunStyle,
 };
+use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
 use jade_selection::{SelectionRange, TextPosition};
 use jade_skia_painter::SkiaPainter;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -749,9 +753,110 @@ impl NativeDocument {
     /// Round-trips through jade's writer, so parts the edit never touched keep
     /// their original XML — tracked changes, comments and field codes survive.
     pub fn export_docx(&self) -> Result<Vec<u8>, String> {
+        let grids = if Self::has_windows_nested_body_tables(&self.word_document) {
+            if !self.can_reuse_table_layout() {
+                return self.export_docx_with_fresh_table_grids();
+            }
+            self.renderer.resolved_table_grids_for_docx()
+        } else {
+            Vec::new()
+        };
         self.word_document
-            .export_docx()
+            .export_docx_with_table_grids(&grids)
             .map_err(|err| format!("export failed: {err:?}"))
+    }
+
+    fn has_windows_nested_body_tables(word_document: &WordDocument) -> bool {
+        word_layout_platform() == WordLayoutPlatform::Windows
+            && word_document
+                .document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+                .is_some_and(|body| {
+                    body.elements.iter().any(|element| {
+                        let BodyElement::Table(table) = element else {
+                            return false;
+                        };
+                        table.rows.iter().flat_map(|row| &row.cells).any(|cell| {
+                            cell.blocks
+                                .iter()
+                                .any(|block| matches!(block, BodyElement::Table(_)))
+                        })
+                    })
+                })
+    }
+
+    fn can_reuse_table_layout(&self) -> bool {
+        self.word_document.raw_document.is_some()
+            && self.renderer.last_layout_complete()
+            && !self.bounded_pass_since_full_layout
+            && !self.roundtrip_relayout_pending
+            && !self.options.render_original
+            && self.options.collapsed_blocks().is_empty()
+    }
+
+    fn export_docx_with_fresh_table_grids(&self) -> Result<Vec<u8>, String> {
+        // Layout may be bounded to the edited pages, or the opening pass
+        // may still carry no round-trip IDs. Keep this save pass independent
+        // of the live document, renderer and history.
+        let mut document = Cow::Borrowed(&self.word_document);
+        if document.raw_document.is_none() {
+            document
+                .to_mut()
+                .ensure_roundtrip_xml()
+                .map_err(|error| format!("round-trip XML failed: {error}"))?;
+        }
+        let renderer = Self::measure_tables(
+            &document,
+            (self.page_width, self.page_height),
+            &self.fonts,
+            &self.math_faces,
+            self.field_datetime,
+            &self.options,
+        )?;
+        document
+            .export_docx_with_table_grids(&renderer.resolved_table_grids_for_docx())
+            .map_err(|err| format!("export failed: {err:?}"))
+    }
+
+    fn measure_tables(
+        document: &WordDocument,
+        page_size: (f64, f64),
+        fonts: &FontEnvironment,
+        math_faces: &[FontFace],
+        field_datetime: Option<FieldDateTime>,
+        options: &Options,
+    ) -> Result<CanvasRenderer<SkiaPainter>, String> {
+        // Use the current model and fonts without drawing or sharing mutable
+        // layout state with the live view.
+        let host = SkiaRenderHost::with_fonts(page_size.0, page_size.1, fonts, 1.0)
+            .ok_or_else(|| "could not allocate the table measurement surface".to_string())?;
+        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
+            .map_err(|_| "table measurement setup failed".to_string())?;
+        register_math_faces(&mut renderer, math_faces);
+        renderer.sync_word_document(document);
+        renderer.set_current_datetime(field_datetime.map(renderer_datetime));
+        renderer.set_visible_page_range(Some(0..=0));
+        let mut options = options.clone();
+        options.render_original = false;
+        options.set_collapsed_blocks(Vec::new());
+        renderer
+            .render_with_numbering_rc(
+                document
+                    .document
+                    .clone()
+                    .ok_or_else(|| "no document".to_string())?,
+                &options,
+                document.numbering_part.as_ref(),
+                document.header_lines.as_deref(),
+                document.footer_lines.as_deref(),
+                Some(&document.comments),
+            )
+            .map_err(|_| "table measurement layout failed".to_string())?;
+        if let Some(error) = renderer.take_render_error() {
+            return Err(error);
+        }
+        Ok(renderer)
     }
 
     /// Exports the live document through the editor's painter and shared layout.
@@ -3255,65 +3360,7 @@ impl NativeDocument {
         command: HeadlessCommand,
         keep_selection: bool,
     ) -> Result<(), String> {
-        self.build_roundtrip_xml()?;
-        let resize = match &command {
-            HeadlessCommand::ResizeTableColumnRightEdge {
-                table_order_index,
-                column_index,
-                new_width,
-            } => self
-                .renderer
-                .nested_column_resize_geometry(*table_order_index)
-                .map(|geometry| {
-                    ResizeTableColumnCommand::table_right_edge(
-                        *table_order_index,
-                        *column_index,
-                        *new_width,
-                    )
-                    .with_nested_geometry(geometry)
-                }),
-            HeadlessCommand::ResizeTableColumnBetween {
-                table_order_index,
-                left_column_index,
-                new_left_width,
-                new_right_width,
-            } => self
-                .renderer
-                .nested_column_resize_geometry(*table_order_index)
-                .map(|geometry| {
-                    ResizeTableColumnCommand::between_columns(
-                        *table_order_index,
-                        *left_column_index,
-                        *new_left_width,
-                        *new_right_width,
-                    )
-                    .with_nested_geometry(geometry)
-                }),
-            _ => None,
-        };
-        if let Some(resize) = resize {
-            return self.execute_command(Box::new(resize), keep_selection);
-        }
-        let before = self.selection;
-        let recorded = self.executor.history_revision();
-        let after = self.edit_in_place(|this| {
-            apply_headless_commands_with_executor_to_document(
-                &mut this.word_document,
-                &mut this.executor,
-                this.selection.take(),
-                &HeadlessEditRequest {
-                    commands: vec![command],
-                },
-            )
-        });
-        let after = match after {
-            Ok(after) => after,
-            Err(err) => {
-                self.selection = before;
-                return Err(format!("edit failed: {err:?}"));
-            }
-        };
-        self.finish_recorded_edit(recorded, before, after, keep_selection)
+        self.apply_headless_edit(vec![command], keep_selection, false)
     }
 
     /// Runs `edit` on the document with the renderer's hold on it let go,
@@ -3411,20 +3458,82 @@ impl NativeDocument {
         commands: Vec<HeadlessCommand>,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.apply_headless_edit(commands, keep_selection, true)
+    }
+
+    fn apply_headless_edit(
+        &mut self,
+        commands: Vec<HeadlessCommand>,
+        keep_selection: bool,
+        grouped: bool,
+    ) -> Result<(), String> {
         if commands.is_empty() {
             return Ok(());
         }
         self.build_roundtrip_xml()?;
         let before = self.selection;
         let recorded = self.executor.history_revision();
-        self.executor.begin_group();
+        let reuse_first_layout = self.can_reuse_table_layout();
+        if grouped {
+            self.executor.begin_group();
+        }
         let after = self.edit_in_place(|this| {
-            let result = apply_headless_commands_with_executor_to_document(
+            let mut before_insertion = None;
+            let mut measure = |document: &WordDocument, index, table_order, stage| {
+                if stage == ResizeMeasurement::BeforeInsertion
+                    && !document.document.as_ref().is_some_and(|document| {
+                        document
+                            .east_asian_line_breaking
+                            .compatibility_mode
+                            .is_some_and(|mode| mode >= 15)
+                    })
+                {
+                    return Ok(None);
+                }
+                let Some(id) = document
+                    .table_by_order(table_order)
+                    .and_then(|table| table.node_id)
+                else {
+                    return Ok(None);
+                };
+                let geometry = if index == 0 && reuse_first_layout {
+                    this.renderer.nested_column_resize_geometry_for_node(id)
+                } else {
+                    if !Self::has_windows_nested_body_tables(document) {
+                        return Ok(None);
+                    }
+                    Self::measure_tables(
+                        document,
+                        (this.page_width, this.page_height),
+                        &this.fonts,
+                        &this.math_faces,
+                        this.field_datetime,
+                        &this.options,
+                    )
+                    .map_err(CommandError::Custom)?
+                    .nested_column_resize_geometry_for_node(id)
+                };
+                if stage == ResizeMeasurement::BeforeInsertion {
+                    before_insertion = geometry.map(|geometry| (id, geometry));
+                    return Ok(None);
+                }
+                let previous = before_insertion.take().filter(|(node, _)| *node == id);
+                Ok(geometry.map(|geometry| {
+                    previous
+                        .and_then(|(_, previous)| geometry.after_text_insertion(&previous))
+                        .map_or(geometry, Rc::new)
+                }))
+            };
+            let result = apply_headless_commands_with_resize_measurement(
                 &mut this.word_document,
                 &mut this.executor,
                 this.selection.take(),
                 &HeadlessEditRequest { commands },
+                &mut measure,
             );
+            if !grouped {
+                return result;
+            }
             match result {
                 Ok(after) => {
                     this.executor.end_group();
@@ -3442,7 +3551,9 @@ impl NativeDocument {
             Ok(after) => after,
             Err(err) => {
                 self.selection = before;
-                self.repaint_all()?;
+                if grouped {
+                    self.repaint_all()?;
+                }
                 return Err(format!("edit failed: {err:?}"));
             }
         };
