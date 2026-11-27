@@ -44522,6 +44522,21 @@ where
         Ok(())
     }
 
+    /// The header and footer story heights the last render measured on a
+    /// physical page (`None` where it measured none). They are what move the
+    /// page's body edges, so a change between two renders means the body
+    /// moved: a header taller than the top margin pushes the body down.
+    pub fn header_footer_extent_for_page(
+        &self,
+        zero_based_page: usize,
+    ) -> (Option<f64>, Option<f64>) {
+        let measured = |heights: &[Option<f64>]| heights.get(zero_based_page).copied().flatten();
+        (
+            measured(&self.header_content_heights),
+            measured(&self.footer_content_heights),
+        )
+    }
+
     fn record_header_content_height(&mut self, content_height: f64) {
         let page_index = self.current_page_number.saturating_sub(1);
         if self.header_content_heights.len() <= page_index {
