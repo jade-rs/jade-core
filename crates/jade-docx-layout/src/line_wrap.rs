@@ -7590,23 +7590,53 @@ fn apply_arabic_span_advances<C: LineWrapContext>(
                 continue;
             }
             let clusters = &mut line.clusters[start..end];
-            let raw_width: f64 = clusters
-                .iter()
-                .filter_map(|cluster| cluster.layout.as_ref())
-                .map(|layout| layout.measured_glyph_width)
-                .sum();
-            let shaped_width = ctx.measure_text(joined.as_deref().unwrap_or(span), descriptor)?;
-            if raw_width > f64::EPSILON && shaped_width.is_finite() && shaped_width > 0.0 {
-                let factor = shaped_width / raw_width;
-                // The scalar metrics are only used to partition the shaped span
-                // into hit boxes. Preserve leading and inter-script spacing.
-                for cluster in clusters {
-                    let layout = cluster.layout.as_mut().unwrap();
-                    let delta = (factor - 1.0) * layout.measured_glyph_width * style.text_scale_x;
-                    layout.glyph_box_width += delta;
-                    layout.adjusted_glyph_width += delta;
-                    cluster.width += delta;
+            // The native shaper provides the advances of the joined letters.
+            // Use them for positioning when they match the layout clusters.
+            let shaped_clusters = joined
+                .is_none()
+                .then(|| ctx.measure_arabic_clusters(span, descriptor))
+                .flatten()
+                .filter(|shaped| {
+                    shaped.len() == clusters.len()
+                        && shaped
+                            .iter()
+                            .zip(clusters.iter())
+                            .all(|(&(offset, width), cluster)| {
+                                offset == cluster.start - base_offset - source_start
+                                    && width.is_finite()
+                                    && width >= 0.0
+                            })
+                        && shaped.iter().any(|&(_, width)| width > 0.0)
+                });
+            let adjustment = if shaped_clusters.is_some() {
+                0.0
+            } else {
+                // Canvas gives only the span width. Also keep the proportional
+                // partition for ligatures and runs shaped with forward context.
+                let raw_width: f64 = clusters
+                    .iter()
+                    .filter_map(|cluster| cluster.layout.as_ref())
+                    .map(|layout| layout.measured_glyph_width)
+                    .sum();
+                let shaped_width =
+                    ctx.measure_text(joined.as_deref().unwrap_or(span), descriptor)?;
+                if !(raw_width > f64::EPSILON && shaped_width.is_finite() && shaped_width > 0.0) {
+                    start = end;
+                    continue;
                 }
+                shaped_width / raw_width - 1.0
+            };
+            // Preserve the leading and inter-script spacing on each cluster.
+            for (index, cluster) in clusters.iter_mut().enumerate() {
+                let layout = cluster.layout.as_mut().unwrap();
+                let measured = layout.measured_glyph_width;
+                let delta = shaped_clusters
+                    .as_ref()
+                    .map_or(adjustment * measured, |shaped| shaped[index].1 - measured)
+                    * style.text_scale_x;
+                layout.glyph_box_width += delta;
+                layout.adjusted_glyph_width += delta;
+                cluster.width += delta;
             }
         }
         start = end;
@@ -14743,6 +14773,33 @@ mod tests {
             })
             .collect();
         assert_eq!(actual, ["مرحب", "ا"]);
+
+        let text = "日本語 / RTL: مرحبا";
+        let runs = [RunStyle {
+            end: text.len(),
+            ..runs[0].clone()
+        }];
+        let lines = wrap_text_into_lines(
+            &ArabicContext(TestContext::new(5.0)),
+            text,
+            &runs,
+            0.0,
+            &paragraph,
+            0,
+            200.0,
+        )
+        .unwrap();
+        assert_eq!(lines.len(), 1);
+        let advances: Vec<_> = lines[0]
+            .clusters
+            .iter()
+            .filter(|cluster| is_arabic_letter_cluster(&cluster.text))
+            .map(|cluster| (cluster.text.as_str(), cluster.width))
+            .collect();
+        assert_eq!(
+            advances,
+            [("ا", 3.5), ("ب", 2.5), ("ح", 5.5), ("ر", 5.0), ("م", 4.0)]
+        );
     }
 
     #[test]
