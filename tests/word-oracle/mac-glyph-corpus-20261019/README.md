@@ -52,13 +52,59 @@ Three probes of `mac-probes-16114` (`pairs-kerned`, `squeeze-k5-b2`,
 `exact-grid`) captured again on this machine are identical to the originals,
 so the layout rules agree between the two Macs.
 
-Run the corpus after building the playground. `--changes false` lays every
-document out in the final view as well, including `review-kinds` and
-`review-duplicate-ids`, whose saved `w:revisionView` would otherwise show
-their markup:
+## Replay the corpus
+
+Run from the repository root on macOS with the Word and macOS fonts installed
+and PyMuPDF available to Python. The replay uses the current fixture when its
+SHA-256 matches the capture and retrieves the recorded source revision from
+Git otherwise. A shallow checkout must contain that revision.
 
 ```sh
-node tests/playwright/word-glyph-sweep.mjs \
-  tests/word-oracle/mac-glyph-corpus-20261019 \
-  --platform mac --changes false --expected-fixtures 118
+cargo build --locked --manifest-path crates/jade-docx-native-render/Cargo.toml \
+  --example word_coordinates
+mkdir -p "$HOME/Library/Caches/jade-word-oracle"
+cp -p crates/jade-docx-native-render/target/debug/examples/word_coordinates \
+  "$HOME/Library/Caches/jade-word-oracle/word_coordinates"
+python3 scripts/word-oracle/check_mac_glyph_corpus.py \
+  "$HOME/Library/Caches/jade-word-oracle/word_coordinates" \
+  mac-glyph-replay
 ```
+
+The output directory must be new. Copying the executable into the cache keeps
+it available while a shared Cargo cache prunes old targets. The replay opens
+each document in final view with formatting marks hidden, including
+`review-kinds` and `review-duplicate-ids`, whose saved revision view shows
+markup. The renderer receives only the DOCX and these view options.
+
+`report.json` records both comparisons for each fixture. The gate checks page
+count and matches every non-whitespace glyph by text, page and origin, with a
+tolerance of 0.375 pt on each axis. The four text-free references require the
+same page count and zero glyphs. `yokohama_table` uses the PDF paint trace
+because it includes text painted past the page edge. Five fixtures use the
+archived JSON for the gate because direct PDF extraction changes glyphs.
+Pending fixtures keep both results in the report and still require the
+recorded page count and nonempty glyphs.
+
+## Replay on 2026-11-27
+
+[Per-fixture results](replay-20261127.tsv) cover all 118 documents at Jade
+revision `81f90d38eda433d8387167b5385d767ec7f1cae8` on macOS 27.0.1
+using PyMuPDF 1.28.2. The original Word 16.114 exports and JSON references
+supply the expected coordinates. The replay used the recorded Git revision
+for 48 inputs whose current fixture was missing or had a different hash.
+
+108 fixtures passed against the PDF and five passed against the archived JSON.
+The other five have pending comparisons:
+
+| Fixture | Difference |
+| --- | --- |
+| `char-effects` | Word paints outline as paths, layers shadow, and uses separate highlights for emboss and imprint. |
+| `math` | Word's Cambria Math PDF font maps some glyphs to private-use characters. Equation positions need a separate comparison. |
+| `table-object-edge-cases` | Word's PDF exposes Arabic presentation forms. Matching Arabic scalars for diagnosis reveals up to 2.94 pt difference in glyph origins. |
+| `toc-tc-field-edge-cases` | Word moves visible text across a line break around four empty simple TC fields. |
+| `unicode-segmentation` | Word paints the joined family emoji as one glyph. Jade's PDF shows missing glyphs over the following text. |
+
+The five archived-reference results and five pending comparisons are tracked
+in [issue #222].
+
+[issue #222]: https://github.com/jade-rs/jade-core/issues/222

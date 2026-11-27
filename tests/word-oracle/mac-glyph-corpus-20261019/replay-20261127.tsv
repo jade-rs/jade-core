@@ -1,0 +1,119 @@
+fixture	pages	gate	pdf_extraction	pdf_glyphs	archive_glyphs	jade_glyphs	pdf_result	archive_result
+2col	1	pdf	rawdict	2460	2460	2460	pass	pass
+align-center	1	pdf	rawdict	10	10	10	pass	pass
+alt-chunk-html	1	pdf	rawdict	55	55	55	pass	pass
+blank	1	pdf	rawdict	0	0	0	pass	pass
+break	1	pdf	rawdict	10	10	10	pass	pass
+char-effects	1	pending	rawdict	94	94	81	char-effects: missing/extra glyphs	char-effects: missing/extra glyphs
+char-spacing	1	pdf	rawdict	10	10	10	pass	pass
+comment	1	pdf	rawdict	12	12	12	pass	pass
+contract-clause-page-top	3	pdf	rawdict	1989	1989	1989	pass	pass
+contract	3	pdf	rawdict	1907	1907	1907	pass	pass
+direction-with-selection	2	pdf	rawdict	31	31	31	pass	pass
+document-property-fields	1	pdf	rawdict	251	251	251	pass	pass
+document-variable-fields	1	pdf	rawdict	259	259	259	pass	pass
+endnote	1	pdf	rawdict	12	12	12	pass	pass
+floating-inside-outside	4	pdf	rawdict	567	567	567	pass	pass
+floating-simple-position	1	pdf	rawdict	271	271	271	pass	pass
+floating-square-wrap	1	pdf	rawdict	213	213	213	pass	pass
+floating-through-concave	1	pdf	rawdict	322	322	322	pass	pass
+floating-tight-polygon	1	pdf	rawdict	432	432	432	pass	pass
+floating-top-bottom-offset	1	pdf	rawdict	497	497	497	pass	pass
+floating-wrap-sides	3	pdf	rawdict	506	506	506	pass	pass
+floating-z-order	2	pdf	rawdict	283	283	283	pass	pass
+footer	1	pdf	rawdict	16	16	16	pass	pass
+footnote-long-continuation	2	pdf	rawdict	1280	1280	1280	pass	pass
+footnote-table-each-page	7	pdf	rawdict	9428	9428	9428	pass	pass
+footnote-table-textbox-order	1	pdf	rawdict	179	179	179	pass	pass
+footnote	1	pdf	rawdict	17	17	17	pass	pass
+header-footer-edge-cases	2	pdf	rawdict	444	444	444	pass	pass
+header-footer-sectionpages	2	pdf	rawdict	294	294	294	pass	pass
+header-footer-sections	2	pdf	rawdict	163	163	163	pass	pass
+header-tab-overflow-long	1	pdf	rawdict	58	58	58	pass	pass
+header-tab-overflow-short	1	pdf	rawdict	55	55	55	pass	pass
+header	1	pdf	rawdict	11	11	11	pass	pass
+hello	2	pdf	rawdict	10	10	10	pass	pass
+hyperlink-field-edge-cases	1	pdf	rawdict	145	145	145	pass	pass
+hyperlink	2	pdf	rawdict	33	33	33	pass	pass
+if-compare-field-edge-cases	1	pdf	rawdict	976	976	976	pass	pass
+image-crop-edge-cases	1	pdf	rawdict	151	151	151	pass	pass
+image-floating	1	pdf	rawdict	5	5	5	pass	pass
+image-inline	1	pdf	rawdict	10	10	10	pass	pass
+indent-with-grid	1	pdf	rawdict	150	150	150	pass	pass
+line-numbering	1	pdf	rawdict	161	161	161	pass	pass
+line-spacing	1	pdf	rawdict	10	10	10	pass	pass
+math	1	pending	rawdict	801	801	723	math: missing/extra glyphs	math: missing/extra glyphs
+merged-table-over-page	2	pdf	rawdict	8	8	8	pass	pass
+mirror-margins	2	pdf	rawdict	22	22	22	pass	pass
+nda	3	pdf	rawdict	1941	1941	1941	pass	pass
+note-styles-creation	1	pdf	rawdict	15	15	15	pass	pass
+noto-jp-yokohama_page6	8	archive	rawdict	5425	5425	5425	noto-jp-yokohama_page6: text or page changed	pass
+noto-yokohama_page6	5	pdf	rawdict	5425	5425	5425	pass	pass
+numbering-by-style	1	pdf	rawdict	83	83	83	pass	pass
+numbering-del	1	pdf	rawdict	12	12	12	pass	pass
+numbering-del2	1	pdf	rawdict	11	11	11	pass	pass
+numbering-restart	2	pdf	rawdict	563	563	563	pass	pass
+numbering-with-review	1	pdf	rawdict	21	21	21	pass	pass
+review-duplicate-ids	1	pdf	rawdict	40	40	40	pass	pass
+review-kinds	2	pdf	rawdict	94	94	94	pass	pass
+review	1	pdf	rawdict	5	5	5	pass	pass
+rich-paste-cr	1	pdf	rawdict	4	4	4	pass	pass
+run-styles	1	pdf	rawdict	10	10	10	pass	pass
+scroll-offset-repro	16	pdf	rawdict	10844	10844	10844	pass	scroll-offset-repro/4015: axis mismatch: Word [7, '月', 232.0, 375.12]
+section-break-next-column	2	pdf	rawdict	56	56	56	pass	pass
+section-break-types	4	pdf	rawdict	60	60	60	pass	pass
+system-dev-contract	2	archive	rawdict	1095	1095	1095	system-dev-contract: text or page changed	pass
+tab	1	pdf	rawdict	10	10	10	pass	pass
+table-bidi-alignment	1	pdf	rawdict	561	561	561	pass	pass
+table-bidi-visual	1	pdf	rawdict	492	492	492	pass	pass
+table-border-conflicts	1	pdf	rawdict	980	980	980	pass	pass
+table-cell-fit-text	1	pdf	rawdict	351	351	351	pass	pass
+table-cell-preferred-widths	1	pdf	rawdict	558	558	558	pass	pass
+table-cell-spacing	1	pdf	rawdict	957	957	957	pass	pass
+table-diagonal-borders	1	pdf	rawdict	309	309	309	pass	pass
+table-floating-anchor-defaults	1	pdf	rawdict	292	292	292	pass	pass
+table-floating-horizontal	1	pdf	rawdict	383	383	383	pass	pass
+table-floating-inline-vertical	1	pdf	rawdict	365	365	365	pass	pass
+table-floating-overlap	1	pdf	rawdict	262	262	262	pass	pass
+table-floating-wrap	1	pdf	rawdict	245	245	245	pass	pass
+table-hidden-rows	1	pdf	rawdict	407	407	407	pass	pass
+table-hide-mark	1	pdf	rawdict	290	290	290	pass	pass
+table-lacked	1	pdf	rawdict	0	0	0	pass	pass
+table-legacy-hmerge	1	pdf	rawdict	348	348	348	pass	pass
+table-nested-double	1	pdf	rawdict	0	0	0	pass	pass
+table-nested-single	1	pdf	rawdict	0	0	0	pass	pass
+table-nested	1	pdf	rawdict	10	10	10	pass	pass
+table-nowrap-autofit	1	pdf	rawdict	1038	1038	1038	pass	pass
+table-object-edge-cases	1	pending	rawdict	280	280	280	table-object-edge-cases: text or page changed	table-object-edge-cases: text or page changed
+table-repeating-header	2	pdf	rawdict	1790	1790	1790	pass	pass
+table-row-height-defaults	1	pdf	rawdict	413	413	413	pass	pass
+table-row-height-overflow	1	archive	rawdict	275	225	225	table-row-height-overflow: missing/extra glyphs	pass
+table-vertical-merge-page-break	2	pdf	rawdict	5	5	5	pass	pass
+table-with-text-direction	1	pdf	rawdict	19	19	19	pass	pass
+table2x2	1	pdf	rawdict	10	10	10	pass	pass
+table3x2merged	1	pdf	rawdict	10	10	10	pass	pass
+tabs	1	archive	rawdict	130	130	130	tabs: text or page changed	pass
+textbox-body-properties	1	pdf	rawdict	180	180	180	pass	pass
+textbox-dashed	1	pdf	rawdict	15	15	15	pass	pass
+textbox-tall-header-overlap	1	pdf	rawdict	164	164	164	pass	pass
+textbox	1	pdf	rawdict	15	15	15	pass	pass
+toc-caption-edge-cases	1	pdf	rawdict	271	271	271	pass	pass
+toc-direct-outline-levels	1	pdf	rawdict	467	467	467	pass	pass
+toc-instrtext-edge-cases	1	pdf	rawdict	262	262	262	pass	pass
+toc-sequence-page-number	1	pdf	rawdict	313	313	313	pass	pass
+toc-tc-field-edge-cases	1	pending	rawdict	380	380	380	toc-tc-field-edge-cases/0: axis mismatch: Word [1, 'T', 57.600093841552734, 60.48002624511719]	toc-tc-field-edge-cases/0: axis mismatch: Word [1, 'T', 57.6, 60.48]
+toc	2	archive	rawdict	527	527	527	toc: text or page changed	pass
+trust-beneficiary-sale-keep-next	37	pdf	rawdict	34231	34231	34231	pass	pass
+underline-kinds	1	pdf	rawdict	326	326	326	pass	pass
+underline-words	1	pdf	rawdict	9	9	9	pass	pass
+unicode-segmentation	1	pending	rawdict	33	33	29	unicode-segmentation: missing/extra glyphs	unicode-segmentation: missing/extra glyphs
+vertical-hello	1	pdf	rawdict	5	5	5	pass	pass
+word-compat-comprehensive	2	pdf	rawdict	1427	1427	1427	pass	pass
+wrong-num	1	pdf	rawdict	30	30	30	pass	pass
+yokohama-word-textbox	2	pdf	rawdict	877	877	877	pass	pass
+yokohama_mini	1	pdf	rawdict	51	51	51	pass	pass
+yokohama_page1	1	pdf	rawdict	853	853	853	pass	pass
+yokohama_page3_only	1	pdf	rawdict	1288	1288	1288	pass	pass
+yokohama_page6	5	pdf	rawdict	5425	5425	5425	pass	pass
+yokohama_table	1	pdf	paint-trace	801	801	801	pass	pass
+yokohama_table_repro	2	pdf	rawdict	882	882	882	pass	pass
