@@ -113,6 +113,15 @@ def nested_autofit_batch_resize_cases():
             for length in (22, 23, 24) for position in ('edge', 'rightedge')}
 
 
+def nested_autofit_insert_then_resize_cases():
+    return {f'{position}-w{width}-insert{count}' for position in ('edge', 'rightedge')
+            for width in (45, 65, 85) for count in (8, 12)}
+
+
+def nested_autofit_implicit_frame_cases():
+    return {'implicit', 'indent-zero', 'indent-ten', 'table', 'table-indent-zero', 'cell'}
+
+
 def nested_autofit_text_content_cases():
     return {f'{count}-n{length}-{position}' for count in ('four', 'eight', 'twelve')
             for length in (22, 23, 24) for position in ('edge', 'rightedge')}
@@ -138,9 +147,86 @@ def nested_autofit_text_overflow_cases():
             for width in (8240, 8280, 8320)}
 
 
+def nested_autofit_cell_margin_weight_cases():
+    margins = ('0-0-25-45', '10-10-10-20', '20-25-15-5', '60-0-0-0')
+    return {f'{position}-{page}-{margin}' for position in ('edge', 'rightedge')
+            for page in (612, 720) for margin in margins}
+
+
+def nested_autofit_three_column_cases(hosts=(1, 2)):
+    return {f'{host}-{length}-{margins}-{page}' for host in hosts for length in (10, 22)
+            for margins in ('table', 'individual') for page in (612, 650, 690, 900)}
+
+
+def nested_autofit_host_first_cases():
+    return nested_autofit_three_column_cases((0,))
+
+
+def nested_autofit_child_margin_cases():
+    margins = ('0-0-20-40', '40-5-0-0', '2-9-3-8', '10-30-10-30')
+    return {f'{margin}-{page}' for margin in margins for page in (612, 900)}
+
+
+def nested_autofit_four_column_cases():
+    return {f'{host}-{order}-{margin}-{page}' for host in (0, 2, 3)
+            for order in ('mn', 'nm') for margin in ('10-30', '30-10')
+            for page in (700, 755, 820, 1000)}
+
+
+def nested_autofit_two_host_cases():
+    return {f'{text_column}-{page}' for text_column in (0, 1, 2)
+            for page in (612, 690, 770, 900)}
+
+
 def nested_fixed_parent_width_cases():
     widths = (2500, 2823, 2954, 2963, 3023, 3043)
     return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
+
+
+def nested_fixed_grid_fit_cases():
+    shapes = ('equal', 'unequal', 'descending', 'middle-largest')
+    margins = ('table', 'individual')
+    return ({f'baseline-{shape}-{budget}' for shape in shapes for budget in (2801, 2903, 3001, 3103)}
+            | {f'margins-{shape}-{margin}-{budget}' for shape in shapes for margin in margins
+               for budget in (2800, 2903, 3103)}
+            | {f'host-{shape}-{margin}-{padding}' for shape in ('unequal', 'middle-largest')
+               for margin in margins for padding in ('0-0', '20-35')}
+            | {f'width-{columns}-{kind}-{budget}' for columns in (2, 3, 4)
+               for kind in ('full', 'percentage', 'absolute') for budget in (2800, 2904, 3000, 3104)})
+
+
+def nested_fixed_variable_row_cases():
+    rows = ('crossed', 'crossed-first', 'diff-margins', 'diff-margins-first',
+            'left-first', 'margins-first-only', 'margins-second-only', 'one-column',
+            'right-first', 'rotated', 'rotated-first', 'same', 'same-margins',
+            'split-equal', 'wide-first', 'wide-second', 'widest-opposite-padding',
+            'width-and-margins', 'width-and-margins-first')
+    return {f'{row}-{width}-{budget}' for row in rows for width in ('full', 'absolute')
+            for budget in (2701, 2903, 3103, 3701)}
+
+
+def nested_fixed_mixed_width_cases():
+    mixed = {
+        'core': (('absolute-control', 'all-pct', 'one-pct', 'alternating-absolute',
+                  'alternating-pct', 'pct-short-total', 'pct-over-total', 'pct-rows-opposed',
+                  'one-auto', 'one-nil', 'all-auto', 'one-auto-one-pct'), (2701, 2903, 3103, 3701)),
+        'ties': (('single-fraction-first', 'single-fraction-middle', 'single-fraction-last',
+                  'two-fractions', 'two-fractions-near-total', 'two-fractions-above-total',
+                  'two-fractions-same-tie'), (2702, 2770, 2902, 3102)),
+        'order': (('pct25-abs-pct50', 'pct50-abs-pct25', 'abs-pct25-pct50', 'abs-pct50-pct25',
+                   'pct25-pct50-abs', 'pct50-pct25-abs'), (2701, 2702, 2703, 2704)),
+        'margins': (('one-pct-first-margins', 'one-pct-mid-margins', 'all-pct-margins',
+                     'two-pct-margins', 'two-pct-near-margins', 'two-pct-above-margins'),
+                    (2701, 2702, 3102, 3701)),
+    }
+    automatic = ('auto-auto', 'nil-auto', 'missing-missing', 'auto-nil', 'auto-dxa',
+                 'dxa-auto', 'auto-pct', 'pct-auto')
+    return ({f'{group}-{case}-{width}-{budget}' for group, (cases, budgets) in mixed.items()
+             for case in cases for width in ('full', 'absolute') for budget in budgets}
+            | {f'auto-{case}-{grid}-{budget}' for case in automatic for grid in (420, 700, 1100, 1400)
+               for budget in (2702, 3701)}
+            | {f'near-{position}-abs{order}-full-{budget}' for position in ('first', 'middle', 'last')
+               for order in ('', '-reversed') for budget in range(2697, 2707)})
 
 
 def collapsed_border_content_cases():
@@ -191,6 +277,10 @@ CAPTURES = (
      'word-windows-edge-nested-autofit-parent-save-', nested_autofit_parent_save_cases, ('--unclipped-tables',)),
     ('nested-autofit-batch-resize', 'e5b5025d5a739bb0d0600b7f8480e4445dfd6e9bbebe5d326094ab22e986165b',
      'word-windows-edge-nested-autofit-batch-', nested_autofit_batch_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-insert-then-resize', 'da85a47acd53ce3a5fdab52afdb940fb38a655415a9cbd4b0189ef42730433bf',
+     'word-windows-edge-nested-autofit-insert-then-resize-', nested_autofit_insert_then_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-implicit-frame', '5afd2f9d7807d30ae6ea9bfb9a1ee386a896dcbac818aca6368f22a6e7814f3f',
+     'word-windows-edge-nested-autofit-implicit-frame-', nested_autofit_implicit_frame_cases, ('--unclipped-tables',)),
     ('nested-autofit-text-content', 'b05ee7303b2be4060258c44b6e8f422e798dea9598dc99cb8777214c11eff62f',
      'word-windows-edge-nested-autofit-text-content-', nested_autofit_text_content_cases, ('--unclipped-tables',)),
     ('nested-autofit-text-frame', 'cf6ddf00d54d91060ba4300bb2854f5795c5174c1fea5341c3bbd7957c934da1',
@@ -203,10 +293,28 @@ CAPTURES = (
      'word-windows-edge-nested-autofit-text-resize-', nested_autofit_text_frame_cases, ('--unclipped-tables',)),
     ('nested-autofit-text-overflow', '45f6f45cbda73e9fdd2462dd398c22974d1c9790ceb05e296df70943d161aedb',
      'word-windows-edge-nested-autofit-text-overflow-', nested_autofit_text_overflow_cases, ('--unclipped-tables',)),
+    ('nested-autofit-cell-margin-weights', '52c4b8ea80dbb19c3b2174760d9b6cbcc2fb0d27685b1965be2e36b39216d267',
+     'word-windows-edge-nested-autofit-cell-margin-weights-', nested_autofit_cell_margin_weight_cases, ('--unclipped-tables',)),
+    ('nested-autofit-three-column-clamp', 'c1985e68cd9297ebed48609bd889a20a0ecf2963020ebb5b4dc1eda1cd3c914f',
+     'word-windows-edge-nested-autofit-three-column-clamp-', nested_autofit_three_column_cases, ('--unclipped-tables',)),
+    ('nested-autofit-host-first', '7fd77c7a3c99418d65ad6850a704e2b03e95fab0361267cb5faa64f1e636df3f',
+     'word-windows-edge-nested-autofit-host-first-', nested_autofit_host_first_cases, ('--unclipped-tables',)),
+    ('nested-autofit-child-margins', '8a647aa23411efd0f5df637c95dec1aff219aae1b33da83837f05ca17fca28be',
+     'word-windows-edge-nested-autofit-child-margins-', nested_autofit_child_margin_cases, ('--unclipped-tables',)),
+    ('nested-autofit-four-column-margins', '4f16a90d49bf5630f8d5526d1d98667a23b48f9369d66acd1db4703d8c72aba6',
+     'word-windows-edge-nested-autofit-four-column-margins-', nested_autofit_four_column_cases, ('--unclipped-tables',)),
+    ('nested-autofit-two-nested-hosts', 'cd39f3e2acf173c90136b8dbbb45528738345ed24398f8313689adc8f13c087e',
+     'word-windows-edge-nested-autofit-two-nested-hosts-', nested_autofit_two_host_cases, ('--unclipped-tables',)),
     ('nested-fixed-advances', '842bd436081f746899214dc718aa4371d16ae5d0ab7049a61c5742960f3e0920',
      'word-windows-edge-nested-fixed-advance-', nested_table_advance_cases, ('--unclipped-tables',)),
     ('nested-fixed-parent-widths', '88c2b573ec528d89c9797815aef9c6b1373b1b4f53985fc2420cc02f4d379595',
      'word-windows-edge-nested-fixed-floor-', nested_fixed_parent_width_cases, ('--unclipped-tables',)),
+    ('nested-fixed-grid-fit', 'dd83a184031b57208324f102eb1797f37a7e2d4dcdd54bb1c416514d0045a756',
+     'word-windows-edge-nested-fixed-grid-fit-', nested_fixed_grid_fit_cases, ('--unclipped-tables',)),
+    ('nested-fixed-variable-rows', 'f11e49bd496af8243ed8edf17c689392af4b6df6b71c8354243d1d88ac98b7f2',
+     'word-windows-edge-nested-fixed-variable-rows-', nested_fixed_variable_row_cases, ('--unclipped-tables',)),
+    ('nested-fixed-mixed-widths', 'fefe9c0be201338ccf623e6ed759a03df23a83a4fb38e352de36b84993e9b183',
+     'word-windows-edge-nested-fixed-mixed-widths-', nested_fixed_mixed_width_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -244,10 +352,15 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'spaced-table-border-content',
         'nested-autofit-advances', 'nested-autofit-resize', 'nested-autofit-floors',
         'nested-autofit-twip-rounding', 'nested-autofit-parent-save', 'nested-autofit-batch-resize',
+        'nested-autofit-insert-then-resize', 'nested-autofit-implicit-frame',
         'nested-autofit-text-content', 'nested-autofit-text-frame',
         'nested-autofit-text-margins', 'nested-autofit-text-indents',
         'nested-autofit-text-resize', 'nested-autofit-text-overflow',
-        'nested-fixed-advances', 'nested-fixed-parent-widths',
+        'nested-autofit-cell-margin-weights', 'nested-autofit-three-column-clamp',
+        'nested-autofit-host-first', 'nested-autofit-child-margins',
+        'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
+        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
+        'nested-fixed-mixed-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )

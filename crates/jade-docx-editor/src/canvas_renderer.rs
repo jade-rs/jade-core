@@ -2433,7 +2433,7 @@ pub struct TableLayoutInfo {
     #[serde(skip)]
     resize_geometry: Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>>,
     #[serde(skip)]
-    save_autofit_grid: bool,
+    save_resolved_grid: bool,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub row_heights: Vec<f64>,
 }
@@ -2446,7 +2446,7 @@ impl Clone for TableLayoutInfo {
             node_id: self.node_id,
             column_widths: self.column_widths.clone(),
             resize_geometry: self.resize_geometry.clone(),
-            save_autofit_grid: self.save_autofit_grid,
+            save_resolved_grid: self.save_resolved_grid,
             row_heights: self.row_heights.clone(),
         }
     }
@@ -2457,7 +2457,7 @@ impl Clone for TableLayoutInfo {
         self.node_id = source.node_id;
         self.column_widths.clone_from(&source.column_widths);
         self.resize_geometry.clone_from(&source.resize_geometry);
-        self.save_autofit_grid = source.save_autofit_grid;
+        self.save_resolved_grid = source.save_resolved_grid;
         self.row_heights.clone_from(&source.row_heights);
     }
 }
@@ -42818,12 +42818,12 @@ where
         }
     }
 
-    /// Resolved grids of Windows AutoFit body tables and their measured children.
+    /// Resolved grids of Windows AutoFit body tables and measured nested tables.
     /// The caller must use a complete layout of the document it is saving.
-    pub fn autofit_grids_for_docx(&self) -> Vec<(XmlNodeId, Vec<i32>)> {
+    pub fn resolved_table_grids_for_docx(&self) -> Vec<(XmlNodeId, Vec<i32>)> {
         self.table_layouts
             .iter()
-            .filter(|table| table.save_autofit_grid)
+            .filter(|table| table.save_resolved_grid)
             .filter_map(|table| {
                 let node_id = XmlNodeId::new(table.node_id?);
                 let twips = table
@@ -44649,6 +44649,21 @@ where
         let height = self.measure_header_footer_story(&body, 0.0, measure_base)?;
         self.record_footer_content_height(height);
         Ok(())
+    }
+
+    /// The header and footer story heights the last render measured on a
+    /// physical page (`None` where it measured none). They are what move the
+    /// page's body edges, so a change between two renders means the body
+    /// moved: a header taller than the top margin pushes the body down.
+    pub fn header_footer_extent_for_page(
+        &self,
+        zero_based_page: usize,
+    ) -> (Option<f64>, Option<f64>) {
+        let measured = |heights: &[Option<f64>]| heights.get(zero_based_page).copied().flatten();
+        (
+            measured(&self.header_content_heights),
+            measured(&self.footer_content_heights),
+        )
     }
 
     fn record_header_content_height(&mut self, content_height: f64) {
@@ -46873,7 +46888,7 @@ where
     ) -> Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>> {
         self.table_layouts
             .iter()
-            .filter(|info| info.node_id == Some(id.raw()) && info.save_autofit_grid)
+            .filter(|info| info.node_id == Some(id.raw()) && info.save_resolved_grid)
             .find_map(|info| info.resize_geometry.clone())
     }
 }
@@ -48571,7 +48586,7 @@ mod tests {
                 index: i + usize::from(phase),
                 order: count - i,
                 resize_geometry: None,
-                save_autofit_grid: false,
+                save_resolved_grid: false,
                 node_id: phase
                     .is_multiple_of(2)
                     .then_some(i as u32 + u32::from(phase)),
@@ -48688,7 +48703,7 @@ mod tests {
             index: 3,
             order: 7,
             resize_geometry: None,
-            save_autofit_grid: false,
+            save_resolved_grid: false,
             node_id: Some(42),
             column_widths: vec![72.0, 144.0],
             row_heights: vec![18.0, 24.0],

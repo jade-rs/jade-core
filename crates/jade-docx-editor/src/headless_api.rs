@@ -752,6 +752,17 @@ fn snapshot_delete_effect(
     }
 }
 
+// InsertTextCommand folds CRLF to one model line break; snapshot coordinates
+// must advance by the same UTF-8 byte length after applying that command.
+fn normalized_inserted_text_len(text: &str) -> usize {
+    text.len()
+        - text
+            .as_bytes()
+            .windows(2)
+            .filter(|pair| *pair == b"\r\n")
+            .count()
+}
+
 fn snapshot_effect(
     word_doc: &WordDocument,
     index: usize,
@@ -1656,7 +1667,7 @@ fn applied_snapshot_transform(
                     Some(AppliedSnapshotTransform::TextInsert {
                         original_at,
                         current_at,
-                        inserted_len: text.len(),
+                        inserted_len: normalized_inserted_text_len(text),
                     })
                 }
                 HeadlessCommand::InsertCitation { .. } => {
@@ -1684,7 +1695,7 @@ fn applied_snapshot_transform(
             current_start,
             current_end,
             inserted_len: match command {
-                HeadlessCommand::ReplaceRange { text, .. } => text.len(),
+                HeadlessCommand::ReplaceRange { text, .. } => normalized_inserted_text_len(text),
                 HeadlessCommand::DeleteText { .. } => 0,
                 HeadlessCommand::InsertCitation { .. } => inserted_len.unwrap_or_default(),
                 _ => 0,
@@ -1969,6 +1980,15 @@ fn try_apply_headless_text_command(
             // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
             // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
             let original_end_offset = *end_offset;
+            // Normalize before comparing unchanged prefixes/suffixes, so a
+            // replacement with equivalent line endings remains a history no-op.
+            let normalized_text;
+            let text = if text.contains('\r') {
+                normalized_text = text.replace("\r\n", "\n").replace('\r', "\n");
+                &normalized_text
+            } else {
+                text
+            };
             let (start_offset, end_offset, text) = trimmed_replacement(
                 word_doc,
                 *start_paragraph,
@@ -2103,10 +2123,17 @@ pub fn apply_headless_commands_with_executor_to_document(
     apply_headless_commands(word_doc, command_executor, selection, request, false, None)
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ResizeMeasurement {
+    BeforeInsertion,
+    BeforeResize,
+}
+
 type MeasureColumnResize<'a> = dyn FnMut(
         &WordDocument,
         usize,
         usize,
+        ResizeMeasurement,
     ) -> Result<Option<Rc<NestedColumnResizeGeometry>>, CommandError>
     + 'a;
 
@@ -2129,9 +2156,9 @@ fn execute_column_resize(
         .map_err(|source| HeadlessApiApplyError::Command { index, source })
 }
 
-/// Applies one request, measuring a column resize against the document as it
-/// stands when the command runs. The callback receives the command index and
-/// the target table's document-order index.
+/// Applies one request, measuring column widths just before a resize and,
+/// for a right-edge resize after text insertion, before the insertion run.
+/// The callback receives the command index and target table order at each stage.
 pub fn apply_headless_commands_with_resize_measurement(
     word_doc: &mut WordDocument,
     command_executor: &mut CommandExecutor,
@@ -2205,6 +2232,12 @@ fn apply_headless_commands(
             command,
             HeadlessCommand::InsertText { .. } | HeadlessCommand::ReplaceRange { .. }
         ) {
+            if let Some(measure) = measure.as_deref_mut() {
+                if let Some(order) = right_edge_resize_after_insertions(&request.commands, index) {
+                    measure(word_doc, index, order, ResizeMeasurement::BeforeInsertion)
+                        .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                }
+            }
             try_apply_headless_text_command(
                 word_doc,
                 command_executor,
@@ -2223,8 +2256,13 @@ fn apply_headless_commands(
                 | HeadlessCommand::ResizeTableColumnRightEdge {
                     table_order_index, ..
                 },
-            ) => measure(word_doc, index, *table_order_index)
-                .map_err(|source| HeadlessApiApplyError::Command { index, source })?,
+            ) => measure(
+                word_doc,
+                index,
+                *table_order_index,
+                ResizeMeasurement::BeforeResize,
+            )
+            .map_err(|source| HeadlessApiApplyError::Command { index, source })?,
             _ => None,
         };
         selection = apply_headless_command(
@@ -2238,6 +2276,23 @@ fn apply_headless_commands(
         )?;
     }
     Ok(selection)
+}
+
+fn right_edge_resize_after_insertions(commands: &[HeadlessCommand], start: usize) -> Option<usize> {
+    let inserts_text =
+        |command: &HeadlessCommand| matches!(command, HeadlessCommand::InsertText { .. });
+    if !inserts_text(&commands[start]) || (start > 0 && inserts_text(&commands[start - 1])) {
+        return None;
+    }
+    let HeadlessCommand::ResizeTableColumnRightEdge {
+        table_order_index, ..
+    } = commands[start..]
+        .iter()
+        .find(|command| !inserts_text(command))?
+    else {
+        return None;
+    };
+    Some(*table_order_index)
 }
 
 // Text edits and layout measurement run outside the larger dispatch stack frame.

@@ -5,11 +5,74 @@ use crate::word_document::{whole_twips, WordDocument, MIN_TABLE_COLUMN_WIDTH_PT}
 use std::rc::Rc;
 
 /// Measured widths of a nested table within its parent's AutoFit grid.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NestedColumnResizeGeometry {
     pub(crate) displayed_widths: Vec<f32>,
     pub(crate) minimum_widths: Vec<f64>,
+    pub(crate) horizontal_padding: Vec<f64>,
     pub(crate) frame_width: f32,
+}
+
+impl NestedColumnResizeGeometry {
+    /// In recent Word compatibility modes, a text insertion can reflow the
+    /// nested table within its previous width while the parent cell grows.
+    pub fn after_text_insertion(&self, previous: &Self) -> Option<Self> {
+        let budget = previous
+            .displayed_widths
+            .iter()
+            .map(|&width| f64::from(width))
+            .sum();
+        let minimum: f64 = self.minimum_widths.iter().sum();
+        if self.minimum_widths.len() != previous.minimum_widths.len()
+            || minimum <= budget + 1e-5
+            || minimum <= previous.minimum_widths.iter().sum::<f64>() + 1e-5
+        {
+            return None;
+        }
+        let mut fitted = self.minimum_widths.clone();
+        if !shrink_nested_text_to_frame(
+            &mut fitted,
+            budget,
+            self.horizontal_padding.iter().copied(),
+            20.0,
+        ) {
+            return None;
+        }
+        Some(Self {
+            displayed_widths: fitted.into_iter().map(|width| width as f32).collect(),
+            ..self.clone()
+        })
+    }
+}
+
+pub(crate) fn shrink_nested_text_to_frame(
+    widths: &mut [f64],
+    limit: f64,
+    padding: impl Iterator<Item = f64> + Clone,
+    twips_per_unit: f64,
+) -> bool {
+    let total_padding: f64 = padding.clone().sum();
+    let full_width: f64 = widths.iter().sum();
+    let budget = (limit * twips_per_unit).round();
+    let text_budget = budget / twips_per_unit - total_padding;
+    if text_budget <= 0.0 || full_width <= total_padding {
+        return false;
+    }
+    let scale = text_budget / (full_width - total_padding);
+    let last = widths.len() - 1;
+    let mut boundary = 0.0;
+    let mut previous = 0.0;
+    for (index, (width, padding)) in widths.iter_mut().zip(padding).enumerate() {
+        boundary += (padding + (*width - padding) * scale) * twips_per_unit;
+        let snapped = if index == last {
+            budget
+        } else {
+            boundary.round()
+        };
+        *width = (snapped - previous) / twips_per_unit;
+        previous = snapped;
+    }
+    true
 }
 
 pub(crate) fn fit_nested_columns_to_content(

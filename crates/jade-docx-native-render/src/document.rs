@@ -19,6 +19,7 @@ use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
     apply_headless_commands_with_executor_to_document,
     apply_headless_commands_with_resize_measurement, execute_headless_queries_on_document,
+    ResizeMeasurement,
 };
 use jade_docx_editor::word_document::{
     FloatingObjectKind, FloatingObjectTarget, FloatingObjectTransform, WordDocument,
@@ -754,9 +755,9 @@ impl NativeDocument {
     pub fn export_docx(&self) -> Result<Vec<u8>, String> {
         let grids = if Self::has_windows_nested_body_tables(&self.word_document) {
             if !self.can_reuse_table_layout() {
-                return self.export_docx_with_fresh_autofit_grids();
+                return self.export_docx_with_fresh_table_grids();
             }
-            self.renderer.autofit_grids_for_docx()
+            self.renderer.resolved_table_grids_for_docx()
         } else {
             Vec::new()
         };
@@ -794,7 +795,7 @@ impl NativeDocument {
             && self.options.collapsed_blocks().is_empty()
     }
 
-    fn export_docx_with_fresh_autofit_grids(&self) -> Result<Vec<u8>, String> {
+    fn export_docx_with_fresh_table_grids(&self) -> Result<Vec<u8>, String> {
         // Layout may be bounded to the edited pages, or the opening pass
         // may still carry no round-trip IDs. Keep this save pass independent
         // of the live document, renderer and history.
@@ -814,7 +815,7 @@ impl NativeDocument {
             &self.options,
         )?;
         document
-            .export_docx_with_table_grids(&renderer.autofit_grids_for_docx())
+            .export_docx_with_table_grids(&renderer.resolved_table_grids_for_docx())
             .map_err(|err| format!("export failed: {err:?}"))
     }
 
@@ -3359,7 +3360,7 @@ impl NativeDocument {
         command: HeadlessCommand,
         keep_selection: bool,
     ) -> Result<(), String> {
-        self.apply_commands(vec![command], keep_selection)
+        self.apply_headless_edit(vec![command], keep_selection, false)
     }
 
     /// Runs `edit` on the document with the renderer's hold on it let go,
@@ -3457,6 +3458,15 @@ impl NativeDocument {
         commands: Vec<HeadlessCommand>,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.apply_headless_edit(commands, keep_selection, true)
+    }
+
+    fn apply_headless_edit(
+        &mut self,
+        commands: Vec<HeadlessCommand>,
+        keep_selection: bool,
+        grouped: bool,
+    ) -> Result<(), String> {
         if commands.is_empty() {
             return Ok(());
         }
@@ -3464,31 +3474,55 @@ impl NativeDocument {
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let reuse_first_layout = self.can_reuse_table_layout();
-        self.executor.begin_group();
+        if grouped {
+            self.executor.begin_group();
+        }
         let after = self.edit_in_place(|this| {
-            let mut measure = |document: &WordDocument, index, table_order| {
+            let mut before_insertion = None;
+            let mut measure = |document: &WordDocument, index, table_order, stage| {
+                if stage == ResizeMeasurement::BeforeInsertion
+                    && !document.document.as_ref().is_some_and(|document| {
+                        document
+                            .east_asian_line_breaking
+                            .compatibility_mode
+                            .is_some_and(|mode| mode >= 15)
+                    })
+                {
+                    return Ok(None);
+                }
                 let Some(id) = document
                     .table_by_order(table_order)
                     .and_then(|table| table.node_id)
                 else {
                     return Ok(None);
                 };
-                if index == 0 && reuse_first_layout {
-                    return Ok(this.renderer.nested_column_resize_geometry_for_node(id));
-                }
-                if !Self::has_windows_nested_body_tables(document) {
+                let geometry = if index == 0 && reuse_first_layout {
+                    this.renderer.nested_column_resize_geometry_for_node(id)
+                } else {
+                    if !Self::has_windows_nested_body_tables(document) {
+                        return Ok(None);
+                    }
+                    Self::measure_tables(
+                        document,
+                        (this.page_width, this.page_height),
+                        &this.fonts,
+                        &this.math_faces,
+                        this.field_datetime,
+                        &this.options,
+                    )
+                    .map_err(CommandError::Custom)?
+                    .nested_column_resize_geometry_for_node(id)
+                };
+                if stage == ResizeMeasurement::BeforeInsertion {
+                    before_insertion = geometry.map(|geometry| (id, geometry));
                     return Ok(None);
                 }
-                let renderer = Self::measure_tables(
-                    document,
-                    (this.page_width, this.page_height),
-                    &this.fonts,
-                    &this.math_faces,
-                    this.field_datetime,
-                    &this.options,
-                )
-                .map_err(CommandError::Custom)?;
-                Ok(renderer.nested_column_resize_geometry_for_node(id))
+                let previous = before_insertion.take().filter(|(node, _)| *node == id);
+                Ok(geometry.map(|geometry| {
+                    previous
+                        .and_then(|(_, previous)| geometry.after_text_insertion(&previous))
+                        .map_or(geometry, Rc::new)
+                }))
             };
             let result = apply_headless_commands_with_resize_measurement(
                 &mut this.word_document,
@@ -3497,6 +3531,9 @@ impl NativeDocument {
                 &HeadlessEditRequest { commands },
                 &mut measure,
             );
+            if !grouped {
+                return result;
+            }
             match result {
                 Ok(after) => {
                     this.executor.end_group();
@@ -3514,7 +3551,9 @@ impl NativeDocument {
             Ok(after) => after,
             Err(err) => {
                 self.selection = before;
-                self.repaint_all()?;
+                if grouped {
+                    self.repaint_all()?;
+                }
                 return Err(format!("edit failed: {err:?}"));
             }
         };

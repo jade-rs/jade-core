@@ -403,6 +403,73 @@ fn set_page_export_render_mode(
     (options.show_formatting_marks, options.show_crop_marks)
 }
 
+/// The part of one page a header/footer edit changed, in page CSS pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct HfDirtyBand {
+    /// 0-based physical page.
+    page: usize,
+    y: f64,
+    height: f64,
+}
+
+/// A header/footer edit's dirty-region inputs taken before its render.
+struct HfDirtyBefore {
+    bands: Vec<HfDirtyBand>,
+    /// The active page's measured header and footer heights.
+    extent: Option<(Option<f64>, Option<f64>)>,
+}
+
+/// Whether two renders measured the same header and footer heights, so the
+/// body between them kept its edges.
+fn same_hf_extent(
+    before: Option<(Option<f64>, Option<f64>)>,
+    after: Option<(Option<f64>, Option<f64>)>,
+) -> bool {
+    let same = |a: Option<f64>, b: Option<f64>| match (a, b) {
+        (Some(a), Some(b)) => (a - b).abs() <= 0.01,
+        (None, None) => true,
+        _ => false,
+    };
+    match (before, after) {
+        (Some((header_a, footer_a)), Some((header_b, footer_b))) => {
+            same(header_a, header_b) && same(footer_a, footer_b)
+        }
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+/// One dirty band per page: the union of the bands before and after the edit,
+/// or the whole page when the edit moved the body.
+fn merge_hf_dirty_bands(
+    before: Vec<HfDirtyBand>,
+    after: Vec<HfDirtyBand>,
+    body_moved: bool,
+    page_height: f64,
+) -> Vec<HfDirtyBand> {
+    let mut bands: Vec<HfDirtyBand> = Vec::new();
+    for band in before.into_iter().chain(after) {
+        let band = if body_moved {
+            HfDirtyBand {
+                y: 0.0,
+                height: page_height,
+                ..band
+            }
+        } else {
+            band
+        };
+        match bands.iter_mut().find(|known| known.page == band.page) {
+            Some(known) => {
+                let bottom = (known.y + known.height).max(band.y + band.height);
+                known.y = known.y.min(band.y);
+                known.height = bottom - known.y;
+            }
+            None => bands.push(band),
+        }
+    }
+    bands
+}
+
 fn command_mutates_header_footer_stories(name: &str) -> bool {
     matches!(
         name,
@@ -1875,23 +1942,77 @@ impl OffscreenDocumentView {
         renderer.mark_full_repaint();
     }
 
-    fn hf_dirty_regions_to_js(&self, mode: EditingMode) -> JsValue {
+    /// What a header/footer edit's dirty regions need from before its render:
+    /// the story bands as they were painted (a story that shrinks leaves its
+    /// old lines to clear) and the active page's measured story heights.
+    fn hf_dirty_before(&self, mode: EditingMode) -> HfDirtyBefore {
+        HfDirtyBefore {
+            bands: self.hf_dirty_bands(mode),
+            extent: self.hf_active_page_extent(),
+        }
+    }
+
+    /// The active page's measured header and footer heights, which decide
+    /// where its body starts and ends.
+    fn hf_active_page_extent(&self) -> Option<(Option<f64>, Option<f64>)> {
+        let page = self.state.borrow().hf_edit_cursor?.page_index;
+        Some(self.renderer.borrow().header_footer_extent_for_page(page))
+    }
+
+    /// The dirty regions of a header/footer edit, after its render.
+    ///
+    /// The regions are normally the edited story's band, before and after the
+    /// edit. When the edit changed the story's height, the body moved with it
+    /// (Word pushes the body down under a growing header, and up over a
+    /// growing footer), so every page in range is dirty as a whole: a presenter
+    /// that copies only the changed rectangles (WebGPU) otherwise kept the body
+    /// where it was, with the header's new lines painted over its first lines.
+    fn hf_dirty_regions_to_js(&self, mode: EditingMode, before: HfDirtyBefore) -> JsValue {
+        let after = self.hf_dirty_bands(mode);
+        let body_moved = !same_hf_extent(before.extent, self.hf_active_page_extent());
+        let page_height = self.renderer.borrow().page_height_css().max(1.0);
+        let page_width = self.renderer.borrow().page_width().max(1.0);
+        let array = Array::new();
+        for band in merge_hf_dirty_bands(before.bands, after, body_moved, page_height) {
+            let obj = Object::new();
+            let _ = Reflect::set(&obj, &JsValue::from_str("x"), &JsValue::from_f64(0.0));
+            let _ = Reflect::set(&obj, &JsValue::from_str("y"), &JsValue::from_f64(band.y));
+            let _ = Reflect::set(
+                &obj,
+                &JsValue::from_str("width"),
+                &JsValue::from_f64(page_width),
+            );
+            let _ = Reflect::set(
+                &obj,
+                &JsValue::from_str("height"),
+                &JsValue::from_f64(band.height),
+            );
+            let _ = Reflect::set(
+                &obj,
+                &JsValue::from_str("page"),
+                &JsValue::from_f64(band.page as f64),
+            );
+            array.push(&obj);
+        }
+        array.into()
+    }
+
+    /// The edited story's band on each page in range, with the current layout.
+    fn hf_dirty_bands(&self, mode: EditingMode) -> Vec<HfDirtyBand> {
         let state = self.state.borrow();
         let Some(cursor) = state.hf_edit_cursor else {
-            return Array::new().into();
+            return Vec::new();
         };
         drop(state);
 
         let renderer = self.renderer.borrow();
-        let page_width = renderer.page_width().max(1.0);
         let page_height = renderer.page_height_css().max(1.0);
         let page_range = renderer.visible_page_range().clone().unwrap_or_else(|| {
             cursor.page_index.saturating_add(1)..=cursor.page_index.saturating_add(1)
         });
-        let array = Array::new();
+        let mut bands = Vec::new();
         for page_1idx in page_range {
             let page = page_1idx.saturating_sub(1);
-            let obj = Object::new();
             let (y, height) = match mode {
                 EditingMode::Header => (0.0, renderer.header_edit_boundary_for_page(page)),
                 EditingMode::Footer => {
@@ -1910,35 +2031,18 @@ impl OffscreenDocumentView {
                 }
                 EditingMode::Body => (0.0, page_height),
             };
-            let _ = Reflect::set(&obj, &JsValue::from_str("x"), &JsValue::from_f64(0.0));
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("y"),
-                &JsValue::from_f64(y.max(0.0)),
-            );
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("width"),
-                &JsValue::from_f64(page_width),
-            );
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("height"),
-                &JsValue::from_f64(height.max(1.0)),
-            );
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("page"),
-                &JsValue::from_f64(page as f64),
-            );
-            array.push(&obj);
+            bands.push(HfDirtyBand {
+                page,
+                y: y.max(0.0),
+                height: height.max(1.0),
+            });
         }
-        array.into()
+        bands
     }
 
     async fn finish_hf_edit_result_async(&self, mode: EditingMode) -> Result<JsValue, JsValue> {
         let lazy_mode = self.state.borrow().lazy_mode;
-        let dirty_regions = self.hf_dirty_regions_to_js(mode);
+        let dirty_before = self.hf_dirty_before(mode);
         if lazy_mode {
             let snapshots = self.capture_hf_active_page_after_render().await?;
             self.store_paged_images(snapshots);
@@ -1947,6 +2051,7 @@ impl OffscreenDocumentView {
             let snapshots = self.capture_pages_after_render().await?;
             self.store_paged_images(snapshots);
         }
+        let dirty_regions = self.hf_dirty_regions_to_js(mode, dirty_before);
 
         let result = Object::new();
         Reflect::set(&result, &JsValue::from_str("size"), &self.canvas_size()?)?;
@@ -5921,7 +6026,7 @@ impl OffscreenDocumentView {
             .map(|cursor| cursor.page_index)
             .unwrap_or(0);
         self.prepare_hf_edit_rerender(mode, anchor_page_index);
-        let dirty_regions = self.hf_dirty_regions_to_js(mode);
+        let dirty_before = self.hf_dirty_before(mode);
         if self.state.borrow().lazy_mode {
             let snapshots = self.capture_hf_active_page_after_render_sync()?;
             self.store_paged_images(snapshots);
@@ -5933,6 +6038,7 @@ impl OffscreenDocumentView {
             };
             self.store_paged_images(snapshots);
         }
+        let dirty_regions = self.hf_dirty_regions_to_js(mode, dirty_before);
 
         let result = Object::new();
         Reflect::set(&result, &JsValue::from_str("size"), &self.canvas_size()?)?;
@@ -6222,7 +6328,7 @@ impl OffscreenDocumentView {
     /// Synchronous twin of `finish_hf_edit_result_async` for bindings whose
     /// worker handler does not await (the inline formatting commands).
     fn finish_hf_edit_result_sync(&self, mode: EditingMode) -> Result<JsValue, JsValue> {
-        let dirty_regions = self.hf_dirty_regions_to_js(mode);
+        let dirty_before = self.hf_dirty_before(mode);
         if self.state.borrow().lazy_mode {
             let snapshots = self.capture_hf_active_page_after_render_sync()?;
             self.store_paged_images(snapshots);
@@ -6234,6 +6340,7 @@ impl OffscreenDocumentView {
             };
             self.store_paged_images(snapshots);
         }
+        let dirty_regions = self.hf_dirty_regions_to_js(mode, dirty_before);
         let result = Object::new();
         Reflect::set(&result, &JsValue::from_str("size"), &self.canvas_size()?)?;
         Reflect::set(&result, &JsValue::from_str("pages"), &self.paged_images())?;
@@ -23465,6 +23572,57 @@ mod tests {
     fn bidi_visual_column_resize_reverses_physical_pointer_delta() {
         assert_eq!(column_resize_delta(18.0, false), 18.0);
         assert_eq!(column_resize_delta(18.0, true), -18.0);
+    }
+
+    #[test]
+    fn a_header_edit_that_moves_the_body_dirties_whole_pages() {
+        use super::{merge_hf_dirty_bands, HfDirtyBand};
+        let band = |page, y, height| HfDirtyBand { page, y, height };
+        let before = vec![band(0, 0.0, 120.0), band(1, 0.0, 120.0)];
+        let after = vec![band(0, 0.0, 140.0), band(1, 0.0, 140.0)];
+
+        // Same height: the old and new header bands, nothing below them.
+        assert_eq!(
+            merge_hf_dirty_bands(before.clone(), after.clone(), false, 1123.0),
+            vec![band(0, 0.0, 140.0), band(1, 0.0, 140.0)],
+        );
+        // The header grew into the body: the body moved on every page.
+        assert_eq!(
+            merge_hf_dirty_bands(before, after, true, 1123.0),
+            vec![band(0, 0.0, 1123.0), band(1, 0.0, 1123.0)],
+        );
+        // A footer band keeps the lowest top and the lowest bottom of the two.
+        assert_eq!(
+            merge_hf_dirty_bands(
+                vec![band(0, 1000.0, 123.0)],
+                vec![band(0, 980.0, 143.0)],
+                false,
+                1123.0
+            ),
+            vec![band(0, 980.0, 143.0)],
+        );
+    }
+
+    #[test]
+    fn header_footer_extent_changes_are_body_moves() {
+        use super::same_hf_extent;
+        assert!(same_hf_extent(
+            Some((Some(120.0), None)),
+            Some((Some(120.004), None))
+        ));
+        assert!(!same_hf_extent(
+            Some((Some(120.0), None)),
+            Some((Some(138.0), None))
+        ));
+        assert!(!same_hf_extent(
+            Some((None, None)),
+            Some((Some(18.0), None))
+        ));
+        assert!(!same_hf_extent(
+            Some((None, Some(30.0))),
+            Some((None, Some(48.0)))
+        ));
+        assert!(same_hf_extent(None, None));
     }
 
     #[test]
