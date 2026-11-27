@@ -32412,6 +32412,7 @@ mod tests {
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
+            windows_legacy_spaced_text_margins: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
