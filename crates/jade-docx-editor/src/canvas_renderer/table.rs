@@ -2205,7 +2205,7 @@ struct TableLineWrapContext<'a, P: Painter> {
     ascii_measure_memo: RefCell<FxHashMap<(u32, u32), f64>>,
     wrap_cache: Option<Rc<RefCell<ParagraphWrapCache>>>,
     math: Option<TableMathContext>,
-    floating_border_insets_table: Option<&'a Table>,
+    floating_cell_text_frame: Option<(&'a Table, f64)>,
 }
 
 impl<'a, P: Painter> TableLineWrapContext<'a, P> {
@@ -2233,7 +2233,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
             ascii_measure_memo: RefCell::new(FxHashMap::default()),
             wrap_cache: None,
             math: None,
-            floating_border_insets_table: None,
+            floating_cell_text_frame: None,
         };
         result.style = Rc::new(result.attach_font_ids((*result.style).clone()));
         result
@@ -2963,15 +2963,25 @@ where
         } else {
             TableLineWrapContext::new(&painter)
         };
-        let floating_border_insets = !self.pageless_mode
+        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
+        let floating_cell_text_alignment = (!self.pageless_mode
             && !self.rendering_header_footer_story
             && !self.rendering_note_story
-            && self.paragraph_frame_column.is_none()
-            && floating_table_uses_cell_border_insets(
+            && self.paragraph_frame_column.is_none())
+        .then(|| windows_floating_cell_text_alignment(table, compatibility_mode))
+        .flatten();
+        let mut floating_paint_shift =
+            windows_modern_floating_table_paint_shift(table, compatibility_mode);
+        if let Some(alignment) = floating_cell_text_alignment {
+            if alignment != FloatingCellTextAlignment::Leading {
+                floating_paint_shift -= leading_cell_border_half_px(table, false);
+            }
+            table_wrap_context.floating_cell_text_frame = Some((
                 table,
-                self.document_east_asian_rules.compatibility_mode,
-            );
-        table_wrap_context.floating_border_insets_table = floating_border_insets.then_some(table);
+                windows_floating_cell_text_offset(table, compatibility_mode, alignment)
+                    - floating_paint_shift,
+            ));
+        }
         table_wrap_context.arabic_cluster_measurer = self.host.arabic_cluster_measurer();
         if self.table_autofit_cache_enabled {
             table_wrap_context.wrap_cache = Some(Rc::clone(&self.paragraph_wrap_cache));
@@ -3575,17 +3585,7 @@ where
             self.current_page_number,
             self.document_east_asian_rules.compatibility_mode,
         );
-        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
-        let floating_paint_shift = floating_table_x.map_or(0.0, |_| {
-            let shift = windows_modern_floating_table_paint_shift(table, compatibility_mode);
-            if floating_border_insets {
-                // Paint the grid on the center of the stroke. Each cell
-                // then insets its own text by half its actual border.
-                shift - leading_cell_border_half_px(table, false)
-            } else {
-                shift
-            }
-        });
+        let floating_paint_shift = floating_table_x.map_or(0.0, |_| floating_paint_shift);
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode, true)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
         let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>, opening_page| {
@@ -4992,16 +4992,13 @@ where
                         bottom: first_floating_fragment_bottom.unwrap_or(frame.bottom),
                         ..frame
                     };
-                    wrap.record(
-                        body_element_index,
+                    let bounds = windows_floating_table_text_exclusion(
+                        table,
                         measured,
+                        compatibility_mode,
                         displaced_by_overlap,
-                        windows_floating_table_text_exclusion(
-                            table,
-                            measured,
-                            displaced_by_overlap,
-                        ),
                     );
+                    wrap.record(body_element_index, measured, displaced_by_overlap, bounds);
                 }
             }
             if let Some(rows) = repeated_floating_rows {
@@ -5038,7 +5035,12 @@ where
                 self.active_float_exclusions.push(PageFloatExclusion {
                     is_table: true,
                     page_number: final_frame.page_number,
-                    bounds: windows_floating_table_text_exclusion(table, final_frame, false),
+                    bounds: windows_floating_table_text_exclusion(
+                        table,
+                        final_frame,
+                        compatibility_mode,
+                        false,
+                    ),
                 });
             } else if self.current_page_number == frame.page_number {
                 // A floating table paints at its absolute frame but does not
@@ -5059,7 +5061,12 @@ where
                     is_table: true,
                     page_number: frame.page_number,
                     bounds: if floating_breaks {
-                        windows_floating_table_text_exclusion(table, frame, displaced_by_overlap)
+                        windows_floating_table_text_exclusion(
+                            table,
+                            frame,
+                            compatibility_mode,
+                            displaced_by_overlap,
+                        )
                     } else {
                         floating_table_text_exclusion(table, frame)
                     },
@@ -5086,7 +5093,12 @@ where
                     self.active_float_exclusions.push(PageFloatExclusion {
                         is_table: true,
                         page_number: final_frame.page_number,
-                        bounds: windows_floating_table_text_exclusion(table, final_frame, false),
+                        bounds: windows_floating_table_text_exclusion(
+                            table,
+                            final_frame,
+                            compatibility_mode,
+                            false,
+                        ),
                     });
                 }
             }
@@ -11340,29 +11352,27 @@ fn compute_floating_body_table_x(
     // placement, while mode 15 aligns the table frame. The paired horizontal
     // probes also establish absolute tblpX and asymmetric trailing padding.
     let alignment = table.style.get("table-position-x-align");
-    // The Windows legacy text-edge adjustment includes directly authored
-    // table rules. The captured TableGrid style aligns without that charge.
-    let border_halves = if windows && table.borders.is_some() {
-        leading_cell_border_half_px(table, false) + trailing_cell_border_half_px(table)
-    } else {
-        0.0
-    };
     if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("right")) {
-        return Some(x + pre_2013_table_trailing_text_inset_px(table) + border_halves);
+        return Some(x + legacy_floating_table_alignment_offset(table, true, windows));
     }
     if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("center")) {
-        return Some(x + border_halves * 0.5);
+        return Some(x + legacy_floating_table_alignment_offset(table, false, windows));
     }
     if alignment.is_some_and(|align| !align.trim().eq_ignore_ascii_case("left")) {
         return Some(x);
     }
-    let Some(row) = table.rows.first() else {
-        return Some(x);
+    Some(x - floating_table_leading_padding(table))
+}
+
+fn floating_table_leading_padding(table: &Table) -> f64 {
+    let Some((row, cell)) = table
+        .rows
+        .first()
+        .and_then(|row| row.cells.first().map(|cell| (row, cell)))
+    else {
+        return 0.0;
     };
-    let Some(cell) = row.cells.first() else {
-        return Some(x);
-    };
-    let padding = resolve_cell_padding(
+    resolve_cell_padding(
         cell.margins.as_ref(),
         row.cell_margins.as_ref(),
         table.effective_cell_margins(),
@@ -11372,31 +11382,68 @@ fn compute_floating_body_table_x(
             jade_docx_layout::line_metrics::word_layout_platform(),
         ),
         0.0,
-    );
-    Some(x - padding.left)
+    )
+    .left
 }
 
-fn floating_table_uses_cell_border_insets(table: &Table, mode: Option<u32>) -> bool {
+fn legacy_floating_table_alignment_offset(table: &Table, right: bool, windows: bool) -> f64 {
+    // The legacy wrap and paint frame includes directly authored Windows rules.
+    let border_halves = if windows && table.borders.is_some() {
+        leading_cell_border_half_px(table, false) + trailing_cell_border_half_px(table)
+    } else {
+        0.0
+    };
+    if right {
+        pre_2013_table_trailing_text_inset_px(table) + border_halves
+    } else {
+        border_halves * 0.5
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FloatingCellTextAlignment {
+    Leading,
+    Center,
+    Trailing,
+}
+
+fn windows_floating_cell_text_alignment(
+    table: &Table,
+    mode: Option<u32>,
+) -> Option<FloatingCellTextAlignment> {
     use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
-    word_layout_platform() == WordLayoutPlatform::Windows
-        && matches!(mode, Some(12 | 14..))
-        && table_floats(table)
-        && !table.bidi_visual
-        && table.cell_spacing.is_none_or(|spacing| spacing == 0.0)
-        && table
+    if word_layout_platform() != WordLayoutPlatform::Windows
+        || !matches!(mode, Some(12 | 14..))
+        || !table_floats(table)
+        || table.bidi_visual
+        || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
+        || table
             .style
             .get("table-position-horizontal-anchor")
-            .is_none_or(|anchor| {
-                anchor.trim().eq_ignore_ascii_case("margin")
-                    || anchor.trim().eq_ignore_ascii_case("page")
+            .is_some_and(|anchor| {
+                !anchor.trim().eq_ignore_ascii_case("margin")
+                    && !anchor.trim().eq_ignore_ascii_case("page")
             })
-        && table
-            .style
-            .get("table-position-x-align")
-            .is_some_and(|align| {
-                align.trim().eq_ignore_ascii_case("right")
-                    || align.trim().eq_ignore_ascii_case("center")
-            })
+    {
+        return None;
+    }
+    let alignment = table
+        .style
+        .get("table-position-x-align")
+        .map(|value| value.trim());
+    match alignment {
+        None => Some(FloatingCellTextAlignment::Leading),
+        Some(value) if value.eq_ignore_ascii_case("left") => {
+            Some(FloatingCellTextAlignment::Leading)
+        }
+        Some(value) if value.eq_ignore_ascii_case("center") => {
+            Some(FloatingCellTextAlignment::Center)
+        }
+        Some(value) if value.eq_ignore_ascii_case("right") => {
+            Some(FloatingCellTextAlignment::Trailing)
+        }
+        _ => None,
+    }
 }
 
 fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -> f64 {
@@ -11429,6 +11476,72 @@ fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -
     } else {
         (3.0 * leading - trailing) * 0.5
     }
+}
+
+fn windows_floating_cell_text_offset(
+    table: &Table,
+    mode: Option<u32>,
+    alignment: FloatingCellTextAlignment,
+) -> f64 {
+    let leading = leading_cell_border_half_px(table, false);
+    let legacy = matches!(mode, Some(12 | 14));
+    if alignment == FloatingCellTextAlignment::Leading {
+        if legacy {
+            let margin = floating_table_leading_padding(table);
+            return margin - margin.max(leading);
+        }
+        return leading;
+    }
+
+    let right = alignment == FloatingCellTextAlignment::Trailing;
+    let trailing = trailing_cell_border_half_px(table);
+    if legacy {
+        // Legacy right and center placement align the cell text edges.
+        let trailing = pre_2013_table_trailing_text_inset_px(table).max(trailing);
+        let offset = if right {
+            trailing
+        } else {
+            let leading = pre_2013_table_text_inset_px(table, mode, false);
+            (trailing - leading) * 0.5
+        };
+        return offset - legacy_floating_table_alignment_offset(table, right, true);
+    }
+
+    // Modern Word aligns the text grid to the outside half-rules. An explicit
+    // nil rule occupies zero space; an omitted rule uses the default setback.
+    let trailing = if trailing > 0.0 || floating_trailing_rule_is_hidden(table) {
+        trailing
+    } else {
+        points_to_px(0.75)
+    };
+    if right {
+        -trailing
+    } else {
+        (leading - trailing) * 0.5
+    }
+}
+
+fn floating_trailing_rule_is_hidden(table: &Table) -> bool {
+    let Some(row) = table.rows.iter().find(|row| !table_row_is_hidden(row)) else {
+        return false;
+    };
+    let Some(cell) = row.cells.last() else {
+        return false;
+    };
+    if let Some(style) = cell_border_property(cell, table, "right", "style") {
+        return matches!(parse_border_kind(Some(style)), BorderKind::None);
+    }
+    let spans = cell.span.unwrap_or(1) as usize >= compute_column_count(table);
+    effective_table_border_edge_for_side(
+        row,
+        table,
+        TableBorderSide::Right,
+        true,
+        table.rows.len() == 1,
+        spans,
+        true,
+    )
+    .is_some_and(|edge| !edge.is_visible())
 }
 
 /// Resolves the horizontal component of `w:tblpPr` floating-table placement.
@@ -11601,9 +11714,42 @@ fn floating_table_text_exclusion(table: &Table, frame: FloatingTableFrame) -> Fl
 fn windows_floating_table_text_exclusion(
     table: &Table,
     frame: FloatingTableFrame,
+    compatibility_mode: Option<u32>,
     displaced_by_overlap: bool,
 ) -> FloatExclusion {
     let mut bounds = floating_table_text_exclusion(table, frame);
+    if let Some(alignment) = (!displaced_by_overlap)
+        .then(|| windows_floating_cell_text_alignment(table, compatibility_mode))
+        .flatten()
+    {
+        let leading = leading_cell_border_half_px(table, false);
+        let mut trailing = trailing_cell_border_half_px(table);
+        let centered_default_rule = leading == 0.0
+            && trailing == 0.0
+            && alignment == FloatingCellTextAlignment::Center
+            && compatibility_mode.is_some_and(|mode| mode >= 15)
+            && !floating_trailing_rule_is_hidden(table);
+        if centered_default_rule {
+            // Modern Word uses the default trailing setback for both text
+            // placement and wrapping around a centered table without rules.
+            trailing = points_to_px(0.75);
+        }
+        if leading > 0.0 || trailing > 0.0 {
+            let offset = windows_floating_cell_text_offset(table, compatibility_mode, alignment);
+            // Word measures the authored gap from the outer rule of the
+            // text frame and preserves half a point of clearance.
+            let gap = |distance: f64, half_rule: f64| {
+                if half_rule > 0.0 || centered_default_rule {
+                    distance.max(points_to_px(0.5)) + half_rule
+                } else {
+                    (distance + points_to_px(0.85)).max(points_to_px(1.25))
+                }
+            };
+            bounds.left = frame.left + offset - gap(frame.left - bounds.left, leading);
+            bounds.right = frame.right + offset + gap(bounds.right - frame.right, trailing);
+            return bounds;
+        }
+    }
     // Word adds clearance to the authored horizontal wrap distance and
     // retains a minimum gap even when the distance is zero or omitted.
     let clearance =
@@ -17563,13 +17709,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                 left + right
             }
         } else {
-            if wrap_context
-                .floating_border_insets_table
-                .is_some_and(|body_table| std::ptr::eq(body_table, table))
-            {
-                padding.left += visible_border_width(&border_left) * 0.5;
-                padding.right += visible_border_width(&border_right) * 0.5;
-            } else if jade_docx_layout::line_metrics::word_layout_platform()
+            if jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             {
                 padding = windows_collapsed_cell_padding(
@@ -17577,6 +17717,13 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                     visible_border_width(&border_left),
                     visible_border_width(&border_right),
                 );
+                if let Some((_, offset)) = wrap_context
+                    .floating_cell_text_frame
+                    .filter(|(body_table, _)| std::ptr::eq(*body_table, table))
+                {
+                    padding.left += offset;
+                    padding.right -= offset;
+                }
             }
             0.0
         };
@@ -18516,7 +18663,7 @@ fn round_windows_fixed_nested_grid(
         // addition to that cell's own margins when it shrinks a fixed grid.
         ((padding.horizontal() + 2.0 * default_padding) * 15.0).round()
     };
-    let mut preferences = vec![(0.0_f64, 0.0_f64, 0.0_f64); column_count];
+    let mut preferences = vec![(0.0_f64, None::<f64>, 0.0_f64); column_count];
     for row in table.rows.iter().filter(|row| !table_row_is_hidden(row)) {
         if row_uses_separate_cell_borders(row, table) {
             return None;
@@ -18530,10 +18677,10 @@ fn round_windows_fixed_nested_grid(
                 Some(width) if width.trim().ends_with('%') => {
                     let units =
                         (preferred_width_px(width, 1.0)? * FULL_WIDTH_PERCENT_UNITS).round();
-                    if units <= 0.0 {
+                    if !units.is_finite() || units < 0.0 {
                         return None;
                     }
-                    *percent = percent.max(units);
+                    *percent = Some(percent.map_or(units, |previous| previous.max(units)));
                 }
                 width => {
                     let width = match width {
@@ -18554,24 +18701,44 @@ fn round_windows_fixed_nested_grid(
         }
     }
 
+    let minimum_widths: Vec<_> = preferences.iter().map(|&(_, _, padding)| padding).collect();
+    let minimum_width = minimum_widths.iter().sum::<f64>();
+    if budget <= minimum_width && preferences.iter().any(|(_, units, _)| units.is_some()) {
+        return Some(
+            minimum_widths
+                .into_iter()
+                .map(|width| width / 15.0)
+                .collect(),
+        );
+    }
+
     let mut absolute = Vec::new();
     let mut percentage = Vec::new();
+    let mut zero_percentage = Vec::new();
     let mut percent_total = 0.0;
     for (index, (width, units, padding)) in preferences.into_iter().enumerate() {
-        if units > 0.0 {
+        if let Some(units) = units {
             let capped = units.min(FULL_WIDTH_PERCENT_UNITS - percent_total);
-            if capped <= 0.0 {
-                return None;
+            if capped > 0.0 {
+                percentage.push((index, capped));
+                percent_total += capped;
+            } else {
+                zero_percentage.push((index, padding));
             }
-            percentage.push((index, capped));
-            percent_total += capped;
         } else {
             absolute.push((index, width, padding));
         }
     }
 
     let mut widths = vec![0.0; column_count];
-    if percentage.is_empty() {
+    if percentage.is_empty() && !zero_percentage.is_empty() {
+        fit_windows_fixed_nested_without_positive_percentages(
+            &mut widths,
+            &mut absolute,
+            &zero_percentage,
+            budget,
+        )?;
+    } else if percentage.is_empty() {
         fit_windows_fixed_nested_absolute_columns(&mut widths, &absolute, budget)?;
     } else {
         let reference_units = if absolute.is_empty() {
@@ -18592,35 +18759,72 @@ fn round_windows_fixed_nested_grid(
         }
         if let [(index, _)] = percentage.as_slice() {
             widths[*index] = percentage_budget;
-            let allocated: f64 = absolute.iter().map(|(index, _, _)| widths[*index]).sum();
-            if let Some((first, _, _)) = absolute.first() {
+            if let Some((first, _, _)) = absolute.first().filter(|_| zero_percentage.is_empty()) {
+                let allocated: f64 = absolute.iter().map(|(index, _, _)| widths[*index]).sum();
                 widths[*first] += absolute_budget - allocated;
             }
-        } else if minimum > remainder {
-            // Reserve absolute-cell insets in percentage units before projecting
-            // those columns back to twips.
-            let reserved = (minimum * reference_units / budget).round();
-            let reduction = (percent_total - (reference_units - reserved)) / percent_total;
-            for &(index, units) in &percentage {
-                widths[index] = to_twips(units - (units * reduction + 1e-8).round());
-            }
-            let allocated: f64 = percentage.iter().map(|(index, _)| widths[*index]).sum();
-            widths[percentage[0].0] += percentage_budget - allocated;
         } else {
-            let requested = to_twips(percent_total);
-            let total: f64 = percentage.iter().map(|(_, units)| to_twips(*units)).sum();
-            for (index, units) in percentage {
-                let preferred = to_twips(units);
-                widths[index] = if requested > percentage_budget {
-                    (preferred * percentage_budget / total + 0.5 + 1e-8).floor()
+            // Word takes the absolute group's allotted width out of the
+            // percentage units before projecting those columns back to twips.
+            let reserved = (absolute_budget * reference_units / budget).round();
+            let reduction = (percent_total - (reference_units - reserved)) / percent_total;
+            for (_, units) in &mut percentage {
+                let correction = *units * reduction;
+                let correction = if minimum > remainder {
+                    (correction + 1e-8).round()
                 } else {
-                    preferred
+                    // Rounding the absolute allotment can leave a shared
+                    // percentage unit. Keep exact half shares for the grid
+                    // balance instead of charging both columns that unit.
+                    correction.signum() * (correction.abs() + 0.5 - 1e-8).floor()
                 };
+                *units -= correction;
+            }
+            if minimum > remainder
+                && zero_percentage.is_empty()
+                && absolute.len() > 1
+                && percentage.len() == 2
+            {
+                // Balance the rounded percentage units before projecting the
+                // grid when several absolute columns require their insets.
+                let allotted: f64 = percentage.iter().map(|(_, units)| units).sum();
+                let balance = reference_units - reserved - allotted;
+                if balance > 0.0 {
+                    for (_, units) in percentage.iter_mut().rev().take(balance as usize) {
+                        *units += 1.0;
+                    }
+                } else {
+                    for (_, units) in percentage.iter_mut().take(-balance as usize) {
+                        *units -= 1.0;
+                    }
+                }
+            }
+            for &(index, units) in &percentage {
+                widths[index] = to_twips(units);
+            }
+            if minimum > remainder && zero_percentage.is_empty() {
+                // Keep the insets that forced the absolute group to grow.
+                // Remove excess rounding one twip at a time from percentage
+                // columns before the table balances its leading edge.
+                let excess = (widths.iter().sum::<f64>() - budget).max(0.0) as usize;
+                for &(index, _) in percentage.iter().take(excess) {
+                    widths[index] -= 1.0;
+                }
             }
         }
     }
 
-    widths[0] = budget - widths[1..].iter().sum::<f64>();
+    if zero_percentage.is_empty() {
+        widths[0] = budget - widths[1..].iter().sum::<f64>();
+    }
+    if !percentage.is_empty()
+        && widths
+            .iter()
+            .zip(&minimum_widths)
+            .any(|(width, inset)| width < inset)
+    {
+        reserve_windows_fixed_column_insets(&mut widths, &minimum_widths, budget)?;
+    }
     if widths
         .iter()
         .any(|width| !width.is_finite() || *width <= 0.0)
@@ -18629,6 +18833,117 @@ fn round_windows_fixed_nested_grid(
     }
     widths.iter_mut().for_each(|width| *width /= 15.0);
     Some(widths)
+}
+
+fn fit_windows_fixed_nested_without_positive_percentages(
+    widths: &mut [f64],
+    absolute: &mut [(usize, f64, f64)],
+    zero_percentage: &[(usize, f64)],
+    budget: f64,
+) -> Option<()> {
+    let padding: f64 = zero_percentage.iter().map(|&(_, padding)| padding).sum();
+    for &(index, padding) in zero_percentage {
+        widths[index] = padding;
+    }
+    let available = budget - padding;
+    if absolute.is_empty() {
+        // With every column set to zero percent, divide space above the
+        // insets equally and give the extra twips to the leading columns.
+        let share = (available / widths.len() as f64).floor();
+        let extra = (available - share * widths.len() as f64) as usize;
+        for (index, width) in widths.iter_mut().enumerate() {
+            *width += share + if index < extra { 1.0 } else { 0.0 };
+        }
+    } else {
+        for (_, width, padding) in &mut *absolute {
+            *width = width.max(*padding);
+        }
+        fit_windows_fixed_nested_absolute_columns(widths, absolute, available)?;
+        let balance = budget - widths.iter().sum::<f64>();
+        if balance >= 0.0 {
+            widths[0] += balance;
+        } else {
+            let mut excess = -balance;
+            for &(index, _, padding) in &*absolute {
+                if excess == 0.0 {
+                    break;
+                }
+                if widths[index] > padding {
+                    widths[index] -= 1.0;
+                    excess -= 1.0;
+                }
+            }
+        }
+    }
+    Some(())
+}
+
+fn reserve_windows_fixed_column_insets(
+    widths: &mut [f64],
+    minimum_widths: &[f64],
+    budget: f64,
+) -> Option<()> {
+    // Reserve insets even when a percentage leaves a column with little or no
+    // room. Spread the cost across columns that can still give up width.
+    let mut cost = 0.0;
+    let mut movable = Vec::new();
+    for (index, (width, &minimum)) in widths.iter_mut().zip(minimum_widths).enumerate() {
+        if *width > minimum {
+            movable.push(index);
+        } else {
+            cost += minimum - *width;
+            *width = minimum;
+        }
+    }
+    let share = loop {
+        let count = movable.len();
+        if count == 0 {
+            return None;
+        }
+        let share = (cost / count as f64).round();
+        movable.retain(|&index| {
+            let capacity = widths[index] - minimum_widths[index];
+            if capacity >= share {
+                true
+            } else {
+                cost -= capacity;
+                widths[index] = minimum_widths[index];
+                false
+            }
+        });
+        if movable.len() == count {
+            break share;
+        }
+    };
+    let &last = movable.last()?;
+    for &index in &movable {
+        widths[index] -= share;
+    }
+    let mut residual = budget - widths.iter().sum::<f64>();
+    // Distribute excess rounding from the left and unused width from the right.
+    if residual < 0.0 {
+        for &index in &movable {
+            if residual == 0.0 {
+                break;
+            }
+            if widths[index] > minimum_widths[index] {
+                widths[index] -= 1.0;
+                residual += 1.0;
+            }
+        }
+        for &index in &movable {
+            let correction = (-residual).min(widths[index] - minimum_widths[index]);
+            widths[index] -= correction;
+            residual += correction;
+        }
+    } else {
+        for &index in movable.iter().rev().take(residual as usize) {
+            widths[index] += 1.0;
+            residual -= 1.0;
+        }
+        widths[last] += residual;
+    }
+    Some(())
 }
 
 fn fit_windows_fixed_nested_absolute_columns(
@@ -18642,7 +18957,7 @@ fn fit_windows_fixed_nested_absolute_columns(
     }
     if budget < total {
         let minimum: f64 = absolute.iter().map(|(_, _, padding)| padding).sum();
-        if budget < minimum || absolute.iter().any(|(_, width, padding)| width <= padding) {
+        if budget < minimum || absolute.iter().any(|(_, width, padding)| width < padding) {
             return None;
         }
         let reduction = (total - budget) / (total - minimum);
