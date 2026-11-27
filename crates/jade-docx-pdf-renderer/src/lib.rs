@@ -3342,14 +3342,61 @@ fn image_xobject_dictionary(image: &RenderImage, filter: &str) -> lopdf::Diction
     }
 }
 
+/// Item indices of a `RenderLayout` grouped by page (index 0 is page 1).
+struct PageBuckets {
+    lines: Vec<Vec<usize>>,
+    images: Vec<Vec<usize>>,
+    tables: Vec<Vec<usize>>,
+    text_boxes: Vec<Vec<usize>>,
+    border_boxes: Vec<Vec<usize>>,
+    links: Vec<Vec<usize>>,
+}
+
+impl PageBuckets {
+    fn new(layout: &RenderLayout, page_count: usize) -> Self {
+        fn bucket<T>(
+            items: &[T],
+            page_count: usize,
+            page_of: impl Fn(&T) -> usize,
+        ) -> Vec<Vec<usize>> {
+            let mut buckets = vec![Vec::new(); page_count];
+            for (index, item) in items.iter().enumerate() {
+                let page = page_of(item);
+                if (1..=page_count).contains(&page) {
+                    buckets[page - 1].push(index);
+                }
+            }
+            buckets
+        }
+        Self {
+            lines: bucket(&layout.lines, page_count, |item| item.page),
+            images: bucket(&layout.images, page_count, |item| item.page),
+            tables: bucket(&layout.tables, page_count, |item| item.page),
+            text_boxes: bucket(&layout.text_boxes, page_count, |item| item.page),
+            border_boxes: bucket(&layout.border_boxes, page_count, |item| item.page),
+            links: bucket(&layout.links, page_count, |item| item.page),
+        }
+    }
+}
+
 fn build_pdf_bytes(
     layout: &RenderLayout,
     input_size: usize,
     options: &RenderOptions,
 ) -> Result<Vec<u8>, RenderError> {
+    let page_buckets = PageBuckets::new(layout, layout.page_count());
+    build_pdf_bytes_with_buckets(layout, &page_buckets, input_size, options)
+}
+
+fn build_pdf_bytes_with_buckets(
+    layout: &RenderLayout,
+    page_buckets: &PageBuckets,
+    input_size: usize,
+    options: &RenderOptions,
+) -> Result<Vec<u8>, RenderError> {
     let mut document = Document::with_version("1.7");
     let pages_id = document.new_object_id();
-    let page_count = layout.page_count();
+    let page_count = page_buckets.lines.len();
     let lines = &layout.lines;
     let images = &layout.images;
     let tables = &layout.tables;
@@ -3384,24 +3431,22 @@ fn build_pdf_bytes(
         let mut operations = Vec::new();
         let mut text_background_operations = Vec::new();
         let mut text_decoration_operations = Vec::new();
-        for text_box in text_boxes
-            .iter()
-            .filter(|text_box| text_box.page == page_index + 1)
-        {
-            push_text_box_operations(&mut operations, text_box, page_height_pt);
+        for &text_box_index in &page_buckets.text_boxes[page_index] {
+            push_text_box_operations(&mut operations, &text_boxes[text_box_index], page_height_pt);
         }
-        for table in tables.iter().filter(|table| table.page == page_index + 1) {
-            push_table_grid_operations(&mut operations, table, page_height_pt);
+        for &table_index in &page_buckets.tables[page_index] {
+            push_table_grid_operations(&mut operations, &tables[table_index], page_height_pt);
         }
-        for bordered in layout
-            .border_boxes
-            .iter()
-            .filter(|bordered| bordered.page == page_index + 1)
-        {
-            borders::push_border_box_operations(&mut operations, bordered, page_height_pt);
+        for &border_index in &page_buckets.border_boxes[page_index] {
+            borders::push_border_box_operations(
+                &mut operations,
+                &layout.border_boxes[border_index],
+                page_height_pt,
+            );
         }
         operations.push(Operation::new("BT", vec![]));
-        for line in lines.iter().filter(|line| line.page == page_index + 1) {
+        for &line_index in &page_buckets.lines[page_index] {
+            let line = &lines[line_index];
             if line.spans.is_empty() {
                 push_pdf_text_run_operations(
                     &mut operations,
@@ -3463,11 +3508,8 @@ fn build_pdf_bytes(
         operations = ordered_text_operations;
         operations.push(Operation::new("ET", vec![]));
         operations.extend(text_decoration_operations);
-        for (image_index, image) in images
-            .iter()
-            .enumerate()
-            .filter(|(_, image)| image.page == page_index + 1)
-        {
+        for &image_index in &page_buckets.images[page_index] {
+            let image = &images[image_index];
             let image_name = format!("Im{}", image_index + 1);
             operations.push(Operation::new("q", vec![]));
             operations.push(Operation::new(
@@ -3495,12 +3537,8 @@ fn build_pdf_bytes(
         let content_id = document.add_object(Stream::new(dictionary! {}, content_bytes));
 
         let mut xobjects = lopdf::Dictionary::new();
-        for (image_index, image_id) in image_objects
-            .iter()
-            .enumerate()
-            .filter(|(image_index, _)| images[*image_index].page == page_index + 1)
-        {
-            xobjects.set(format!("Im{}", image_index + 1), *image_id);
+        for &image_index in &page_buckets.images[page_index] {
+            xobjects.set(format!("Im{}", image_index + 1), image_objects[image_index]);
         }
 
         let mut font_resources = dictionary! {
@@ -3516,10 +3554,10 @@ fn build_pdf_bytes(
             resources.set("XObject", xobjects);
         }
 
-        let annots = links
+        let annots = page_buckets.links[page_index]
             .iter()
-            .filter(|link| link.page == page_index + 1)
-            .map(|link| {
+            .map(|&link_index| {
+                let link = &links[link_index];
                 document.add_object(dictionary! {
                     "Type" => "Annot",
                     "Subtype" => "Link",
@@ -4054,6 +4092,67 @@ end",
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn indexed_pages_preserve_pdf_bytes_from_per_page_scans() {
+        fn scan<T>(
+            items: &[T],
+            page_count: usize,
+            page_of: impl Fn(&T) -> usize,
+        ) -> Vec<Vec<usize>> {
+            (1..=page_count)
+                .map(|page| {
+                    items
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, item)| (page_of(item) == page).then_some(index))
+                        .collect()
+                })
+                .collect()
+        }
+
+        let fixtures =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
+        for (name, measurement) in [
+            ("yokohama.docx", TextMeasurement::EmbeddedFontAdvances),
+            (
+                "table-repeating-header.docx",
+                TextMeasurement::BrowserParityShaping,
+            ),
+            (
+                "table-complex-nested-pagination.docx",
+                TextMeasurement::EmbeddedFontAdvances,
+            ),
+            (
+                "header-footer-sectionpages.docx",
+                TextMeasurement::BrowserParityShaping,
+            ),
+            ("image-floating.docx", TextMeasurement::BrowserParityShaping),
+            ("hyperlink.docx", TextMeasurement::EmbeddedFontAdvances),
+        ] {
+            let docx = std::fs::read(fixtures.join(name)).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let context = RenderDocxContext::load(&docx).expect("load fixture");
+            let layout = build_render_layout(&context, measurement).expect("lay out fixture");
+            let page_count = layout.page_count();
+            let scanned = PageBuckets {
+                lines: scan(&layout.lines, page_count, |item| item.page),
+                images: scan(&layout.images, page_count, |item| item.page),
+                tables: scan(&layout.tables, page_count, |item| item.page),
+                text_boxes: scan(&layout.text_boxes, page_count, |item| item.page),
+                border_boxes: scan(&layout.border_boxes, page_count, |item| item.page),
+                links: scan(&layout.links, page_count, |item| item.page),
+            };
+            let options = RenderOptions {
+                text_measurement: measurement,
+                ..RenderOptions::default()
+            };
+            let expected = build_pdf_bytes_with_buckets(&layout, &scanned, docx.len(), &options)
+                .expect("encode PDF from scan");
+            let indexed =
+                build_pdf_bytes(&layout, docx.len(), &options).expect("encode indexed PDF");
+            assert!(indexed == expected, "{name} PDF bytes differ");
+        }
+    }
 
     #[test]
     fn non_ascii_hex_color_is_rejected_without_panicking() {
