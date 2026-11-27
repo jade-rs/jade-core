@@ -659,8 +659,12 @@ impl SelectionManager {
     /// A suffix that owns its paragraphs: a parked one's are moved out of the
     /// registry, which reads the same as before.
     pub fn detach_selection_suffix(&mut self, mut suffix: SelectionSuffix) -> SelectionSuffix {
-        if suffix.parked.take().is_some() {
-            suffix.paragraphs = self.paragraphs.detach_parked();
+        if let Some(paragraphs) = suffix
+            .parked
+            .and_then(|id| self.paragraphs.detach_parked(id))
+        {
+            suffix.parked = None;
+            suffix.paragraphs = paragraphs;
         }
         suffix
     }
@@ -686,8 +690,10 @@ impl SelectionManager {
     pub fn restore_selection_suffix(&mut self, from: usize, suffix: SelectionSuffix) {
         match suffix.parked {
             Some(id) => {
+                if !self.paragraphs.restore_parked(id, from) {
+                    return;
+                }
                 *self.paragraph_bounds_index.get_mut() = None;
-                self.paragraphs.restore_parked(id, from);
             }
             None => self.restore_paragraph_suffix(from, suffix.paragraphs),
         }
@@ -6345,6 +6351,33 @@ mod tests {
         manager.restore_selection_suffix(3, first);
         assert_eq!(manager.paragraph_debug_texts(), texts);
         assert!(!manager.has_parked_selection_suffix());
+    }
+
+    #[test]
+    fn a_discarded_suffix_cannot_take_a_newly_parked_tail() {
+        for detach in [false, true] {
+            let mut manager = manager_with(&["first", "discarded"]);
+            manager.non_selectable_paragraphs.insert(1);
+            let stale = manager.park_selection_suffix(1);
+            manager.discard_parked_selection_suffix();
+            manager.append_paragraph_text(1, "replacement");
+            let current = manager.park_selection_suffix(1);
+
+            let stale = if detach {
+                let detached = manager.detach_selection_suffix(stale);
+                assert!(detached.paragraphs().is_empty());
+                detached
+            } else {
+                stale
+            };
+            manager.restore_selection_suffix(1, stale);
+            assert!(manager.has_parked_selection_suffix());
+            assert!(manager.non_selectable_paragraphs.is_empty());
+
+            manager.restore_selection_suffix(1, current);
+            assert_eq!(manager.paragraph_debug_texts(), ["first", "replacement"]);
+            assert!(manager.is_paragraph_selectable(1));
+        }
     }
 
     #[test]

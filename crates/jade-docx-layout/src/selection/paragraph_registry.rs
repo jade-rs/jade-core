@@ -255,26 +255,23 @@ impl ParagraphRegistry {
         Some(id)
     }
 
-    /// Puts back the tail parked as `id`, as truncating to `from` and
-    /// extending with the tail would.
-    ///
-    /// The registry parks one tail at a time, so `id` is the parked one's.
-    /// Should it not be, the tail parked is put back rather than nothing, so
-    /// that no paragraph is lost.
-    pub(super) fn restore_parked(&mut self, id: u64, from: usize) {
-        let fast = self.parked.as_ref().is_some_and(|parked| {
-            parked.id == id
-                && parked.from == from
-                && self.len >= from
-                && matches!(parked.place, Place::InPlace { .. })
-        });
+    /// Puts back the tail parked as `id`. Returns false if it was discarded.
+    pub(super) fn restore_parked(&mut self, id: u64, from: usize) -> bool {
+        let Some(parked) = self.parked.as_ref().filter(|parked| parked.id == id) else {
+            return false;
+        };
+        let fast = parked.from == from
+            && self.len >= from
+            && matches!(parked.place, Place::InPlace { .. });
         if !fast {
-            let tail = self.detach_parked();
+            let tail = self
+                .detach_parked(id)
+                .expect("checked parked tail ID above");
             if !tail.is_empty() {
                 self.truncate(from);
                 self.extend(tail);
             }
-            return;
+            return true;
         }
         let Some(Parked {
             place: Place::InPlace { end, mut displaced },
@@ -291,16 +288,17 @@ impl ParagraphRegistry {
         self.spare = displaced;
         self.items.truncate(end);
         self.len = end;
+        true
     }
 
-    /// Hands over the tail parked, the registered paragraphs staying as they
-    /// are.
-    pub(super) fn detach_parked(&mut self) -> Vec<ParagraphLayout> {
+    /// Hands over the tail parked as `id`, leaving registered paragraphs intact.
+    pub(super) fn detach_parked(&mut self, id: u64) -> Option<Vec<ParagraphLayout>> {
+        self.parked.as_ref().filter(|parked| parked.id == id)?;
         self.detach();
-        match self.parked.take().map(|parked| parked.place) {
-            Some(Place::Detached(tail)) => tail,
-            _ => Vec::new(),
-        }
+        let Some(Place::Detached(tail)) = self.parked.take().map(|parked| parked.place) else {
+            unreachable!("detach moved the parked tail out of the registry");
+        };
+        Some(tail)
     }
 
     /// Drops the tail parked as `id`, the registered paragraphs staying as
