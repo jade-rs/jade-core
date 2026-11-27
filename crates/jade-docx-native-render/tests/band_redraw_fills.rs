@@ -143,32 +143,61 @@ fn with_document(bytes: &[u8], edit: impl Fn(&str) -> String) -> Vec<u8> {
 
 /// A Letter package around `body`, with `styles` in its style part.
 fn package(body: &str, styles: &str) -> Vec<u8> {
+    package_with_header(body, styles, None)
+}
+
+/// [`package`] with `header`, when given, as the section's default header.
+fn package_with_header(body: &str, styles: &str, header: Option<&str>) -> Vec<u8> {
+    const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    let header_reference = if header.is_some() {
+        r#"<w:headerReference w:type="default" r:id="rId2"/>"#
+    } else {
+        ""
+    };
     let document = format!(
-        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}"><w:body>{body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{body}<w:sectPr>{header_reference}<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
     );
     let styles = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="{W}">{styles}</w:styles>"#
     );
+    let (header_override, header_relationship) = if header.is_some() {
+        (
+            r#"<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>"#,
+            format!(r#"<Relationship Id="rId2" Type="{R}/header" Target="header1.xml"/>"#),
+        )
+    } else {
+        ("", String::new())
+    };
+    let mut parts = vec![
+        (
+            "[Content_Types].xml",
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>{header_override}</Types>"#
+            ),
+        ),
+        (
+            "word/_rels/document.xml.rels",
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="{R}/styles" Target="styles.xml"/>{header_relationship}</Relationships>"#
+            ),
+        ),
+        ("word/styles.xml", styles),
+        (
+            "_rels/.rels",
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="{R}/officeDocument" Target="word/document.xml"/></Relationships>"#
+            ),
+        ),
+        ("word/document.xml", document),
+    ];
+    if let Some(header) = header {
+        parts.push(("word/header1.xml", header.to_string()));
+    }
     let mut bytes = Vec::new();
     {
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut bytes));
         let options = zip::write::SimpleFileOptions::default();
-        for (name, content) in [
-            (
-                "[Content_Types].xml",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#.to_string(),
-            ),
-            (
-                "word/_rels/document.xml.rels",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#.to_string(),
-            ),
-            ("word/styles.xml", styles),
-            (
-                "_rels/.rels",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.to_string(),
-            ),
-            ("word/document.xml", document),
-        ] {
+        for (name, content) in parts {
             zip.start_file(name, options).expect("zip entry");
             zip.write_all(content.as_bytes()).expect("zip write");
         }
@@ -451,4 +480,53 @@ fn typing_below_a_spacer_under_a_table_matches_a_full_repaint() {
 
 fn text_paragraph(ppr: &str, text: &str) -> String {
     format!(r#"<w:p><w:pPr>{ppr}</w:pPr><w:r><w:t xml:space="preserve">{text}</w:t></w:r></w:p>"#)
+}
+
+/// Two empty 1 pt exact-height spacers under the edited paragraph, with or
+/// without a table under them. Each spacer's paragraph mark is drawn at its
+/// baseline outside its line's clip, so it rises past the 1 pt line into
+/// the edited line's descenders: the band reaches the second spacer through
+/// its mark, not its line.
+#[test]
+fn typing_above_two_one_point_spacers_matches_a_full_repaint() {
+    for tail in [
+        text_paragraph("", "after the spacers, gypsy quay"),
+        table("D9E2F3", 2, 400, 0),
+    ] {
+        let spacer = format!("<w:p><w:pPr>{}</w:pPr></w:p>", exact(20));
+        let body = format!(
+            "{}{}{spacer}{spacer}{tail}{}",
+            text_paragraph("", "0 Body text before, gypsy"),
+            text_paragraph("", "jig gypsy quay jog"),
+            text_paragraph("", "and the last paragraph"),
+        );
+        let taken = check_edits("two spacers", &package(&body, ""), 1, &TYPING);
+        if !tail.starts_with("<w:tbl>") {
+            assert!(taken > 0, "the spacers' marks keep the band");
+        }
+    }
+}
+
+/// Twenty-four plain paragraphs under a semi-transparent diagonal text
+/// watermark, which crosses the lines typed into. The band redraws the
+/// watermark where it clears the page, which a full repaint draws once.
+#[test]
+fn typing_over_a_text_watermark_matches_a_full_repaint() {
+    let header = format!(
+        r##"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="{W}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><w:p><w:r><w:pict><v:shape id="PowerPlusWaterMarkObject1" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:412.4pt;height:247.45pt;rotation:315;z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" fillcolor="silver" stroked="f"><v:fill opacity=".5"/><v:textpath style="font-family:&quot;Noto Sans JP&quot;;font-size:1pt" string="DRAFT"/></v:shape></w:pict></w:r></w:p></w:hdr>"##
+    );
+    let body: String = (0..24)
+        .map(|index| {
+            text_paragraph(
+                "",
+                &format!("{index} Body text with descenders, gypsy quay"),
+            )
+        })
+        .collect();
+    let bytes = package_with_header(&body, "", Some(&header));
+    let mut taken = 0;
+    for paragraph in [12, 17, 23] {
+        taken += check_edits("watermark", &bytes, paragraph, &TYPING);
+    }
+    assert!(taken > 0, "a watermark keeps the band");
 }
