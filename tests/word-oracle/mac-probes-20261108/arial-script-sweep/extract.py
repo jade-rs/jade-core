@@ -1,30 +1,40 @@
 #!/usr/bin/env python3
-"""Extract original glyph origins without baseline grouping. Requires PyMuPDF."""
+"""Extract relative script baselines from the captured Word PDF (PyMuPDF)."""
+
+import csv
+import re
 from pathlib import Path
-import hashlib
-import json
-import fitz
-root = Path(__file__).parent
-pdf = root / 'arial-script-sweep-word.pdf'
-source = root / 'arial-script-sweep.docx'
-doc = fitz.open(pdf)
-result = {
-    'application': 'Microsoft Word for Mac 16.114.3',
-    'export': 'AppleScript save as file format format PDF',
-    'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
-    'pdf_sha256': hashlib.sha256(pdf.read_bytes()).hexdigest(),
-    'pymupdf': fitz.VersionBind,
-    'pages': [],
-}
-for page in doc:
-    spans = []
-    for block in page.get_text('rawdict')['blocks']:
-        for line in block.get('lines', []):
-            for span in line['spans']:
-                spans.append({
-                    'text': ''.join(c['c'] for c in span['chars']),
-                    'font': span['font'], 'size': span['size'],
-                    'glyphs': [{'text': c['c'], 'origin': c['origin']} for c in span['chars']],
-                })
-    result['pages'].append({'size_pt': [page.rect.width, page.rect.height], 'spans': spans})
-(root / 'word-glyphs.json').write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n')
+
+import pymupdf
+
+root = Path(__file__).resolve().parent
+label = re.compile(r"(ordinary|ruby)-(superscript|subscript)-(\d+):")
+rows = []
+
+with pymupdf.open(root / "arial-script-sweep-word.pdf") as document:
+    for page in document:
+        origins = {}
+        current = None
+        for block in page.get_text("dict")["blocks"]:
+            for line in block.get("lines", []):
+                for span in line["spans"]:
+                    text = span["text"].strip()
+                    match = label.fullmatch(text)
+                    if match:
+                        assert current is None, current
+                        current = match.groups()
+                        origins = {}
+                    elif text in ("BASE", "ABC"):
+                        assert current is not None and text not in origins, text
+                        origins[text] = span["origin"][1]
+                        if len(origins) == 2:
+                            rows.append((*current, f'{origins["BASE"] - origins["ABC"]:.4f}'))
+                            current = None
+        assert current is None, current
+
+assert len(rows) == 196
+assert len({row[:3] for row in rows}) == 196
+with (root / "word-baselines.csv").open("w", newline="") as output:
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(("context", "script", "size_half_points", "base_minus_script_pt"))
+    writer.writerows(rows)

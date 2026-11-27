@@ -11,7 +11,7 @@ fn sha256(bytes: &[u8]) -> String {
 }
 
 #[test]
-#[ignore = "known Arial subscript gap; requires JADE_OFFICE_ARIAL pointing to Office arial.ttf"]
+#[ignore = "requires JADE_OFFICE_ARIAL pointing to Office arial.ttf"]
 fn ruby_guide_positions_match_word_relative_baselines() {
     set_word_layout_platform(WordLayoutPlatform::Mac);
     let font = std::env::var("JADE_OFFICE_ARIAL").expect("set JADE_OFFICE_ARIAL");
