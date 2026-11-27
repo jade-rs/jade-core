@@ -4992,19 +4992,32 @@ impl WrappedLine {
         natural_width: f64,
         available_width: f64,
     ) -> f64 {
-        if self.break_kind != LineBreakKind::ParagraphEnd || !self.tab_stops.is_empty() {
+        if self.break_kind != LineBreakKind::ParagraphEnd
+            || !self.tab_stops.is_empty()
+            || paragraph.float_line_segments.is_empty()
+        {
             return 0.0;
         }
-        self.clusters.last().map_or(0.0, |mark| {
-            if paragraph.accepts_float_terminal_mark(&mark.text, base_width, line_index)
-                && natural_width >= available_width - WINDOWS_FLOAT_MARK_ROUNDING_PX
-                && natural_width - mark.width <= available_width + WINDOWS_FLOAT_MARK_ROUNDING_PX
-            {
-                mark.width
-            } else {
-                0.0
-            }
-        })
+        // A preserved ASCII space after the mark hangs outside the text extent.
+        let Some(mark) = self
+            .clusters
+            .iter()
+            .rev()
+            .find(|cluster| cluster.text != " ")
+        else {
+            return 0.0;
+        };
+        if !paragraph.accepts_float_terminal_mark(&mark.text, base_width, line_index) {
+            return 0.0;
+        }
+        let content_width = natural_width - trailing_whitespace_width(&self.clusters);
+        if content_width >= available_width - WINDOWS_FLOAT_MARK_ROUNDING_PX
+            && content_width - mark.width <= available_width + WINDOWS_FLOAT_MARK_ROUNDING_PX
+        {
+            mark.width
+        } else {
+            0.0
+        }
     }
 
     /// Fill a distributed line, including its final paragraph line, by
@@ -8921,6 +8934,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     }
     let right_limit = column_right_edge - paragraph_style.right_indent;
     let base_available = right_limit - base_x;
+    let float_terminal_text = if paragraph_style.float_line_segments.is_empty() {
+        text
+    } else {
+        text.trim_end_matches(' ')
+    };
     let mut current_available = paragraph_style
         .available_width_for_line(base_available, 0)
         .max(1.0);
@@ -9730,7 +9748,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && next_grapheme.is_some_and(is_arabic_letter_cluster);
                 let fits_with_windows_float_mark = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && current_line_tab_stops.is_empty()
-                    && if grapheme_end_abs == base_offset + text.len() {
+                    && if grapheme_end_abs == base_offset + float_terminal_text.len() {
                         current_width <= effective_available + WINDOWS_FLOAT_MARK_ROUNDING_PX
                             && paragraph_style.accepts_float_terminal_mark(
                                 grapheme,
@@ -9740,7 +9758,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     } else {
                         candidate_overflow <= WINDOWS_FLOAT_MARK_ROUNDING_PX
                             && paragraph_style.accepts_float_terminal_mark(
-                                &text[grapheme_end_abs - base_offset..],
+                                float_terminal_text
+                                    .get(grapheme_end_abs - base_offset..)
+                                    .unwrap_or(""),
                                 base_available,
                                 lines.len(),
                             )
@@ -10228,7 +10248,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 available,
             );
             if mark > 0.0 {
-                line.expand_interior_word_spaces(available + mark);
+                let trailing_space = trailing_whitespace_width(&line.clusters);
+                line.expand_interior_word_spaces(available + mark + trailing_space);
             }
         }
     }

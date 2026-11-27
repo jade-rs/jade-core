@@ -28,6 +28,9 @@ from generate_windows_floating_table_word_wrap_cases import (
 from generate_windows_floating_table_wrap_cases import (
     PREFIX as FLOATING_WRAP_PREFIX, cases as floating_wrap_cases,
 )
+from generate_windows_floating_terminal_run_cases import (
+    PREFIX as FLOATING_TERMINAL_RUN_PREFIX, cases as floating_terminal_run_cases,
+)
 from generate_windows_nested_table_alignment_cases import (
     PREFIX as NESTED_ALIGNMENT_PREFIX, cases as nested_alignment_cases,
 )
@@ -436,6 +439,8 @@ CAPTURES = (
      'word-windows-edge-floating-line-fit-probe-', floating_table_terminal_mark_cases, ('--unclipped-tables',)),
     ('floating-table-terminal-gap-sweep', 'af31201fd38e9b9596442037e2160dafbc40e861a51d1be8a0296689e6fb113c',
      'word-windows-edge-floating-legacy-gap-sweep-', floating_table_terminal_gap_cases, ('--unclipped-tables',)),
+    ('floating-table-terminal-runs', '105a2aff6f9f2ffd6f976fc435d471858615fa2e9fbb120b5f4e8d3ccadb60d2',
+     FLOATING_TERMINAL_RUN_PREFIX, floating_terminal_run_cases, ('--unclipped-tables',)),
 )
 
 
@@ -473,6 +478,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap', 'floating-table-text-frames',
         'floating-table-default-frame', 'floating-table-terminal-marks', 'floating-table-terminal-gap-sweep',
+        'floating-table-terminal-runs',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
