@@ -1474,6 +1474,7 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
         | WordAsciiMetrics::YuMinchoBold(_, _, _)
         | WordAsciiMetrics::YuGothicLight(_)
         | WordAsciiMetrics::Century(_)
+        | WordAsciiMetrics::CenturyBold(_)
         | WordAsciiMetrics::NotoSansJp(_)
         | WordAsciiMetrics::NotoSans(_)
         | WordAsciiMetrics::Calibri(_, _)
@@ -1498,6 +1499,7 @@ pub(crate) enum WordAsciiMetrics {
     YuMinchoBold(f64, bool, f64),
     YuGothicLight(f64),
     Century(f64),
+    CenturyBold(f64),
     NotoSansJp(f64),
     NotoSans(f64),
     Calibri(f64, bool),
@@ -2564,9 +2566,16 @@ impl WordAsciiMetrics {
                 };
                 Some(unit_px * units)
             }
-            Self::Century(unit_px) => {
+            Self::Century(unit_px) | Self::CenturyBold(unit_px) => {
                 let units = CENTURY_ASCII_UNITS[usize::from(ascii - b' ')];
-                (units > 0).then_some(unit_px * f64::from(units))
+                // Word for Mac emboldens Century's regular glyphs. A space
+                // has no outline to widen, and unknown widths stay with the host.
+                let bold_units = if matches!(self, Self::CenturyBold(_)) && ascii != b' ' {
+                    2048.0 * MAC_SYNTHETIC_BOLD_EM
+                } else {
+                    0.0
+                };
+                (units > 0).then_some(unit_px * (f64::from(units) + bold_units))
             }
             Self::YuMincho(unit_px, _) | Self::YuMinchoBold(unit_px, _, _) => {
                 // The Word for Mac alignment fixture's YuMincho-Regular subset
@@ -3078,7 +3087,7 @@ fn parse_word_ascii_metrics(
                 em_px / 2048.0,
                 !italic && platform == WordLayoutPlatform::Mac,
                 if platform == WordLayoutPlatform::Mac {
-                    2048.0 * 0.02
+                    2048.0 * MAC_SYNTHETIC_BOLD_EM
                 } else {
                     1.0
                 },
@@ -3096,6 +3105,9 @@ fn parse_word_ascii_metrics(
             WordAsciiMetrics::TimesNewRoman(em_px / 2048.0, bold, italic),
         ),
         "Century" if !bold && !italic => Some(WordAsciiMetrics::Century(em_px / 2048.0)),
+        "Century" if bold && !italic && platform == WordLayoutPlatform::Mac => {
+            Some(WordAsciiMetrics::CenturyBold(em_px / 2048.0))
+        }
         "Bookman Old Style" if !bold && !italic => Some(WordAsciiMetrics::Bookman(em_px / 2048.0)),
         "Calibri" if !italic => Some(WordAsciiMetrics::Calibri(em_px / 2048.0, bold)),
         // Browser hosts may substitute Cambria. Native painting retains the
@@ -3621,6 +3633,8 @@ pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: 
     }
 }
 
+const MAC_SYNTHETIC_BOLD_EM: f64 = 0.02;
+
 /// Extra advance, in px, that Word for Mac gives a glyph it emboldens itself:
 /// 1/50 em for a bold run in a face without a bold style (Yu Mincho, MS
 /// Mincho, MS Gothic, and Century, which Word for Mac ships without one, and
@@ -3677,7 +3691,7 @@ pub fn word_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
             | "ArialUnicodeMS"
     );
     if synthesized {
-        f64::from(size_pt) * 96.0 / 72.0 * 0.02
+        f64::from(size_pt) * 96.0 / 72.0 * MAC_SYNTHETIC_BOLD_EM
     } else {
         0.0
     }
