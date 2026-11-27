@@ -686,11 +686,17 @@ impl ParagraphStyle {
             && self.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
             && matches!(self.east_asian_rules.compatibility_mode, Some(12 | 14))
             && !self.bidi
-            && self.tab_stops.is_empty()
             && self
                 .positional_tabs
                 .as_ref()
                 .is_none_or(|tabs| tabs.is_empty())
+    }
+
+    fn is_authored_tab_target(&self, base_x: f64, target: f64) -> bool {
+        let origin = base_x + self.tab_origin_offset;
+        self.tab_stops.iter().any(|stop| {
+            (origin + points_to_px(stop.position_pt) - target).abs() <= WRAP_FIT_TOLERANCE_PX
+        })
     }
 
     /// Whether this line continues the previous line's physical band on the
@@ -5052,35 +5058,46 @@ impl WrappedLine {
         })
     }
 
-    /// Word's default tab grid stays fixed when wrap repair prepends part of a word.
-    fn reconcile_windows_float_tabs(
+    /// Extra text extent requested by an authored tab beyond the float frame.
+    pub fn authored_float_tab_overhang_px(&self, origin: f64, available: f64) -> f64 {
+        (float_tab_fit_width(self.tab_stops.last(), origin, available) - available).max(0.0)
+    }
+
+    /// Word's tab positions stay fixed when wrap repair prepends part of a word.
+    fn reconcile_windows_float_tabs<C: LineWrapContext>(
         &mut self,
+        ctx: &C,
         paragraph: &ParagraphStyle,
         base_x: f64,
         line_index: usize,
-    ) {
+    ) -> Result<(), C::Error> {
         if self.tab_stops.is_empty() || !paragraph.uses_legacy_windows_float_tab_grid() {
-            return;
+            return Ok(());
         }
         let tab_base = paragraph.line_base_x(base_x, line_index);
         if (tab_base - base_x).abs() <= f64::EPSILON {
-            return;
+            return Ok(());
         }
         let origin = tab_base + paragraph.line_indent(line_index);
         let mut width = 0.0;
         let mut stops = self.tab_stops.iter_mut().peekable();
+        let mut leaders = Vec::new();
         for cluster in &mut self.clusters {
             if cluster.kind == InlineClusterKind::Tab {
                 if let Some(tab) = stops.next_if(|tab| tab.start_offset == cluster.start) {
                     let cursor = origin + width;
-                    let (target, alignment, _) =
-                        find_next_tab_stop(paragraph, tab_base, cursor, &[]);
+                    let (target, alignment, leader) =
+                        find_next_tab_stop(paragraph, tab_base, cursor, &paragraph.tab_stops);
+                    let (segment_width, decimal_prefix_width) =
+                        tab.float_metrics.as_deref().map_or((0.0, None), |metrics| {
+                            (metrics.width, metrics.decimal_prefix)
+                        });
                     let target_width = tab_segment_start_width(
                         target,
                         origin,
                         width,
-                        0.0,
-                        None,
+                        segment_width,
+                        decimal_prefix_width,
                         alignment,
                         paragraph.default_tab_width,
                     );
@@ -5095,11 +5112,26 @@ impl WrappedLine {
                     }
                     tab.start_x = cursor;
                     tab.end_x = cursor + advance;
+                    tab.legacy_authored = paragraph.is_authored_tab_target(tab_base, target);
                     cluster.width = advance;
+                    if let Some(metrics) = tab.float_metrics.as_deref() {
+                        if let Some(segment) = measure_tab_leader(
+                            ctx,
+                            paragraph,
+                            &metrics.style,
+                            &metrics.properties,
+                            leader,
+                            tab.start_x..tab.end_x,
+                        )? {
+                            leaders.push(segment);
+                        }
+                    }
                 }
             }
             width += cluster.width;
         }
+        self.leaders = leaders;
+        Ok(())
     }
 
     /// Fill a distributed line, including its final paragraph line, by
@@ -7019,6 +7051,16 @@ pub struct TabStopSegment {
     /// Width the tab gave up to a final comma or full stop that would end
     /// past the edge (`shrink_tab_for_final_mark`).
     pub closed_for_final_mark: f64,
+    float_metrics: Option<Rc<FloatTabMetrics>>,
+    legacy_authored: bool,
+}
+
+#[derive(Clone, Debug)]
+struct FloatTabMetrics {
+    width: f64,
+    decimal_prefix: Option<f64>,
+    style: Rc<ResolvedRunStyle>,
+    properties: Option<Rc<RunProperties>>,
 }
 
 /// Smallest unit (grapheme or tab) used for enforcing wrapping rules.
@@ -9312,8 +9354,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && paragraph_style.word_platform
                         == crate::line_metrics::WordLayoutPlatform::Mac
                     && positional.is_none();
-                let legacy_float_default_tabs =
-                    paragraph_style.uses_legacy_windows_float_tab_grid();
+                let legacy_float_tabs = paragraph_style.uses_legacy_windows_float_tab_grid();
                 let tab_target =
                     |cursor_x: f64, line_origin: f64, line_index: usize| match &positional {
                         Some(stop) => {
@@ -9331,7 +9372,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         }
                         None => find_next_tab_stop(
                             paragraph_style,
-                            if legacy_float_default_tabs {
+                            if legacy_float_tabs {
                                 paragraph_style.line_base_x(base_x, line_index)
                             } else {
                                 base_x
@@ -9347,7 +9388,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         prefix
                     }
                 });
-                let (target_x, alignment, mut leader_kind) =
+                let (mut target_x, alignment, mut leader_kind) =
                     tab_target(cursor_x, line_origin, lines.len());
 
                 let mut previous_width = current_width;
@@ -9390,8 +9431,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     );
                     let next_effective_available = (next_available - WRAP_SAFETY_PX).max(1.0);
 
+                    let at_float_edge = legacy_float_tabs
+                        && current_width >= effective_available - WRAP_FIT_TOLERANCE_PX
+                        && paragraph_style.is_authored_tab_target(
+                            paragraph_style.line_base_x(base_x, next_line_index),
+                            next_target_x,
+                        );
                     if next_desired_width + segment_width
                         <= next_effective_available + WRAP_FIT_TOLERANCE_PX
+                        || at_float_edge
                     {
                         lines.push(WrappedLine {
                             segments: std::mem::take(&mut current_line),
@@ -9409,6 +9457,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         current_line_indent = next_line_indent;
                         line_origin = next_line_origin;
                         desired_width = next_desired_width;
+                        target_x = next_target_x;
                         leader_kind = next_leader_kind;
                     }
                 }
@@ -9416,66 +9465,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 let gap_start = line_origin + current_width;
                 let gap_end = line_origin + desired_width;
                 let gap_width = (desired_width - previous_width).max(0.0);
-                if leader_kind != TabLeader::None && gap_end > gap_start + 0.5 {
-                    let mac_dot = leader_kind == TabLeader::Dot
-                        && crate::line_metrics::word_layout_platform()
-                            == crate::line_metrics::WordLayoutPlatform::Mac;
-                    let windows_dot_advance = (leader_kind == TabLeader::Dot
-                        && paragraph_style.word_platform
-                            == crate::line_metrics::WordLayoutPlatform::Windows
-                        && style.text_scale_x == 1.0
-                        && style.letter_spacing_px == 0.0)
-                        .then(|| {
-                            crate::line_metrics::word_windows_dot_leader_advance_px(
-                                &style.font_descriptor_latin_ascii,
-                            )
-                        })
-                        .flatten();
-                    let requested_advance = windows_dot_advance.or_else(|| {
-                        mac_dot
-                            .then(|| {
-                                crate::line_metrics::word_ascii_metrics(
-                                    &style.font_descriptor_latin_ascii,
-                                )
-                                .and_then(|metrics| metrics.advance_px(b'.'))
-                            })
-                            .flatten()
-                    });
-                    let glyph_advance = match requested_advance {
-                        Some(advance) => advance,
-                        None => ctx.measure_text_with_font_key(
-                            leader_kind.character(),
-                            &style.font_descriptor_latin_ascii,
-                            style.font_descriptor_latin_ascii_hash,
-                            style.font_descriptor_latin_ascii_id,
-                        )?,
-                    };
-                    current_line_leaders.push(TabLeaderSegment {
-                        start_x: gap_start,
-                        end_x: gap_end,
-                        leader: leader_kind,
-                        properties: run_style.properties.clone(),
-                        glyph_advance,
-                        glyph_positions: if windows_dot_advance.is_some() {
-                            // Windows ends on a complete grid advance. The
-                            // legacy 0.5px allowance adds a dot just past the
-                            // tab target at fractional twip boundaries.
-                            tab_leader_positions_with_tolerance(
-                                gap_start,
-                                gap_end,
-                                glyph_advance,
-                                true,
-                                1e-6,
-                            )
-                        } else {
-                            tab_leader_positions_with_grid(
-                                gap_start,
-                                gap_end,
-                                glyph_advance,
-                                mac_dot,
-                            )
-                        },
-                    });
+                if let Some(leader) = measure_tab_leader(
+                    ctx,
+                    paragraph_style,
+                    &style,
+                    &run_style.properties,
+                    leader_kind,
+                    gap_start..gap_end,
+                )? {
+                    current_line_leaders.push(leader);
                 }
 
                 current_line_tab_stops.push(TabStopSegment {
@@ -9484,6 +9482,20 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     start_x: gap_start,
                     end_x: gap_start + gap_width,
                     closed_for_final_mark: 0.0,
+                    float_metrics: (legacy_float_tabs && !paragraph_style.tab_stops.is_empty())
+                        .then(|| {
+                            Rc::new(FloatTabMetrics {
+                                width: segment_width,
+                                decimal_prefix: decimal_prefix_width,
+                                style: style.clone(),
+                                properties: run_style.properties.clone(),
+                            })
+                        }),
+                    legacy_authored: legacy_float_tabs
+                        && paragraph_style.is_authored_tab_target(
+                            paragraph_style.line_base_x(base_x, lines.len()),
+                            target_x,
+                        ),
                 });
 
                 current_line_clusters.push(InlineCluster::tab(
@@ -9653,6 +9665,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x
                 };
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
+                let effective_available = float_tab_fit_width(
+                    current_line_tab_stops.last(),
+                    paragraph_style.line_base_x(base_x, lines.len()) + current_line_indent,
+                    effective_available,
+                );
                 let zero_width_oracle_glyph =
                     computed.measured_width_is_oracle && candidate_width <= f64::EPSILON;
 
@@ -10250,7 +10267,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     let single_line = lines.len() == 1;
     let mut line_iter = lines.iter_mut().enumerate().peekable();
     while let Some((epoch, line)) = line_iter.next() {
-        line.reconcile_windows_float_tabs(paragraph_style, base_x, epoch);
+        line.reconcile_windows_float_tabs(ctx, paragraph_style, base_x, epoch)?;
         let reorder_gaps =
             !fitted_visual_gaps.is_empty() && requires_bidi_resolution(line, paragraph_style.bidi);
         if SHAPE_ARABIC
@@ -11266,6 +11283,77 @@ fn compress_justified_word_spaces_to_available_width<
     Ok(())
 }
 
+fn measure_tab_leader<C: LineWrapContext>(
+    ctx: &C,
+    paragraph_style: &ParagraphStyle,
+    style: &ResolvedRunStyle,
+    properties: &Option<Rc<RunProperties>>,
+    leader_kind: TabLeader,
+    range: Range<f64>,
+) -> Result<Option<TabLeaderSegment>, C::Error> {
+    let gap_start = range.start;
+    let gap_end = range.end;
+    if leader_kind == TabLeader::None || gap_end <= gap_start + 0.5 {
+        return Ok(None);
+    }
+    let mac_dot = leader_kind == TabLeader::Dot
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    let windows_dot_advance = (leader_kind == TabLeader::Dot
+        && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && style.text_scale_x == 1.0
+        && style.letter_spacing_px == 0.0)
+        .then(|| {
+            crate::line_metrics::word_windows_dot_leader_advance_px(
+                &style.font_descriptor_latin_ascii,
+            )
+        })
+        .flatten();
+    let requested_advance = windows_dot_advance.or_else(|| {
+        mac_dot
+            .then(|| {
+                crate::line_metrics::word_ascii_metrics(&style.font_descriptor_latin_ascii)
+                    .and_then(|metrics| metrics.advance_px(b'.'))
+            })
+            .flatten()
+    });
+    let glyph_advance = match requested_advance {
+        Some(advance) => advance,
+        None => ctx.measure_text_with_font_key(
+            leader_kind.character(),
+            &style.font_descriptor_latin_ascii,
+            style.font_descriptor_latin_ascii_hash,
+            style.font_descriptor_latin_ascii_id,
+        )?,
+    };
+    Ok(Some(TabLeaderSegment {
+        start_x: gap_start,
+        end_x: gap_end,
+        leader: leader_kind,
+        properties: properties.clone(),
+        glyph_advance,
+        glyph_positions: if windows_dot_advance.is_some() {
+            // Windows ends on a complete grid advance. The
+            // legacy 0.5px allowance adds a dot just past the
+            // tab target at fractional twip boundaries.
+            tab_leader_positions_with_tolerance(gap_start, gap_end, glyph_advance, true, 1e-6)
+        } else {
+            tab_leader_positions_with_grid(gap_start, gap_end, glyph_advance, mac_dot)
+        },
+    }))
+}
+
+/// Word keeps text at an authored tab stop even when it lies beyond the float frame.
+fn float_tab_fit_width(tab: Option<&TabStopSegment>, origin: f64, available: f64) -> f64 {
+    tab.filter(|tab| tab.legacy_authored && tab.end_x > origin + available)
+        .and_then(|tab| {
+            tab.float_metrics
+                .as_deref()
+                .map(|metrics| tab.end_x - origin + metrics.width)
+        })
+        .unwrap_or(available)
+}
+
 fn tab_segment_start_width(
     target_x: f64,
     line_origin: f64,
@@ -11760,7 +11848,18 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
         if character_borders {
             apply_character_border_inline_spacing(&mut lines[line_index]);
         }
-        lines[line_index].reconcile_windows_float_tabs(paragraph_style, column.start, line_index);
+        lines[line_index].reconcile_windows_float_tabs(
+            ctx,
+            paragraph_style,
+            column.start,
+            line_index,
+        )?;
+        let effective_available = float_tab_fit_width(
+            lines[line_index].tab_stops.last(),
+            paragraph_style.line_base_x(column.start, line_index)
+                + paragraph_style.line_indent(line_index),
+            effective_available,
+        );
         let mut width = measure_wrapped_line_width::<C, SHAPE_ARABIC>(
             ctx,
             &lines[line_index],
