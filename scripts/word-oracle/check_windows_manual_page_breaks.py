@@ -13,6 +13,9 @@ from check_platform_coordinates import (
     extract_fonts, pdf_origins, require,
 )
 from check_windows_font_coordinates import require_original_font_programs_registered
+from generate_windows_floating_line_ending_cases import (
+    PREFIX as FLOATING_LINE_ENDING_PREFIX, cases as floating_line_ending_cases,
+)
 from generate_windows_floating_table_break_cases import (
     PREFIX as FLOATING_PREFIX, cases as floating_cases,
 )
@@ -441,6 +444,8 @@ CAPTURES = (
      'word-windows-edge-floating-legacy-gap-sweep-', floating_table_terminal_gap_cases, ('--unclipped-tables',)),
     ('floating-table-terminal-runs', '105a2aff6f9f2ffd6f976fc435d471858615fa2e9fbb120b5f4e8d3ccadb60d2',
      FLOATING_TERMINAL_RUN_PREFIX, floating_terminal_run_cases, ('--unclipped-tables',)),
+    ('floating-table-line-endings', 'e5c3d1d04f125aacf6f7819f2146ae5a9c82a725aaf21618853527b3e6a8a9ce',
+     FLOATING_LINE_ENDING_PREFIX, floating_line_ending_cases, ('--unclipped-tables',)),
 )
 
 
@@ -479,6 +484,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'floating-table-overlap', 'floating-table-word-wrap', 'floating-table-text-frames',
         'floating-table-default-frame', 'floating-table-terminal-marks', 'floating-table-terminal-gap-sweep',
         'floating-table-terminal-runs',
+        'floating-table-line-endings',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
