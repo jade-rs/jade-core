@@ -3384,9 +3384,19 @@ fn build_pdf_bytes(
     input_size: usize,
     options: &RenderOptions,
 ) -> Result<Vec<u8>, RenderError> {
+    let page_buckets = PageBuckets::new(layout, layout.page_count());
+    build_pdf_bytes_with_buckets(layout, &page_buckets, input_size, options)
+}
+
+fn build_pdf_bytes_with_buckets(
+    layout: &RenderLayout,
+    page_buckets: &PageBuckets,
+    input_size: usize,
+    options: &RenderOptions,
+) -> Result<Vec<u8>, RenderError> {
     let mut document = Document::with_version("1.7");
     let pages_id = document.new_object_id();
-    let page_count = layout.page_count();
+    let page_count = page_buckets.lines.len();
     let lines = &layout.lines;
     let images = &layout.images;
     let tables = &layout.tables;
@@ -3411,11 +3421,6 @@ fn build_pdf_bytes(
         _ => None,
     };
     let image_objects = add_pdf_image_objects(&mut document, images);
-
-    // Bucket item indices by 1-based page once, in original order, so each
-    // page only walks its own items. Items outside `1..=page_count` were never
-    // drawn by the per-page filters either, so they are skipped here too.
-    let page_buckets = PageBuckets::new(layout, page_count);
 
     let mut kids = Vec::with_capacity(page_count);
     for page_index in 0..page_count {
@@ -4087,6 +4092,67 @@ end",
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn indexed_pages_preserve_pdf_bytes_from_per_page_scans() {
+        fn scan<T>(
+            items: &[T],
+            page_count: usize,
+            page_of: impl Fn(&T) -> usize,
+        ) -> Vec<Vec<usize>> {
+            (1..=page_count)
+                .map(|page| {
+                    items
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(index, item)| (page_of(item) == page).then_some(index))
+                        .collect()
+                })
+                .collect()
+        }
+
+        let fixtures =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
+        for (name, measurement) in [
+            ("yokohama.docx", TextMeasurement::EmbeddedFontAdvances),
+            (
+                "table-repeating-header.docx",
+                TextMeasurement::BrowserParityShaping,
+            ),
+            (
+                "table-complex-nested-pagination.docx",
+                TextMeasurement::EmbeddedFontAdvances,
+            ),
+            (
+                "header-footer-sectionpages.docx",
+                TextMeasurement::BrowserParityShaping,
+            ),
+            ("image-floating.docx", TextMeasurement::BrowserParityShaping),
+            ("hyperlink.docx", TextMeasurement::EmbeddedFontAdvances),
+        ] {
+            let docx = std::fs::read(fixtures.join(name)).unwrap_or_else(|e| panic!("{name}: {e}"));
+            let context = RenderDocxContext::load(&docx).expect("load fixture");
+            let layout = build_render_layout(&context, measurement).expect("lay out fixture");
+            let page_count = layout.page_count();
+            let scanned = PageBuckets {
+                lines: scan(&layout.lines, page_count, |item| item.page),
+                images: scan(&layout.images, page_count, |item| item.page),
+                tables: scan(&layout.tables, page_count, |item| item.page),
+                text_boxes: scan(&layout.text_boxes, page_count, |item| item.page),
+                border_boxes: scan(&layout.border_boxes, page_count, |item| item.page),
+                links: scan(&layout.links, page_count, |item| item.page),
+            };
+            let options = RenderOptions {
+                text_measurement: measurement,
+                ..RenderOptions::default()
+            };
+            let expected = build_pdf_bytes_with_buckets(&layout, &scanned, docx.len(), &options)
+                .expect("encode PDF from scan");
+            let indexed =
+                build_pdf_bytes(&layout, docx.len(), &options).expect("encode indexed PDF");
+            assert!(indexed == expected, "{name} PDF bytes differ");
+        }
+    }
 
     #[test]
     fn non_ascii_hex_color_is_rejected_without_panicking() {
