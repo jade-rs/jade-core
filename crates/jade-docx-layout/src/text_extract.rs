@@ -3139,6 +3139,16 @@ pub fn layout_docx_lines_from_package<C: LineWrapContext>(
     layout_docx_lines_from_package_with_oracle_advances(package, context, None)
 }
 
+/// Lays out the main document part already parsed from `package`.
+/// Package settings, styles, theme, and font information are applied during layout.
+pub fn layout_parsed_docx_lines_from_package<C: LineWrapContext>(
+    package: &OpenXmlPackage,
+    document: Document,
+    context: &C,
+) -> Result<DocumentLineLayout, LineLayoutError<C::Error>> {
+    layout_parsed_docx_lines_from_package_with_oracle_advances(package, document, context, None)
+}
+
 pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
     package: &OpenXmlPackage,
     context: &C,
@@ -3155,9 +3165,23 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         .ok_or_else(|| LineLayoutError::MissingDocumentPart(doc_target.clone()))?;
     let xml = String::from_utf8_lossy(xml);
     let parser = DocumentParser::new();
-    let mut document = parser
+    let document = parser
         .parse_document_xml(&xml)
         .map_err(LineLayoutError::DocumentParse)?;
+    layout_parsed_docx_lines_from_package_with_oracle_advances(
+        package,
+        document,
+        context,
+        oracle_advances_px_by_paragraph,
+    )
+}
+
+fn layout_parsed_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
+    package: &OpenXmlPackage,
+    mut document: Document,
+    context: &C,
+    oracle_advances_px_by_paragraph: Option<&OracleAdvanceMap>,
+) -> Result<DocumentLineLayout, LineLayoutError<C::Error>> {
     let needs_style_defaults = document_has_visible_paragraph_without_east_asian_fonting(&document);
     // A document without settings asks for no compatibility mode.
     crate::font_resolver::set_document_opentype_features_enabled(true);
