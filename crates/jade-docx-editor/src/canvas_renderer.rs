@@ -18115,6 +18115,10 @@ where
         } else {
             self.selection.take_cell_layouts()
         };
+        // No parked tail outlives the pass that parked it (a handed-over one
+        // is detached into `EditDownstream`). One left by a bug would make
+        // every later park take its tail instead, copying it per keystroke.
+        self.selection.discard_parked_selection_suffix();
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
@@ -19355,9 +19359,16 @@ where
         if !self.last_fast_replay_stable && stable_downstream_request.is_some() {
             // The edit asked for its downstream and the stable path, which
             // set it aside, did not prove it unchanged: hand it over.
-            if let (Some((from, selection)), Some(cells)) =
-                (selection_suffix.take(), stable_cells.take())
-            {
+            // Only with the cells (a completed-pagination edit) is there a
+            // downstream to hand over. Without them the selection tail stays
+            // in `selection_suffix` and is discarded below, not dropped
+            // while still parked.
+            let handover = stable_cells.take().and_then(|cells| {
+                selection_suffix
+                    .take()
+                    .map(|(from, selection)| (from, selection, cells))
+            });
+            if let Some((from, selection, cells)) = handover {
                 let hyperlinks = match self.hyperlinks_aside.take() {
                     Some(aside) => aside.finish_unstable(&mut self.hyperlink_regions, true),
                     None => hyperlink_suffix

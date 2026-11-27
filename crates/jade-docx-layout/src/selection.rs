@@ -607,9 +607,16 @@ impl SelectionManager {
     ///
     /// Hand the suffix back to [`Self::restore_selection_suffix`], or to
     /// [`Self::detach_selection_suffix`] for one that owns its paragraphs, or
-    /// to [`Self::discard_selection_suffix`]. Parking another tail, or taking
-    /// one, drops a tail still parked.
+    /// to [`Self::discard_selection_suffix`]. While a tail is parked,
+    /// parking another takes it instead, as [`Self::take_selection_suffix`]
+    /// does. Taking one, or inserting or removing a paragraph, moves a parked
+    /// tail out of the registry's vector but keeps it parked for its suffix.
     pub fn park_selection_suffix(&mut self, from: usize) -> SelectionSuffix {
+        if self.paragraphs.has_parked() {
+            // The registry parks one tail. Another suffix's is still parked;
+            // dropping it would lose its paragraphs, so take this one.
+            return self.take_selection_suffix(from);
+        }
         let parked = self.paragraphs.park(from);
         if parked.is_some() {
             *self.paragraph_bounds_index.get_mut() = None;
@@ -652,8 +659,12 @@ impl SelectionManager {
     /// A suffix that owns its paragraphs: a parked one's are moved out of the
     /// registry, which reads the same as before.
     pub fn detach_selection_suffix(&mut self, mut suffix: SelectionSuffix) -> SelectionSuffix {
-        if let Some(id) = suffix.parked.take() {
-            suffix.paragraphs = self.paragraphs.detach_parked(id);
+        if let Some(paragraphs) = suffix
+            .parked
+            .and_then(|id| self.paragraphs.detach_parked(id))
+        {
+            suffix.parked = None;
+            suffix.paragraphs = paragraphs;
         }
         suffix
     }
@@ -665,6 +676,12 @@ impl SelectionManager {
         }
     }
 
+    /// Whether a tail parked by [`Self::park_selection_suffix`] is still
+    /// held, waiting for its suffix to be restored, detached or discarded.
+    pub fn has_parked_selection_suffix(&self) -> bool {
+        self.paragraphs.has_parked()
+    }
+
     /// Drops a parked tail whose suffix is gone, as after a failed pass.
     pub fn discard_parked_selection_suffix(&mut self) {
         self.paragraphs.drop_parked();
@@ -673,8 +690,10 @@ impl SelectionManager {
     pub fn restore_selection_suffix(&mut self, from: usize, suffix: SelectionSuffix) {
         match suffix.parked {
             Some(id) => {
+                if !self.paragraphs.restore_parked(id, from) {
+                    return;
+                }
                 *self.paragraph_bounds_index.get_mut() = None;
-                self.paragraphs.restore_parked(id, from);
             }
             None => self.restore_paragraph_suffix(from, suffix.paragraphs),
         }
@@ -6255,6 +6274,110 @@ mod tests {
         assert_eq!(manager.preserved_prefix_len(), 0);
         manager.append_paragraph_text(0, "Hello");
         assert_eq!(manager.paragraph_debug_texts(), vec!["Hello"]);
+    }
+
+    fn manager_with(texts: &[&str]) -> SelectionManager {
+        let mut manager = SelectionManager::new();
+        manager.begin_render();
+        for (index, text) in texts.iter().enumerate() {
+            manager.append_paragraph_text(index, text);
+        }
+        manager
+    }
+
+    /// Two suffixes held at once, the second parked while the first's tail
+    /// is: whatever order they are restored, detached or discarded in, the
+    /// paragraphs end as they do when both are taken, and none is lost.
+    #[test]
+    fn a_second_park_keeps_the_first_parked_tail() {
+        #[derive(Clone, Copy, Debug)]
+        enum End {
+            Restore,
+            Detach,
+            Discard,
+        }
+        let texts = ["a", "b", "c", "d", "e"];
+        let ends = [End::Restore, End::Detach, End::Discard];
+        for (first_from, second_from) in [(3, 1), (1, 3), (2, 2), (4, 0)] {
+            for first in ends {
+                for second in ends {
+                    for first_ends_first in [false, true] {
+                        let run = |park: bool| {
+                            let mut manager = manager_with(&texts);
+                            let take = |manager: &mut SelectionManager, from| {
+                                if park {
+                                    manager.park_selection_suffix(from)
+                                } else {
+                                    manager.take_selection_suffix(from)
+                                }
+                            };
+                            let a = take(&mut manager, first_from);
+                            let b = take(&mut manager, second_from);
+                            let mut kept = Vec::new();
+                            let mut end =
+                                |manager: &mut SelectionManager, suffix, from, how| match how {
+                                    End::Restore => manager.restore_selection_suffix(from, suffix),
+                                    End::Detach => {
+                                        let owned = manager.detach_selection_suffix(suffix);
+                                        kept.extend(
+                                            owned.paragraphs().iter().map(|p| p.text.clone()),
+                                        );
+                                    }
+                                    End::Discard => manager.discard_selection_suffix(suffix),
+                                };
+                            if first_ends_first {
+                                end(&mut manager, a, first_from, first);
+                                end(&mut manager, b, second_from, second);
+                            } else {
+                                end(&mut manager, b, second_from, second);
+                                end(&mut manager, a, first_from, first);
+                            }
+                            (manager.paragraph_debug_texts(), kept)
+                        };
+                        assert_eq!(
+                            run(true),
+                            run(false),
+                            "{first_from} {second_from} {first:?} {second:?} {first_ends_first}"
+                        );
+                    }
+                }
+            }
+        }
+        // Restored innermost first, both tails come back.
+        let mut manager = manager_with(&texts);
+        let first = manager.park_selection_suffix(3);
+        let second = manager.park_selection_suffix(1);
+        manager.restore_selection_suffix(1, second);
+        manager.restore_selection_suffix(3, first);
+        assert_eq!(manager.paragraph_debug_texts(), texts);
+        assert!(!manager.has_parked_selection_suffix());
+    }
+
+    #[test]
+    fn a_discarded_suffix_cannot_take_a_newly_parked_tail() {
+        for detach in [false, true] {
+            let mut manager = manager_with(&["first", "discarded"]);
+            manager.non_selectable_paragraphs.insert(1);
+            let stale = manager.park_selection_suffix(1);
+            manager.discard_parked_selection_suffix();
+            manager.append_paragraph_text(1, "replacement");
+            let current = manager.park_selection_suffix(1);
+
+            let stale = if detach {
+                let detached = manager.detach_selection_suffix(stale);
+                assert!(detached.paragraphs().is_empty());
+                detached
+            } else {
+                stale
+            };
+            manager.restore_selection_suffix(1, stale);
+            assert!(manager.has_parked_selection_suffix());
+            assert!(manager.non_selectable_paragraphs.is_empty());
+
+            manager.restore_selection_suffix(1, current);
+            assert_eq!(manager.paragraph_debug_texts(), ["first", "replacement"]);
+            assert!(manager.is_paragraph_selectable(1));
+        }
     }
 
     #[test]

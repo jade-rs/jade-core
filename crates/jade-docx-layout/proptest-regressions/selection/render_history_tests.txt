@@ -5,4 +5,3 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc ef7f1f6c3a88b8d831d1af75ca4ca42b1e1731cf9dce3ddeb06e0a44a15dbb89 # shrinks to commands = [TakeSuffix(0), Write(0, "", 1), RestoreSuffix]
-cc 7d4f40c1e0a60f8bee25570b94bc7ad47281e3e7d26682d76785b6be9eae7efc # shrinks to commands = [Write(3, "", 0), ParkSuffix(0), BeginFull, TakeSuffix(0), Gap(12), Begin(Some(5))]

@@ -11,11 +11,13 @@ enum Command {
     Reset(usize),
     Selectable(usize, bool),
     Freeze(bool),
-    TakeSuffix(usize),
-    ParkSuffix(usize),
-    DetachSuffix,
-    DiscardSuffix,
-    RestoreSuffix,
+    // The last field of each suffix command is the slot (0 or 1) holding
+    // the suffix, so that two can be held at once.
+    TakeSuffix(usize, usize),
+    ParkSuffix(usize, usize),
+    DetachSuffix(usize),
+    DiscardSuffix(usize),
+    RestoreSuffix(usize),
     Gap(usize),
     RemoveParagraph(usize),
     Select(usize, usize),
@@ -34,13 +36,13 @@ fn command() -> impl Strategy<Value = Command> {
         1 => (0usize..12).prop_map(Command::Reset),
         1 => (0usize..12, any::<bool>()).prop_map(|(index, value)| Command::Selectable(index, value)),
         1 => any::<bool>().prop_map(Command::Freeze),
-        2 => (0usize..14).prop_map(Command::TakeSuffix),
-        3 => (0usize..14).prop_map(Command::ParkSuffix),
-        1 => Just(Command::DetachSuffix),
-        1 => Just(Command::DiscardSuffix),
+        2 => (0usize..14, 0usize..2).prop_map(|(from, slot)| Command::TakeSuffix(from, slot)),
+        3 => (0usize..14, 0usize..2).prop_map(|(from, slot)| Command::ParkSuffix(from, slot)),
+        1 => (0usize..2).prop_map(Command::DetachSuffix),
+        1 => (0usize..2).prop_map(Command::DiscardSuffix),
         1 => (0usize..14).prop_map(Command::Gap),
         1 => (0usize..14).prop_map(Command::RemoveParagraph),
-        2 => Just(Command::RestoreSuffix),
+        2 => (0usize..2).prop_map(Command::RestoreSuffix),
         1 => (0usize..14, 0usize..16).prop_map(|(p, o)| Command::Select(p, o)),
     ]
 }
@@ -95,6 +97,272 @@ fn line(text: &str, slot: usize) -> LineLayout {
     }
 }
 
+/// A suffix held by the model: where it was taken from, the suffix, and
+/// the model's paragraphs, excluded paragraphs and caret origins it took.
+type Saved = (
+    usize,
+    SelectionSuffix,
+    Vec<Paragraph>,
+    Vec<usize>,
+    Vec<(usize, usize)>,
+);
+
+/// Runs `commands` on a manager and on the model, checking after each step
+/// that they agree.
+fn check_history(commands: &[Command]) -> Result<(), TestCaseError> {
+    let mut manager = SelectionManager::new();
+    let mut paragraphs = Vec::<Paragraph>::new();
+    let mut saved: [Option<Saved>; 2] = [None, None];
+    let mut excluded = HashSet::new();
+    let mut caret_origins = HashSet::new();
+    let mut pass = 0;
+    let mut frozen = false;
+    let mut selection = None;
+    let mut preserved = 0;
+    for (step, command) in commands.iter().enumerate() {
+        match command {
+            Command::BeginFull | Command::Begin(_) => {
+                let dirty = match command {
+                    Command::Begin(dirty) => *dirty,
+                    _ => None,
+                };
+                if matches!(command, Command::BeginFull) {
+                    manager.begin_render();
+                } else {
+                    manager.begin_render_incremental(dirty);
+                }
+                if !frozen {
+                    preserved = dirty
+                        .filter(|&from| from > 0 && from <= paragraphs.len())
+                        .unwrap_or(0);
+                    paragraphs.truncate(preserved);
+                    excluded.retain(|&index| index < preserved);
+                    caret_origins.retain(|&(index, _)| index < preserved);
+                    pass += 1;
+                }
+            }
+            Command::Write(index, text, count) => {
+                manager.reset_paragraph_registration(*index);
+                manager.append_paragraph_text(*index, text);
+                for part in 0..*count {
+                    manager.record_line_with_caret_start(*index, line(text, step * 5 + part), 12.0);
+                }
+                if !frozen {
+                    let paragraph = touch(&mut paragraphs, *index, pass);
+                    paragraph.text = text.clone();
+                    paragraph.lines = (0..*count)
+                        .map(|part| (text.clone(), step * 5 + part))
+                        .collect();
+                    caret_origins.extend((0..*count).map(|part| (*index, part)));
+                }
+            }
+            Command::Append(index, text) => {
+                manager.append_paragraph_text(*index, text);
+                if !frozen {
+                    touch(&mut paragraphs, *index, pass).text.push_str(text);
+                }
+            }
+            Command::Ensure(index) => {
+                manager.ensure_paragraph(*index);
+                if !frozen {
+                    let _ = touch(&mut paragraphs, *index, pass);
+                }
+            }
+            Command::Reset(index) => {
+                manager.reset_paragraph_registration(*index);
+                if !frozen {
+                    let paragraph = touch(&mut paragraphs, *index, pass);
+                    paragraph.text = String::new();
+                    paragraph.lines = Vec::new();
+                }
+            }
+            Command::Selectable(index, selectable) => {
+                manager.set_paragraph_selectable(*index, *selectable);
+                if !frozen {
+                    let _ = touch(&mut paragraphs, *index, pass);
+                    if *selectable {
+                        excluded.remove(index);
+                    } else {
+                        excluded.insert(*index);
+                    }
+                }
+            }
+            Command::Freeze(value) => {
+                frozen = *value;
+                if frozen {
+                    manager.freeze();
+                } else {
+                    manager.unfreeze();
+                }
+            }
+            Command::TakeSuffix(from, slot) | Command::ParkSuffix(from, slot) => {
+                // A suffix still held in the slot is ended first, as the
+                // renderer ends every one it takes; dropping one unended
+                // would keep its tail parked, and later parks would take.
+                // The other slot's may stay held: a park then takes.
+                if let Some((_, tail, ..)) = saved[*slot].take() {
+                    manager.discard_selection_suffix(tail);
+                }
+                let tail = if matches!(command, Command::ParkSuffix(..)) {
+                    manager.park_selection_suffix(*from)
+                } else {
+                    manager.take_selection_suffix(*from)
+                };
+                let model_tail = paragraphs.iter().skip(*from).cloned().collect::<Vec<_>>();
+                paragraphs.truncate(*from);
+                let tail_excluded = excluded
+                    .iter()
+                    .copied()
+                    .filter(|p| p >= from)
+                    .collect::<Vec<_>>();
+                excluded.retain(|p| p < from);
+                let tail_origins = caret_origins
+                    .iter()
+                    .copied()
+                    .filter(|(p, _)| p >= from)
+                    .collect::<Vec<_>>();
+                caret_origins.retain(|(p, _)| p < from);
+                saved[*slot] = Some((*from, tail, model_tail, tail_excluded, tail_origins));
+            }
+            Command::DetachSuffix(slot) => {
+                if let Some((from, tail, model_tail, tail_excluded, tail_origins)) =
+                    saved[*slot].take()
+                {
+                    let tail = manager.detach_selection_suffix(tail);
+                    prop_assert_eq!(tail.paragraphs().len(), model_tail.len());
+                    saved[*slot] = Some((from, tail, model_tail, tail_excluded, tail_origins));
+                }
+            }
+            Command::DiscardSuffix(slot) => {
+                if let Some((_, tail, ..)) = saved[*slot].take() {
+                    manager.discard_selection_suffix(tail);
+                }
+            }
+            Command::Gap(index) => {
+                manager.insert_paragraph_gap(*index);
+                if *index > paragraphs.len() {
+                    paragraphs.resize_with(index + 1, Paragraph::default);
+                } else {
+                    paragraphs.insert(*index, Paragraph::default());
+                }
+                caret_origins = caret_origins
+                    .into_iter()
+                    .map(|(p, line)| (if p >= *index { p + 1 } else { p }, line))
+                    .collect();
+            }
+            Command::RemoveParagraph(index) => {
+                manager.remove_paragraph(*index);
+                if *index < paragraphs.len() {
+                    paragraphs.remove(*index);
+                }
+                caret_origins = caret_origins
+                    .into_iter()
+                    .filter(|&(p, _)| p != *index)
+                    .map(|(p, line)| (if p > *index { p - 1 } else { p }, line))
+                    .collect();
+            }
+            Command::RestoreSuffix(slot) => {
+                if let Some((from, tail, model_tail, tail_excluded, tail_origins)) =
+                    saved[*slot].take()
+                {
+                    manager.restore_selection_suffix(from, tail);
+                    // An empty tail leaves the active paragraph registry alone.
+                    if !model_tail.is_empty() {
+                        paragraphs.truncate(from);
+                        paragraphs.extend(model_tail);
+                    }
+                    // Selection metadata is replaced even for an empty tail.
+                    excluded.retain(|&index| index < from);
+                    excluded.extend(tail_excluded);
+                    caret_origins.retain(|&(index, _)| index < from);
+                    caret_origins.extend(tail_origins);
+                }
+            }
+            Command::Select(paragraph, offset) => {
+                let position = TextPosition::new(*paragraph, *offset);
+                selection = Some(SelectionRange::new(position, position));
+                manager.set_selection_for_render(selection);
+            }
+        }
+        prop_assert_eq!(manager.is_frozen(), frozen, "step {}: {:?}", step, command);
+        prop_assert_eq!(
+            manager.selection_range(),
+            selection,
+            "step {}: {:?}",
+            step,
+            command
+        );
+        prop_assert_eq!(
+            manager.preserved_prefix_len(),
+            preserved,
+            "step {}: {:?}",
+            step,
+            command
+        );
+        prop_assert_eq!(
+            manager.paragraphs().len(),
+            paragraphs.len(),
+            "step {}: {:?}",
+            step,
+            command
+        );
+        for (index, (actual, expected)) in manager.paragraphs().iter().zip(&paragraphs).enumerate()
+        {
+            prop_assert_eq!(
+                &actual.text,
+                &expected.text,
+                "step {}: {:?}, paragraph {}",
+                step,
+                command,
+                index
+            );
+            prop_assert_eq!(
+                actual.lines.len(),
+                expected.lines.len(),
+                "step {}: {:?}, paragraph {}",
+                step,
+                command,
+                index
+            );
+            for (line_index, (actual_line, (text, slot))) in
+                actual.lines.iter().zip(&expected.lines).enumerate()
+            {
+                let caret_x = if caret_origins.contains(&(index, line_index)) {
+                    12.0
+                } else if text.is_empty() {
+                    30.0
+                } else {
+                    10.0
+                };
+                prop_assert_eq!(
+                    manager.caret_x_on_line(index, line_index, 0),
+                    Some(caret_x),
+                    "step {}: {:?}",
+                    step,
+                    command
+                );
+                let top = *slot as f64 * 20.0;
+                prop_assert_eq!((actual_line.absolute_top, actual_line.height), (top, 10.0));
+                prop_assert_eq!(actual_line.fragments[0].end, text.len());
+                for (x, offset) in [(10.0, 0), (30.0, text.len())] {
+                    let hit = manager.hit_test_matching(x, top + 5.0, |p| p == index);
+                    let expected_hit =
+                        (!excluded.contains(&index)).then_some(TextPosition::new(index, offset));
+                    prop_assert_eq!(
+                        hit,
+                        expected_hit,
+                        "step {}: {:?}, paragraph {}",
+                        step,
+                        command,
+                        index
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 proptest! {
     #![proptest_config(proptest::test_runner::Config {
         cases: 192,
@@ -105,164 +373,19 @@ proptest! {
     fn render_registration_histories_match_independent_model(
         commands in prop::collection::vec(command(), 1..97),
     ) {
-        let mut manager = SelectionManager::new();
-        let mut paragraphs = Vec::<Paragraph>::new();
-        let mut saved = None;
-        let mut excluded = HashSet::new();
-        let mut caret_origins = HashSet::new();
-        let mut pass = 0;
-        let mut frozen = false;
-        let mut selection = None;
-        let mut preserved = 0;
-        for (step, command) in commands.iter().enumerate() {
-            match command {
-                Command::BeginFull | Command::Begin(_) => {
-                    let dirty = match command { Command::Begin(dirty) => *dirty, _ => None };
-                    if matches!(command, Command::BeginFull) { manager.begin_render(); }
-                    else { manager.begin_render_incremental(dirty); }
-                    if !frozen {
-                        preserved = dirty.filter(|&from| from > 0 && from <= paragraphs.len()).unwrap_or(0);
-                        paragraphs.truncate(preserved);
-                        excluded.retain(|&index| index < preserved);
-                        caret_origins.retain(|&(index, _)| index < preserved);
-                        pass += 1;
-                    }
-                }
-                Command::Write(index, text, count) => {
-                    manager.reset_paragraph_registration(*index);
-                    manager.append_paragraph_text(*index, text);
-                    for part in 0..*count {
-                        manager.record_line_with_caret_start(*index, line(text, step * 5 + part), 12.0);
-                    }
-                    if !frozen {
-                        let paragraph = touch(&mut paragraphs, *index, pass);
-                        paragraph.text = text.clone();
-                        paragraph.lines = (0..*count).map(|part| (text.clone(), step * 5 + part)).collect();
-                        caret_origins.extend((0..*count).map(|part| (*index, part)));
-                    }
-                }
-                Command::Append(index, text) => {
-                    manager.append_paragraph_text(*index, text);
-                    if !frozen {
-                        touch(&mut paragraphs, *index, pass).text.push_str(text);
-                    }
-                }
-                Command::Ensure(index) => {
-                    manager.ensure_paragraph(*index);
-                    if !frozen {
-                        let _ = touch(&mut paragraphs, *index, pass);
-                    }
-                }
-                Command::Reset(index) => {
-                    manager.reset_paragraph_registration(*index);
-                    if !frozen {
-                        let paragraph = touch(&mut paragraphs, *index, pass);
-                        paragraph.text = String::new();
-                        paragraph.lines = Vec::new();
-                    }
-                }
-                Command::Selectable(index, selectable) => {
-                    manager.set_paragraph_selectable(*index, *selectable);
-                    if !frozen {
-                        let _ = touch(&mut paragraphs, *index, pass);
-                        if *selectable { excluded.remove(index); } else { excluded.insert(*index); }
-                    }
-                }
-                Command::Freeze(value) => {
-                    frozen = *value;
-                    if frozen { manager.freeze(); } else { manager.unfreeze(); }
-                }
-                Command::TakeSuffix(from) | Command::ParkSuffix(from) => {
-                    let tail = if matches!(command, Command::ParkSuffix(_)) {
-                        manager.park_selection_suffix(*from)
-                    } else {
-                        manager.take_selection_suffix(*from)
-                    };
-                    let model_tail = paragraphs.iter().skip(*from).cloned().collect::<Vec<_>>();
-                    paragraphs.truncate(*from);
-                    let tail_excluded = excluded.iter().copied().filter(|p| p >= from).collect::<Vec<_>>();
-                    excluded.retain(|p| p < from);
-                    let tail_origins = caret_origins.iter().copied().filter(|(p, _)| p >= from).collect::<Vec<_>>();
-                    caret_origins.retain(|(p, _)| p < from);
-                    saved = Some((*from, tail, model_tail, tail_excluded, tail_origins));
-                }
-                Command::DetachSuffix => {
-                    if let Some((from, tail, model_tail, tail_excluded, tail_origins)) = saved.take() {
-                        let tail = manager.detach_selection_suffix(tail);
-                        prop_assert_eq!(tail.paragraphs().len(), model_tail.len());
-                        saved = Some((from, tail, model_tail, tail_excluded, tail_origins));
-                    }
-                }
-                Command::DiscardSuffix => {
-                    if let Some((_, tail, ..)) = saved.take() {
-                        manager.discard_selection_suffix(tail);
-                    }
-                }
-                Command::Gap(index) => {
-                    manager.insert_paragraph_gap(*index);
-                    if *index > paragraphs.len() {
-                        paragraphs.resize_with(index + 1, Paragraph::default);
-                    } else {
-                        paragraphs.insert(*index, Paragraph::default());
-                    }
-                    caret_origins = caret_origins
-                        .into_iter()
-                        .map(|(p, line)| (if p >= *index { p + 1 } else { p }, line))
-                        .collect();
-                }
-                Command::RemoveParagraph(index) => {
-                    manager.remove_paragraph(*index);
-                    if *index < paragraphs.len() {
-                        paragraphs.remove(*index);
-                    }
-                    caret_origins = caret_origins
-                        .into_iter()
-                        .filter(|&(p, _)| p != *index)
-                        .map(|(p, line)| (if p > *index { p - 1 } else { p }, line))
-                        .collect();
-                }
-                Command::RestoreSuffix => {
-                    if let Some((from, tail, model_tail, tail_excluded, tail_origins)) = saved.take() {
-                        manager.restore_selection_suffix(from, tail);
-                        // An empty tail leaves the active paragraph registry alone.
-                        if !model_tail.is_empty() {
-                            paragraphs.truncate(from);
-                            paragraphs.extend(model_tail);
-                        }
-                        // Selection metadata is replaced even for an empty tail.
-                        excluded.retain(|&index| index < from);
-                        excluded.extend(tail_excluded);
-                        caret_origins.retain(|&(index, _)| index < from);
-                        caret_origins.extend(tail_origins);
-                    }
-                }
-                Command::Select(paragraph, offset) => {
-                    let position = TextPosition::new(*paragraph, *offset);
-                    selection = Some(SelectionRange::new(position, position));
-                    manager.set_selection_for_render(selection);
-                }
-            }
-            prop_assert_eq!(manager.is_frozen(), frozen, "step {}: {:?}", step, command);
-            prop_assert_eq!(manager.selection_range(), selection, "step {}: {:?}", step, command);
-            prop_assert_eq!(manager.preserved_prefix_len(), preserved, "step {}: {:?}", step, command);
-            prop_assert_eq!(manager.paragraphs().len(), paragraphs.len(), "step {}: {:?}", step, command);
-            for (index, (actual, expected)) in manager.paragraphs().iter().zip(&paragraphs).enumerate() {
-                prop_assert_eq!(&actual.text, &expected.text, "step {}: {:?}, paragraph {}", step, command, index);
-                prop_assert_eq!(actual.lines.len(), expected.lines.len(), "step {}: {:?}, paragraph {}", step, command, index);
-                for (line_index, (actual_line, (text, slot))) in actual.lines.iter().zip(&expected.lines).enumerate() {
-                    let caret_x = if caret_origins.contains(&(index, line_index)) { 12.0 }
-                        else if text.is_empty() { 30.0 } else { 10.0 };
-                    prop_assert_eq!(manager.caret_x_on_line(index, line_index, 0), Some(caret_x), "step {}: {:?}", step, command);
-                    let top = *slot as f64 * 20.0;
-                    prop_assert_eq!((actual_line.absolute_top, actual_line.height), (top, 10.0));
-                    prop_assert_eq!(actual_line.fragments[0].end, text.len());
-                    for (x, offset) in [(10.0, 0), (30.0, text.len())] {
-                        let hit = manager.hit_test_matching(x, top + 5.0, |p| p == index);
-                        let expected_hit = (!excluded.contains(&index)).then_some(TextPosition::new(index, offset));
-                        prop_assert_eq!(hit, expected_hit, "step {}: {:?}, paragraph {}", step, command, index);
-                    }
-                }
-            }
-        }
+        check_history(&commands)?;
     }
+}
+
+/// Shrunk from a review: an incremental begin truncating within the slots
+/// past a tail parked from index 0 (a truncate range starting past its end).
+#[test]
+fn truncating_past_a_tail_parked_from_the_start() {
+    check_history(&[
+        Command::Write(0, String::new(), 0),
+        Command::ParkSuffix(0, 0),
+        Command::Reset(8),
+        Command::Begin(Some(2)),
+    ])
+    .unwrap();
 }

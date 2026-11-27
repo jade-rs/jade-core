@@ -1399,3 +1399,49 @@ fn inserting_a_toc_inside_another_table_relabels_no_other_table() {
         "{paragraphs:?}"
     );
 }
+
+/// A bounded edit that asked for its downstream, on the stable-edit path
+/// armed by a dirty paragraph alone (no completed pagination to keep), whose
+/// layout then changed: there are no cells to hand over with the selection
+/// tail, so nothing is handed over, and the tail the pass parked is
+/// discarded rather than left parked until the next edit.
+#[test]
+fn an_unstable_edit_without_cells_leaves_no_tail_parked() {
+    let body: String = (0..40)
+        .map(|index| format!("<w:p><w:r><w:t>p{index}</w:t></w:r></w:p>"))
+        .chain(std::iter::once(format!(
+            "<w:p><w:pPr>{}</w:pPr></w:p>",
+            section_properties("nextPage", "")
+        )))
+        .collect();
+    let options = Options::default();
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let word_doc = futures::executor::block_on(WordDocument::load(&data, &options)).expect("load");
+    let base = word_doc.document.clone().expect("document");
+    let mut edited: Document = (*base).clone();
+    if let Some(body) = edited.body.as_mut() {
+        if let BodyElement::Paragraph(paragraph) = &mut body.elements[1] {
+            // Wraps onto several lines: the edit's layout does not stand.
+            paragraph.runs.first_mut().expect("run").text = "word ".repeat(80);
+        }
+    }
+    let edited = Rc::new(edited);
+
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&word_doc);
+    for _ in 0..2 {
+        renderer.render(&base, &options).expect("layout");
+    }
+    let paragraphs_before = renderer.selection_manager().paragraphs().len();
+    assert!(paragraphs_before > 2);
+    let height = renderer.cached_paragraph_height(1).expect("laid out");
+    renderer.clear_dirty_regions();
+    renderer.set_aside_edit_downstream(1);
+    renderer.set_incremental_dirty_from(1);
+    renderer.set_fast_replay_trigger(1, height);
+    renderer.render(&edited, &options).expect("the edit");
+
+    assert!(!renderer.last_fast_replay_stable());
+    assert!(renderer.take_edit_downstream().is_none());
+    assert!(!renderer.selection_manager().has_parked_selection_suffix());
+}
