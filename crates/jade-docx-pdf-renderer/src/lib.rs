@@ -7,7 +7,7 @@ use jade_docx_layout::font_resolver::{ResolvedRunStyle, resolve_run_style_for_wr
 use jade_docx_layout::line_wrap::LineWrapContext;
 use jade_docx_layout::shaping_measurer::{ShapingLineWrapContext, ShapingMeasurer, ShapingOptions};
 use jade_docx_layout::text_extract::{
-    DocumentLineLayout, LineInfo, layout_docx_lines_from_package,
+    DocumentLineLayout, LineInfo, layout_parsed_docx_lines_from_package,
 };
 use jade_docx_layout::units::points_to_px;
 use jade_docx_reader::{
@@ -1612,7 +1612,7 @@ fn layout_lines_from_docx(
     measurement: TextMeasurement,
 ) -> Result<DocumentLineLayout, RenderError> {
     let layout_context = PdfLayoutContext::new(measurement);
-    layout_docx_lines_from_package(&docx.package, &layout_context)
+    layout_parsed_docx_lines_from_package(&docx.package, docx.document.clone(), &layout_context)
         .map_err(|err| RenderError::Layout(format!("{err:?}")))
 }
 
