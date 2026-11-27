@@ -28,6 +28,8 @@ use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 mod clipped_pdf_text;
 mod contextual_text;
+#[cfg(target_os = "macos")]
+mod joined_emoji;
 mod pdf_text;
 #[cfg(target_os = "windows")]
 mod windows_pdf_metrics;
@@ -206,6 +208,19 @@ struct RegisteredTypeface {
     weight: u16,
     italic: bool,
     typeface: Typeface,
+}
+
+struct TextSegment<'a> {
+    font: Font,
+    text: &'a str,
+    joined_glyph: Option<JoinedGlyph>,
+}
+
+#[derive(Clone, Copy)]
+struct JoinedGlyph {
+    id: u16,
+    advance: f32,
+    baseline_shift: f32,
 }
 
 /// How far a synthesised italic leans: Chromium's and Skia's fake-italic skew.
@@ -798,7 +813,7 @@ impl SkiaPainter {
             return;
         }
         let glyphs = font.str_to_glyphs_vec(text);
-        self.draw_glyphs(text, &glyphs, font, x, y, paint);
+        self.draw_glyphs(text, &glyphs, font, (x, y), paint, None);
     }
 
     fn upright_glyph(font: &Font, text: &str) -> Option<u16> {
@@ -902,7 +917,17 @@ impl SkiaPainter {
                 || ink.top() >= clip.bottom())
     }
 
-    fn draw_glyphs(&self, text: &str, glyphs: &[u16], font: &Font, x: f32, y: f32, paint: &Paint) {
+    fn draw_glyphs(
+        &self,
+        text: &str,
+        glyphs: &[u16],
+        font: &Font,
+        origin: (f32, f32),
+        paint: &Paint,
+        joined_glyph: Option<JoinedGlyph>,
+    ) {
+        let (x, baseline) = origin;
+        let y = baseline - joined_glyph.map_or(0.0, |glyph| glyph.baseline_shift);
         let mut builder = skia_safe::TextBlobBuilder::new();
         if matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_)) {
             builder
@@ -952,7 +977,8 @@ impl SkiaPainter {
                 &*self.shared.surface.borrow(),
                 PaintSurface::Recording { .. }
             )
-            && (glyphs.contains(&0)
+            && (joined_glyph.is_some()
+                || glyphs.contains(&0)
                 // Skia's PDF cmap can map a substituted glyph back to its
                 // presentation character instead of the original Unicode.
                 || glyphs != font.str_to_glyphs_vec(text).as_slice()
@@ -1025,14 +1051,16 @@ impl SkiaPainter {
             let mut widths = vec![0.0; glyphs.len()];
             font.get_widths(glyphs, &mut widths);
             if !self.shared.style.borrow().decorative_text {
-                let scalar_widths = if glyphs.len() == 1 && text.chars().count() > 1 {
+                let recorded_widths = if let Some(glyph) = joined_glyph {
+                    pdf_text::Widths::Cluster(glyph.advance)
+                } else if glyphs.len() == 1 && text.chars().count() > 1 {
                     let mut scalar_widths = vec![0.0; text.chars().count()];
                     scalar_widths[0] = widths[0];
-                    scalar_widths
+                    pdf_text::Widths::Scalars(scalar_widths)
                 } else {
-                    widths.clone()
+                    pdf_text::Widths::Scalars(widths.clone())
                 };
-                self.record_pdf_text(canvas, font, text, (x, y), editor_scale, scalar_widths);
+                self.record_pdf_text(canvas, font, text, origin, editor_scale, recorded_widths);
             }
             if let Some(path) = contour_path.as_ref() {
                 canvas.save();
@@ -1045,10 +1073,10 @@ impl SkiaPainter {
                 canvas.draw_text_blob(&blob, (x, y), paint);
                 return;
             }
-            if paint.style() == skia_safe::paint::Style::Stroke {
-                // A stroked text blob uses Skia's glyph rasterizer, whose
-                // coverage differs from a PDF path stroke. Sample only this
-                // effect through the live painter, retaining searchable text.
+            if joined_glyph.is_some() || paint.style() == skia_safe::paint::Style::Stroke {
+                // Bitmap emoji have no outline. Sample their visible ink and
+                // stroke effects through the rasterizer; the searchable text
+                // was recorded separately above.
                 let matrix = canvas.local_to_device_as_3x3();
                 let style = self.shared.style.borrow();
                 let padding = style.line_width / 2.0
@@ -1103,7 +1131,7 @@ impl SkiaPainter {
         text: &str,
         (x, y): (f32, f32),
         editor_scale: Option<f64>,
-        widths: Vec<f32>,
+        widths: pdf_text::Widths,
     ) {
         let (_, metrics) = font.metrics();
         let [a, b, c, d, e, f] = canvas
@@ -1647,34 +1675,61 @@ impl SkiaPainter {
         fallback
     }
 
-    /// `text` split at shaping boundaries and where the face changes.
-    /// Each character uses
-    /// [`Self::font_covering`]'s face for it — so a run mixing scripts is
-    /// measured and drawn as a browser does, each in a face that has it.
-    fn segments<'t>(&self, text: &'t str) -> Vec<(Font, &'t str)> {
-        let mut segments: Vec<(Font, &'t str)> = Vec::new();
+    /// Splits text at shaping boundaries and retains composed colour glyphs.
+    fn segments<'t>(&self, text: &'t str) -> Vec<TextSegment<'t>> {
+        #[cfg(target_os = "macos")]
+        if text.contains('\u{200d}') {
+            let size = self.shared.style.borrow().font_size_px;
+            let mut start = 0;
+            let mut segments = Vec::new();
+            for (offset, cluster) in text.grapheme_indices(true) {
+                if let Some((font, glyph)) = joined_emoji::shape(cluster, size) {
+                    segments.extend(self.plain_segments(&text[start..offset]));
+                    segments.push(TextSegment {
+                        font,
+                        text: cluster,
+                        joined_glyph: Some(glyph),
+                    });
+                    start = offset + cluster.len();
+                }
+            }
+            if !segments.is_empty() {
+                segments.extend(self.plain_segments(&text[start..]));
+                return segments;
+            }
+        }
+        self.plain_segments(text)
+    }
+
+    /// Finds an available face for each scalar and groups shaping runs.
+    fn plain_segments<'t>(&self, text: &'t str) -> Vec<TextSegment<'t>> {
+        let mut segments: Vec<TextSegment<'t>> = Vec::new();
         let mut start = 0;
         let mut script = (false, false);
         for (at, ch) in text.char_indices() {
             let end = at + ch.len_utf8();
             if script.1 && jade_painter::is_join_control(ch) {
-                if let Some((_, run)) = segments.last_mut() {
-                    *run = &text[start..end];
+                if let Some(segment) = segments.last_mut() {
+                    segment.text = &text[start..end];
                     continue;
                 }
             }
             let font = self.font_covering(&text[at..end]);
             let next = (jade_painter::is_thai(ch), jade_painter::is_arabic(ch));
             match segments.last_mut() {
-                Some((current, run))
+                Some(current)
                     if script == next
-                        && current.typeface().unique_id() == font.typeface().unique_id() =>
+                        && current.font.typeface().unique_id() == font.typeface().unique_id() =>
                 {
-                    *run = &text[start..end];
+                    current.text = &text[start..end];
                 }
                 _ => {
                     start = at;
-                    segments.push((font, &text[at..end]));
+                    segments.push(TextSegment {
+                        font,
+                        text: &text[at..end],
+                        joined_glyph: None,
+                    });
                     script = next;
                 }
             }
@@ -1687,13 +1742,28 @@ impl SkiaPainter {
     fn draw_segments(&self, text: &str, x: f64, y: f64, paint: &Paint) {
         let text = jade_painter::bidi::VisualText::new(text);
         let mut segments = text.iter().flat_map(|run| self.segments(run)).peekable();
-        let Some((first, _)) = segments.peek() else {
+        let Some(first) = segments.peek() else {
             return;
         };
-        let baseline_y = self.baseline_y(first, y);
+        let baseline_y = self.baseline_y(&first.font, y);
         let mut pen = x as f32;
-        for (font, run) in segments {
-            if let Some(shaped) = contextual_text::shape(&font, run) {
+        for TextSegment {
+            font,
+            text: run,
+            joined_glyph,
+        } in segments
+        {
+            if let Some(glyph) = joined_glyph {
+                self.draw_glyphs(
+                    run,
+                    &[glyph.id],
+                    &font,
+                    (pen, baseline_y),
+                    paint,
+                    Some(glyph),
+                );
+                pen += glyph.advance;
+            } else if let Some(shaped) = contextual_text::shape(&font, run) {
                 self.draw_contextual_text(&font, run, &shaped, (pen, baseline_y), paint, &[]);
                 pen += shaped.advance(&font);
             } else {
@@ -1738,7 +1808,7 @@ impl SkiaPainter {
                     text,
                     (origin.0 + left as f32, origin.1),
                     scale,
-                    shaped.scalar_advances(font, text),
+                    pdf_text::Widths::Scalars(shaped.scalar_advances(font, text)),
                 );
             }
             if use_outline {
@@ -2224,9 +2294,9 @@ impl Painter for SkiaPainter {
             text,
             &[glyph],
             &font,
-            origin.0 as f32,
-            origin.1 as f32,
+            (origin.0 as f32, origin.1 as f32),
             &self.fill_paint(),
+            None,
         );
         Ok(true)
     }
@@ -2256,9 +2326,9 @@ impl Painter for SkiaPainter {
             text,
             &[glyph],
             &font,
-            x as f32,
-            self.baseline_y(&font, y),
+            (x as f32, self.baseline_y(&font, y)),
             &self.fill_paint(),
+            None,
         );
         Ok(())
     }
@@ -2320,12 +2390,22 @@ impl Painter for SkiaPainter {
         Ok(text
             .iter()
             .flat_map(|run| self.segments(run))
-            .map(|(font, run)| {
-                f64::from(contextual_text::shape(&font, run).map_or_else(
-                    || font.measure_str(run, Some(&paint)).0,
-                    |shaped| shaped.advance(&font),
-                ))
-            })
+            .map(
+                |TextSegment {
+                     font,
+                     text,
+                     joined_glyph,
+                 }| {
+                    f64::from(if let Some(glyph) = joined_glyph {
+                        glyph.advance
+                    } else {
+                        contextual_text::shape(&font, text).map_or_else(
+                            || font.measure_str(text, Some(&paint)).0,
+                            |shaped| shaped.advance(&font),
+                        )
+                    })
+                },
+            )
             .sum())
     }
 
@@ -2362,8 +2442,16 @@ impl Painter for SkiaPainter {
         let (mut width, mut top, mut bottom, mut right) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
         let mut left = f32::INFINITY;
         let text = jade_painter::bidi::VisualText::new(text);
-        for (segment_font, run) in text.iter().flat_map(|run| self.segments(run)) {
-            let (advance, ink) = if let Some(shaped) = contextual_text::shape(&segment_font, run) {
+        for TextSegment {
+            font: segment_font,
+            text: run,
+            joined_glyph,
+        } in text.iter().flat_map(|run| self.segments(run))
+        {
+            let (advance, ink) = if let Some(glyph) = joined_glyph {
+                let ink = segment_font.measure_text(&[glyph.id][..], Some(&paint)).1;
+                (glyph.advance, ink.with_offset((0.0, -glyph.baseline_shift)))
+            } else if let Some(shaped) = contextual_text::shape(&segment_font, run) {
                 (
                     shaped.advance(&segment_font),
                     shaped.bounds(&segment_font, &paint),

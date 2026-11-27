@@ -874,3 +874,104 @@ fn default_pdf_preserves_live_text_density() {
         directory.display()
     );
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn mac_joined_emoji_paints_in_its_reserved_text_cell() {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    use jade_docx_native_render::{PdfExportOptions, PdfRenderingMode};
+
+    const FAMILY: &str = "👨‍👨‍👧‍👦";
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let mut editor =
+        common::open_fixture("crates/jade-docx-extract/tests/fixtures/unicode-segmentation.docx");
+    editor.set_formatting_marks(false).unwrap();
+    let layout = editor.capture_full_layout_debug().unwrap();
+    let (left, baseline) = layout
+        .body_lines
+        .iter()
+        .flat_map(|line| &line.fragments)
+        .find_map(|fragment| {
+            let glyph = fragment.glyphs.iter().find(|glyph| glyph.text == FAMILY)?;
+            Some((fragment.x + glyph.x, fragment.baseline))
+        })
+        .expect("the original sequence occupies one layout cluster");
+
+    let (pixels, width, height) = editor.page_pixels(0).unwrap();
+    let next = layout
+        .body_lines
+        .iter()
+        .flat_map(|line| &line.fragments)
+        .flat_map(|fragment| fragment.glyphs.iter().map(|glyph| fragment.x + glyph.x))
+        .filter(|&x| x > left)
+        .min_by(f64::total_cmp)
+        .expect("text continues after the emoji cluster");
+    let coloured_pixels: Vec<_> = (baseline as i32 - 20..baseline as i32 + 7)
+        .filter(|&y| (0..height).contains(&y))
+        .flat_map(|y| (left as i32 - 2..next as i32 + 36).map(move |x| (x, y)))
+        .filter(|&(x, _)| (0..width).contains(&x))
+        .filter(|&(x, y)| {
+            let offset = 4 * (y as usize * width as usize + x as usize);
+            let rgb = &pixels[offset..offset + 3];
+            rgb.iter().max().unwrap() - rgb.iter().min().unwrap() > 35
+        })
+        .collect();
+    assert!(
+        coloured_pixels.len() > 15,
+        "only {} colour pixels at the family cluster",
+        coloured_pixels.len()
+    );
+    assert!(
+        coloured_pixels
+            .iter()
+            .all(|&(x, _)| x as f64 <= next + 0.75),
+        "family ink overlaps the following text"
+    );
+
+    let unicode: Vec<_> = [0xfe, 0xff]
+        .into_iter()
+        .chain(FAMILY.encode_utf16().flat_map(u16::to_be_bytes))
+        .collect();
+    for rendering in [PdfRenderingMode::Vector, PdfRenderingMode::Editor] {
+        let bytes = editor
+            .export_pdf_with_options(PdfExportOptions {
+                rendering,
+                ..Default::default()
+            })
+            .unwrap();
+        let pdf = Document::load_mem(&bytes).unwrap();
+        let page = pdf.get_pages()[&1];
+        let content =
+            lopdf::content::Content::decode(&pdf.get_page_content(page).unwrap()).unwrap();
+        let mut matches = content.operations.iter().enumerate().filter(|(_, op)| {
+            op.operator == "BDC"
+                && op
+                    .operands
+                    .get(1)
+                    .and_then(|obj| obj.as_dict().ok())
+                    .and_then(|dict| dict.get(b"ActualText").ok())
+                    .and_then(|obj| obj.as_str().ok())
+                    == Some(unicode.as_slice())
+        });
+        let (index, _) = matches
+            .next()
+            .expect("searchable copy of the original sequence");
+        assert!(matches.next().is_none(), "the sequence was duplicated");
+        assert_eq!(
+            content.operations[index + 1..]
+                .iter()
+                .take_while(|op| op.operator != "EMC")
+                .filter(|op| op.operator == "Tj")
+                .count(),
+            1,
+            "one glyph per sequence"
+        );
+        if rendering == PdfRenderingMode::Vector {
+            assert_eq!(
+                pdf.get_page_images(page).unwrap().len(),
+                1,
+                "one painted colour glyph"
+            );
+        }
+    }
+}
