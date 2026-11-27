@@ -8,7 +8,8 @@ use std::rc::Rc;
 
 use crate::document::FontHint;
 use crate::draw_command::{CommandText, DrawCommand, TabLeaderStyle, TextStyle};
-use jade_painter::Painter;
+use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+use jade_painter::{Painter, TextStrokeJoin};
 use rustc_hash::FxHashMap;
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
 use unicode_segmentation::UnicodeSegmentation;
@@ -1373,19 +1374,18 @@ fn clear_text_shadow<P: Painter>(context: &P) {
 // glyph painting so its existing batch path remains small and inlineable.
 #[cold]
 #[inline(never)]
-fn is_isolated_windows_outline(
+fn isolated_outline_platform(
     style: &TextStyle,
     fonts: &[Rc<str>],
     font_state: &mut FontStateTracker,
-) -> bool {
-    !style.shadow
+) -> Option<WordLayoutPlatform> {
+    (!style.shadow
         && !style.emboss
         && !style.imprint
         && style.effects.is_none()
         && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
-        && jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        && !fonts.iter().any(|font| font_state.font_has_features(font))
+        && !fonts.iter().any(|font| font_state.font_has_features(font)))
+    .then(word_layout_platform)
 }
 
 /// Word realizes GDI glyph outlines on its 600 dpi em grid: the original
@@ -1426,16 +1426,20 @@ fn draw_unscaled_outline_glyphs<P: Painter>(
     fonts: &[Rc<str>],
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
-    isolated_windows_outline: bool,
+    platform: Option<WordLayoutPlatform>,
 ) -> Result<(), P::Error> {
     record_replay_fallback_run(glyphs.len() as u64);
     let realized: Vec<_>;
-    let fonts = if isolated_windows_outline {
+    let fonts = if platform == Some(WordLayoutPlatform::Windows) {
         realized = fonts.iter().map(windows_outline_font).collect();
         &realized[..]
     } else {
         fonts
     };
+    let join = platform.map(|platform| match platform {
+        WordLayoutPlatform::Mac => TextStrokeJoin::Miter,
+        WordLayoutPlatform::Windows => TextStrokeJoin::Round,
+    });
     for glyph in glyphs {
         let Some(font_descriptor) = fonts.get(glyph.font_index as usize) else {
             continue;
@@ -1444,8 +1448,8 @@ fn draw_unscaled_outline_glyphs<P: Painter>(
             continue;
         };
         font_state.set_font_rc_if_changed(context, font_descriptor);
-        if isolated_windows_outline {
-            context.stroke_text_as_path(glyph_text, x + glyph.x_offset, y)?;
+        if let Some(join) = join {
+            context.stroke_text_as_path(glyph_text, x + glyph.x_offset, y, join)?;
         } else {
             context.stroke_text(glyph_text, x + glyph.x_offset, y)?;
         }
@@ -1470,18 +1474,18 @@ fn draw_text_run_glyphs<P: Painter>(
     // `w:outline` (§17.3.2.23): draw the glyphs as hollow stroked outlines using
     // the run's color, rather than solid fills. The glyph-batch fast path only
     // fills, so outline runs always take the per-glyph stroke path below.
-    let isolated_windows_outline = if style.outline {
-        let isolated = is_isolated_windows_outline(style, fonts, font_state);
+    let outline_platform = if style.outline {
+        let platform = isolated_outline_platform(style, fonts, font_state);
         context.set_stroke_style_str(&style.fill_color);
-        context.set_line_width(if isolated {
-            // Original Word PDFs use a 0.14 pt cosmetic outline at 12/20/40 pt.
-            jade_docx_layout::units::points_to_px(0.14)
-        } else {
-            outline_line_width_px(style.font_size_pt)
+        // The stroke width is constant across font sizes in Word's PDFs.
+        context.set_line_width(match platform {
+            Some(WordLayoutPlatform::Mac) => points_to_px(0.24),
+            Some(WordLayoutPlatform::Windows) => points_to_px(0.14),
+            None => outline_line_width_px(style.font_size_pt),
         });
-        isolated
+        platform
     } else {
-        false
+        None
     };
 
     let needs_scale = (style.text_scale_x - 1.0).abs() > f64::EPSILON;
@@ -1521,7 +1525,7 @@ fn draw_text_run_glyphs<P: Painter>(
             fonts,
             glyphs,
             font_state,
-            isolated_windows_outline,
+            outline_platform,
         );
     }
 
@@ -3533,6 +3537,11 @@ mod painter_backend_tests {
                 Some(source.as_ref()),
                 "{platform:?}"
             );
+            let width_pt = match platform {
+                WordLayoutPlatform::Mac => 0.24,
+                WordLayoutPlatform::Windows => 0.14,
+            };
+            assert!(ops.contains(&Op::SetLineWidth(points_to_px(width_pt))));
             assert!(ops.contains(&Op::FillText("Z".into(), 56.0, 78.0)));
         }
         set_word_layout_platform(previous);

@@ -13,7 +13,7 @@
 pub mod text_batch;
 
 use crate::text_batch::{fill_bmp_glyph_run_batch, fill_bmp_glyph_run_batch_single_font};
-use jade_painter::{ImageRect, ImageSource, Painter, TextMetrics};
+use jade_painter::{ImageRect, ImageSource, Painter, TextMetrics, TextStrokeJoin};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -232,9 +232,18 @@ impl<C: Borrow<CanvasRenderingContext2d>, I: CanvasImages> Painter for Canvas2dP
         Ok(())
     }
 
-    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+    fn stroke_text_as_path(
+        &self,
+        text: &str,
+        x: f64,
+        y: f64,
+        join: TextStrokeJoin,
+    ) -> Result<(), Self::Error> {
         self.ctx().save();
-        self.ctx().set_line_join("round");
+        self.ctx().set_line_join(match join {
+            TextStrokeJoin::Miter => "miter",
+            TextStrokeJoin::Round => "round",
+        });
         let result = self.stroke_text(text, x, y);
         self.ctx().restore();
         result

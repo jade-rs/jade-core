@@ -5,6 +5,7 @@ The display integral has no Unicode mapping and requires glyph-ID painting.
 """
 from pathlib import Path
 from fontTools.fontBuilder import FontBuilder
+from fontTools.ttLib import TTCollection, TTFont
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.otlLib.builder import buildMathTable
 
@@ -52,3 +53,11 @@ buildMathTable(font.font, constants={
 font.font["head"].created = font.font["head"].modified = 2082844800
 font.font.recalcTimestamp = False
 font.save(Path(__file__).with_name("math-font.ttf"))
+
+# Exercise selecting a nonzero face without relying on installed fonts.
+collection = TTCollection()
+collection.fonts = [
+    TTFont(Path(__file__).with_name("math-script-font.ttf"), recalcTimestamp=False),
+    font.font,
+]
+collection.save(Path(__file__).with_name("math-font.ttc"))

@@ -95,6 +95,20 @@ pub struct TextMetrics {
     pub actual_bounding_box_right: f64,
 }
 
+/// How adjacent segments of a stroked glyph contour meet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextStrokeJoin {
+    Miter,
+    Round,
+}
+
+/// The font program and face that supplied a prepared glyph outline.
+#[derive(Debug, Clone)]
+pub struct FontProgram {
+    pub bytes: std::sync::Arc<[u8]>,
+    pub face_index: u32,
+}
+
 /// The 2D drawing operations `jade-docx-editor` performs.
 ///
 /// Painter state (transform, styles, clip) is a stack manipulated with
@@ -207,9 +221,15 @@ pub trait Painter {
         self.fill_text(text, x, y)
     }
 
-    /// Strokes scalable font contours with round joins when available. The default retains
-    /// the backend's normal text stroke; vector backends may preserve paths.
-    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+    /// Strokes scalable font contours with the requested joins when available.
+    /// Backends without contour strokes fall back to their normal text stroke.
+    fn stroke_text_as_path(
+        &self,
+        text: &str,
+        x: f64,
+        y: f64,
+        _join: TextStrokeJoin,
+    ) -> Result<(), Self::Error> {
         self.stroke_text(text, x, y)
     }
     /// Advance width of `text` under the current font.
@@ -358,13 +378,13 @@ pub trait Painter {
     }
 
     /// Preserves a prepared outline glyph as selectable vector text when the
-    /// backend can prove the current face has the exact supplied font bytes
+    /// backend can verify the current face matches the supplied font program
     /// and the Unicode maps to this glyph. Otherwise the caller paints its
     /// original outline. Raster backends keep the default outline path.
     fn try_fill_font_glyph(
         &self,
         _text: &str,
-        _program: &std::sync::Arc<[u8]>,
+        _program: &FontProgram,
         _glyph: u16,
         _font_units_scale: f64,
         _origin: (f64, f64),

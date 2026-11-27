@@ -5,6 +5,7 @@ use crate::math_layout::font::{
     MathFontGlyph, MathGlyphOutline, MathOutlineCommand, MathOutlineError, MathStretchAxis,
     MathStretchPlan, OpenTypeMathFont,
 };
+use jade_painter::FontProgram;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -12,7 +13,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct PreparedMathGlyph {
-    pub font_program: Option<Arc<[u8]>>,
+    pub font_program: Option<FontProgram>,
     pub geometry: MathFontGlyph,
     pub scale: f64,
     pub outline: Arc<MathGlyphOutline>,
@@ -107,7 +108,7 @@ struct CachedGlyph {
 /// Other authored families and multi-codepoint graphemes use `fallback`.
 /// Construction/connector planning remains separate; shared layout places scripts.
 pub struct OpenTypeMathMeasure<'a, C> {
-    font_program: Option<Arc<[u8]>>,
+    font_program: Option<FontProgram>,
     font: &'a OpenTypeMathFont<'a>,
     family: &'a str,
     fallback: C,
@@ -291,8 +292,10 @@ impl MathFontData {
         let face = OpenTypeMathFont::parse(&self.bytes, self.face_index)
             .map_err(MathFontLayoutError::Font)?;
         let context = OpenTypeMathMeasure {
-            font_program: (self.face_index == 0 && !self.bytes.starts_with(b"ttcf"))
-                .then(|| Arc::clone(&self.bytes)),
+            font_program: Some(FontProgram {
+                bytes: Arc::clone(&self.bytes),
+                face_index: self.face_index,
+            }),
             font: &face,
             family: &self.family,
             fallback,

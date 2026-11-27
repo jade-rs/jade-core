@@ -12,7 +12,7 @@
 //! (besides being recorded), because text measured during a capture must use
 //! the font the capture selected.
 
-use crate::{ImageRect, ImageSource, Painter, TextMetrics};
+use crate::{FontProgram, ImageRect, ImageSource, Painter, TextMetrics, TextStrokeJoin};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -50,7 +50,7 @@ pub enum PaintOp {
     /// painter cannot shape it.
     FillShapedText(Rc<str>, Rc<[(usize, f64)]>, f64),
     StrokeText(Rc<str>, f64, f64),
-    StrokeTextAsPath(Rc<str>, f64, f64),
+    StrokeTextAsPath(Rc<str>, f64, f64, TextStrokeJoin),
     FillTextDecoration(Rc<str>, f64, f64),
     FillRect(f64, f64, f64, f64),
     HorizontalGradientRect(ImageRect, [u8; 4], [u8; 4]),
@@ -178,7 +178,9 @@ pub fn replay<P: Painter>(
                 }
             }
             PaintOp::StrokeText(text, x, y) => painter.stroke_text(text, *x, *y)?,
-            PaintOp::StrokeTextAsPath(text, x, y) => painter.stroke_text_as_path(text, *x, *y)?,
+            PaintOp::StrokeTextAsPath(text, x, y, join) => {
+                painter.stroke_text_as_path(text, *x, *y, *join)?
+            }
             PaintOp::FillTextDecoration(text, x, y) => {
                 painter.fill_text_decoration(text, *x, *y)?
             }
@@ -408,7 +410,7 @@ impl<P: Painter> Painter for RoutedPainter<P> {
     fn try_fill_font_glyph(
         &self,
         text: &str,
-        program: &std::sync::Arc<[u8]>,
+        program: &FontProgram,
         glyph: u16,
         font_units_scale: f64,
         origin: (f64, f64),
@@ -443,11 +445,17 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         self.inner.stroke_text(text, x, y)
     }
 
-    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
-        if self.record(|| PaintOp::StrokeTextAsPath(Rc::from(text), x, y)) {
+    fn stroke_text_as_path(
+        &self,
+        text: &str,
+        x: f64,
+        y: f64,
+        join: TextStrokeJoin,
+    ) -> Result<(), Self::Error> {
+        if self.record(|| PaintOp::StrokeTextAsPath(Rc::from(text), x, y, join)) {
             Ok(())
         } else {
-            self.inner.stroke_text_as_path(text, x, y)
+            self.inner.stroke_text_as_path(text, x, y, join)
         }
     }
 
@@ -814,13 +822,15 @@ mod tests {
         let surface = RecordingPainter::new();
         let sink = new_sink();
         let captured = RoutedPainter::new(surface.clone(), Some(sink.clone()));
-        captured.stroke_text_as_path("A", 12.0, 34.0).unwrap();
+        captured
+            .stroke_text_as_path("A", 12.0, 34.0, TextStrokeJoin::Miter)
+            .unwrap();
         captured.fill_text_decoration("B", 56.0, 78.0).unwrap();
         assert!(surface.ops().is_empty());
         assert_eq!(
             sink.borrow().as_slice(),
             &[
-                PaintOp::StrokeTextAsPath(Rc::from("A"), 12.0, 34.0),
+                PaintOp::StrokeTextAsPath(Rc::from("A"), 12.0, 34.0, TextStrokeJoin::Miter),
                 PaintOp::FillTextDecoration(Rc::from("B"), 56.0, 78.0),
             ]
         );

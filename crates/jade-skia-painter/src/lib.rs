@@ -20,7 +20,7 @@
 //! The crate lives outside the workspace: it pulls Skia's prebuilt C++
 //! binaries, which should not land in everyone's `cargo test --all` builds.
 
-use jade_painter::{Painter, TextMetrics};
+use jade_painter::{FontProgram, Painter, TextMetrics, TextStrokeJoin};
 use lopdf::dictionary;
 use skia_safe::QuickReject;
 use skia_safe::RoundOut;
@@ -267,7 +267,7 @@ struct SharedSurface {
     /// Interior mutability so faces can be registered through a clone; the
     /// renderer only ever reads them.
     fonts: RefCell<Vec<RegisteredTypeface>>,
-    outline_text_programs: RefCell<HashMap<u32, std::sync::Arc<[u8]>>>,
+    outline_text_programs: RefCell<HashMap<u32, (FontProgram, bool)>>,
     images: RefCell<HashMap<String, skia_safe::Image>>,
     fill_text_calls: std::cell::Cell<u64>,
     effect_text: RefCell<Vec<pdf_text::RecordedText>>,
@@ -1177,6 +1177,45 @@ impl SkiaPainter {
                 })
                 .clone()
         })
+    }
+
+    fn matches_font_program(typeface: &Typeface, program: &FontProgram) -> bool {
+        #[cfg(not(target_os = "macos"))]
+        {
+            Self::shaping_data(typeface).is_some_and(|data| {
+                data.1 == program.face_index && data.0.as_slice() == program.bytes.as_ref()
+            })
+        }
+        #[cfg(target_os = "macos")]
+        {
+            use rustybuzz::ttf_parser::{RawFace, Tag};
+
+            let Ok(face) = RawFace::parse(&program.bytes, program.face_index) else {
+                return false;
+            };
+            // CoreText can expose a standalone face from a collection. Match
+            // its table contents independently of the SFNT directory offsets.
+            usize::from(face.table_records.len()) == typeface.count_tables()
+                && face.table_records.into_iter().all(|record| {
+                    let Some(expected) = face.table(record.tag) else {
+                        return false;
+                    };
+                    typeface
+                        .copy_table_data(record.tag.0)
+                        .is_some_and(|actual| {
+                            let actual = actual.as_bytes();
+                            if record.tag == Tag::from_bytes(b"head") {
+                                // checkSumAdjustment depends on the enclosing file.
+                                actual.len() >= 12
+                                    && expected.len() >= 12
+                                    && actual[..8] == expected[..8]
+                                    && actual[12..] == expected[12..]
+                            } else {
+                                actual == expected
+                            }
+                        })
+                })
+        }
     }
 
     /// [`Painter::try_fill_shaped_text`]: shapes `text` with the descriptor's
@@ -2241,18 +2280,16 @@ impl Painter for SkiaPainter {
     fn try_fill_font_glyph(
         &self,
         text: &str,
-        program: &std::sync::Arc<[u8]>,
+        program: &FontProgram,
         glyph: u16,
         font_units_scale: f64,
         origin: (f64, f64),
     ) -> Result<bool, Self::Error> {
-        if !matches!(
-            &*self.shared.surface.borrow(),
-            PaintSurface::Recording {
-                raster_scale: None,
-                ..
-            }
-        ) || text.chars().count() != 1
+        let mut chars = text.chars();
+        let Some(character) = chars.next().filter(|_| chars.next().is_none()) else {
+            return Ok(false);
+        };
+        if !self.supports_font_glyphs()
             || glyph == 0
             || !font_units_scale.is_finite()
             || font_units_scale <= 0.0
@@ -2263,31 +2300,35 @@ impl Painter for SkiaPainter {
         }
         let mut font = self.font();
         let typeface = font.typeface();
-        if font.str_to_glyphs_vec(text) != [glyph] {
+        if typeface.unichar_to_glyph(character as i32) != glyph {
             return Ok(false);
         }
-        let Some(data) = Self::shaping_data(&typeface) else {
-            return Ok(false);
-        };
         let id = typeface.unique_id();
         let mut verified = self.shared.outline_text_programs.borrow_mut();
-        let same_program = verified
-            .get(&id)
-            .is_some_and(|cached| std::sync::Arc::ptr_eq(cached, program));
-        if !same_program {
-            if data.1 != 0 || data.0.as_slice() != program.as_ref() {
-                return Ok(false);
+        let matches = match verified.get(&id) {
+            Some((cached, matches))
+                if cached.face_index == program.face_index
+                    && std::sync::Arc::ptr_eq(&cached.bytes, &program.bytes) =>
+            {
+                *matches
             }
-            if verified.len() >= 32 {
-                verified.clear();
+            _ => {
+                let matches = Self::matches_font_program(&typeface, program);
+                if verified.len() >= 32 {
+                    verified.clear();
+                }
+                verified.insert(id, (program.clone(), matches));
+                matches
             }
-            verified.insert(id, std::sync::Arc::clone(program));
-        }
+        };
         drop(verified);
-        let Some(face) = rustybuzz::Face::from_slice(program, 0) else {
+        if !matches {
+            return Ok(false);
+        }
+        let Some(units_per_em) = typeface.units_per_em() else {
             return Ok(false);
         };
-        font.set_size((font_units_scale * f64::from(face.units_per_em())) as f32);
+        font.set_size((font_units_scale * f64::from(units_per_em)) as f32);
         font.set_skew_x(0.0);
         font.set_embolden(false);
         self.draw_glyphs(
@@ -2351,11 +2392,20 @@ impl Painter for SkiaPainter {
         Ok(())
     }
 
-    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+    fn stroke_text_as_path(
+        &self,
+        text: &str,
+        x: f64,
+        y: f64,
+        join: TextStrokeJoin,
+    ) -> Result<(), Self::Error> {
         let previous = self.shared.style.borrow().stroke_text_paths;
         self.shared.style.borrow_mut().stroke_text_paths = true;
         let mut paint = self.stroke_paint();
-        paint.set_stroke_join(skia_safe::paint::Join::Round);
+        paint.set_stroke_join(match join {
+            TextStrokeJoin::Miter => skia_safe::paint::Join::Miter,
+            TextStrokeJoin::Round => skia_safe::paint::Join::Round,
+        });
         self.draw_segments(text, x, y, &paint);
         self.shared.style.borrow_mut().stroke_text_paths = previous;
         Ok(())
@@ -2874,7 +2924,14 @@ mod print_target_tests {
         let mut different = program.to_vec();
         let last = different.len() - 1;
         different[last] ^= 1;
-        let wrong: std::sync::Arc<[u8]> = different.into();
+        let wrong = FontProgram {
+            bytes: different.into(),
+            face_index: 0,
+        };
+        let program = FontProgram {
+            bytes: program,
+            face_index: 0,
+        };
         let direct = RoutedPainter::direct(painter.clone());
         assert!(!direct
             .try_fill_font_glyph("A", &wrong, glyph, scale, (12.0, 30.0))
