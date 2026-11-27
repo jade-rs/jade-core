@@ -28,6 +28,7 @@ use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 mod clipped_pdf_text;
 mod pdf_text;
+mod thai_text;
 #[cfg(target_os = "windows")]
 mod windows_pdf_metrics;
 #[cfg(target_os = "windows")]
@@ -1023,38 +1024,15 @@ impl SkiaPainter {
             // and advances alongside an invisible original-Unicode text layer.
             let mut widths = vec![0.0; glyphs.len()];
             font.get_widths(glyphs, &mut widths);
-            let (_, metrics) = font.metrics();
-            let [a, b, c, d, e, f] = canvas
-                .local_to_device_as_3x3()
-                .to_affine()
-                .expect("2D painter transform")
-                .map(|value| value / editor_scale.unwrap_or(1.0) as f32);
             if !self.shared.style.borrow().decorative_text {
-                self.shared
-                    .effect_text
-                    .borrow_mut()
-                    .push(pdf_text::RecordedText {
-                        text: text.to_string(),
-                        // Native Word enables output DPI only for Windows vector export.
-                        // Preserve the actual selected face, not a requested font alias.
-                        postscript_name: self.shared.text_output_dpi.get().map(|_| {
-                            let typeface = font.typeface();
-                            typeface
-                                .post_script_name()
-                                .unwrap_or_else(|| typeface.family_name())
-                        }),
-                        font_size: font.size(),
-                        widths: if glyphs.len() == 1 && text.chars().count() > 1 {
-                            let mut scalar_widths = vec![0.0; text.chars().count()];
-                            scalar_widths[0] = widths[0];
-                            scalar_widths
-                        } else {
-                            widths.clone()
-                        },
-                        ascent: -metrics.ascent,
-                        descent: metrics.descent,
-                        transform: [a, b, c, d, a * x + c * y + e, b * x + d * y + f],
-                    });
+                let scalar_widths = if glyphs.len() == 1 && text.chars().count() > 1 {
+                    let mut scalar_widths = vec![0.0; text.chars().count()];
+                    scalar_widths[0] = widths[0];
+                    scalar_widths
+                } else {
+                    widths.clone()
+                };
+                self.record_pdf_text(canvas, font, text, (x, y), editor_scale, scalar_widths);
             }
             if let Some(path) = contour_path.as_ref() {
                 canvas.save();
@@ -1116,6 +1094,42 @@ impl SkiaPainter {
             canvas.draw_path(&path, paint);
             canvas.restore();
         });
+    }
+
+    fn record_pdf_text(
+        &self,
+        canvas: &Canvas,
+        font: &Font,
+        text: &str,
+        (x, y): (f32, f32),
+        editor_scale: Option<f64>,
+        widths: Vec<f32>,
+    ) {
+        let (_, metrics) = font.metrics();
+        let [a, b, c, d, e, f] = canvas
+            .local_to_device_as_3x3()
+            .to_affine()
+            .expect("2D painter transform")
+            .map(|value| value / editor_scale.unwrap_or(1.0) as f32);
+        self.shared
+            .effect_text
+            .borrow_mut()
+            .push(pdf_text::RecordedText {
+                text: text.to_string(),
+                // Native Word enables output DPI only for Windows vector export.
+                // Preserve the actual selected face, not a requested font alias.
+                postscript_name: self.shared.text_output_dpi.get().map(|_| {
+                    let typeface = font.typeface();
+                    typeface
+                        .post_script_name()
+                        .unwrap_or_else(|| typeface.family_name())
+                }),
+                font_size: font.size(),
+                widths,
+                ascent: -metrics.ascent,
+                descent: metrics.descent,
+                transform: [a, b, c, d, a * x + c * y + e, b * x + d * y + f],
+            });
     }
 
     /// The font file behind `typeface`, parsed once per face for the shaper.
@@ -1624,24 +1638,29 @@ impl SkiaPainter {
         fallback
     }
 
-    /// `text` split where the face drawing it changes: each character in
+    /// `text` split at Thai shaping boundaries and where the face changes.
+    /// Each character uses
     /// [`Self::font_covering`]'s face for it — so a run mixing scripts is
     /// measured and drawn as a browser does, each in a face that has it.
     fn segments<'t>(&self, text: &'t str) -> Vec<(Font, &'t str)> {
         let mut segments: Vec<(Font, &'t str)> = Vec::new();
         let mut start = 0;
+        let mut thai = false;
         for (at, ch) in text.char_indices() {
             let end = at + ch.len_utf8();
             let font = self.font_covering(&text[at..end]);
+            let next_thai = jade_painter::is_thai(ch);
             match segments.last_mut() {
                 Some((current, run))
-                    if current.typeface().unique_id() == font.typeface().unique_id() =>
+                    if thai == next_thai
+                        && current.typeface().unique_id() == font.typeface().unique_id() =>
                 {
                     *run = &text[start..end];
                 }
                 _ => {
                     start = at;
                     segments.push((font, &text[at..end]));
+                    thai = next_thai;
                 }
             }
         }
@@ -1658,8 +1677,43 @@ impl SkiaPainter {
         let baseline_y = self.baseline_y(first, y);
         let mut pen = x as f32;
         for (font, run) in &segments {
-            self.draw_text(run, font, pen, baseline_y, paint);
-            pen += font.measure_str(run, Some(paint)).0;
+            if let Some(shaped) = thai_text::shape(font, run) {
+                let style = self.shared.style.borrow();
+                let stroke_paths = style.stroke_text_paths;
+                let decorative = style.decorative_text;
+                drop(style);
+                let recording_scale = match &*self.shared.surface.borrow() {
+                    PaintSurface::Recording { raster_scale, .. } => Some(*raster_scale),
+                    PaintSurface::Raster(_) => None,
+                };
+                self.with_canvas(|canvas| {
+                    let origin = (pen, baseline_y);
+                    let vector_pdf = recording_scale == Some(None);
+                    let use_outline = vector_pdf
+                        || (stroke_paths && paint.style() == skia_safe::paint::Style::Stroke);
+                    // Skia's PDF cmap can lose substituted Thai marks and
+                    // decompose Sara Am. Keep the original text alongside the ink.
+                    if let Some(scale) = recording_scale.filter(|_| !decorative) {
+                        self.record_pdf_text(
+                            canvas,
+                            font,
+                            run,
+                            origin,
+                            scale,
+                            shaped.scalar_advances(font, run),
+                        );
+                    }
+                    if use_outline {
+                        shaped.draw_outline(canvas, font, origin, paint);
+                    } else {
+                        shaped.draw(canvas, font, origin, paint);
+                    }
+                });
+                pen += shaped.advance(font);
+            } else {
+                self.draw_text(run, font, pen, baseline_y, paint);
+                pen += font.measure_str(run, Some(paint)).0;
+            }
         }
     }
 
@@ -2233,7 +2287,12 @@ impl Painter for SkiaPainter {
         Ok(self
             .segments(text)
             .iter()
-            .map(|(font, run)| font.measure_str(run, Some(&paint)).0 as f64)
+            .map(|(font, run)| {
+                f64::from(thai_text::shape(font, run).map_or_else(
+                    || font.measure_str(run, Some(&paint)).0,
+                    |shaped| shaped.advance(font),
+                ))
+            })
             .sum())
     }
 
@@ -2270,7 +2329,14 @@ impl Painter for SkiaPainter {
         let (mut width, mut top, mut bottom, mut right) = (0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32);
         let mut left = f32::INFINITY;
         for (segment_font, run) in self.segments(text) {
-            let (advance, ink) = segment_font.measure_str(run, Some(&paint));
+            let (advance, ink) = if let Some(shaped) = thai_text::shape(&segment_font, run) {
+                (
+                    shaped.advance(&segment_font),
+                    shaped.bounds(&segment_font, &paint),
+                )
+            } else {
+                segment_font.measure_str(run, Some(&paint))
+            };
             top = top.min(ink.top);
             bottom = bottom.max(ink.bottom);
             right = right.max(width + ink.right);

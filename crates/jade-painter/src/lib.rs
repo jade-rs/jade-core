@@ -24,6 +24,13 @@ pub mod font_features;
 pub mod paper;
 pub mod recording;
 
+/// Whether a character belongs to the Thai ranges used for shaping runs.
+/// Thai marks and their base letters need to stay together even in a face
+/// that also covers the surrounding Latin letters.
+pub fn is_thai(ch: char) -> bool {
+    matches!(ch, '\u{0e01}'..='\u{0e3a}' | '\u{0e40}'..='\u{0e5b}')
+}
+
 /// Destination geometry for an encoded image, in the current painter coordinates.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ImageRect {
