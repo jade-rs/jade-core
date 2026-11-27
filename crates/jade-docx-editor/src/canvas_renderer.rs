@@ -29603,10 +29603,45 @@ where
             line_layout.cursor_end_x = cursor_x;
             line_layout.fragments = fragments.into();
 
+            let context = self.host.painter();
             let content_top = baseline + min_top_offset;
-            line_layout.content_top = content_top;
-            line_layout.absolute_content_top = self.page_offset_y + content_top;
-            line_layout.content_height = content_height;
+            let content_bottom = content_top + content_height;
+            let (mut ink_above, mut ink_below) = (0.0_f64, 0.0_f64);
+            if !paragraph_style.exact_line_spacing {
+                // Thai mark stacks can extend above the nominal box of the
+                // requested face when they are drawn by a fallback. Include
+                // their ink in the line clip without changing line pitch.
+                for prepared in &prepared_segments {
+                    // All Thai scalars start with E0 in UTF-8.
+                    if !prepared.segment.text.as_bytes().contains(&0xe0) {
+                        continue;
+                    }
+                    let style = &prepared.style;
+                    let text_y = baseline
+                        + prepared.text_alignment_shift
+                        + style.baseline_shift_px
+                        + advance_line_shift;
+                    for step in &prepared.glyph_steps {
+                        let text = step.text(&prepared.segment.text);
+                        if text.len() <= 3 || !text.starts_with(jade_painter::is_thai) {
+                            continue;
+                        }
+                        self.set_font_if_changed_rc(
+                            &context,
+                            style.resolved.descriptor_for_slot(step.font_slot),
+                        );
+                        if let Ok(ink) = context.measure_text_metrics(text) {
+                            ink_above = ink_above
+                                .max(content_top - text_y + ink.actual_bounding_box_ascent);
+                            ink_below = ink_below
+                                .max(text_y + ink.actual_bounding_box_descent - content_bottom);
+                        }
+                    }
+                }
+            }
+            line_layout.content_top = content_top - ink_above;
+            line_layout.absolute_content_top = self.page_offset_y + line_layout.content_top;
+            line_layout.content_height = content_height + ink_above + ink_below;
 
             // Comment anchors are model offsets (see above).
             let model_line =
@@ -29627,7 +29662,6 @@ where
                 self.draw_outline_symbol(paragraph_index, &line_layout, &mut commands_out)?;
             }
 
-            let context = self.host.painter();
             let (mut clip_top, mut clip_height) = Self::device_aligned_line_vertical_clip_bounds(
                 top,
                 line_height,
