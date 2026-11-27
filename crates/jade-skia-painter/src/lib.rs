@@ -945,13 +945,16 @@ impl SkiaPainter {
         let Some(blob) = builder.make() else {
             return;
         };
-        let editor_scale = match &*self.shared.surface.borrow() {
-            PaintSurface::Recording { raster_scale, .. } => *raster_scale,
+        let recording_scale = match &*self.shared.surface.borrow() {
+            PaintSurface::Recording { raster_scale, .. } => Some(*raster_scale),
             _ => None,
         };
-        let contour_path = if paint.style() == skia_safe::paint::Style::Stroke
-            && self.shared.style.borrow().stroke_text_paths
-        {
+        let editor_scale = recording_scale.flatten();
+        let vector_pdf = recording_scale == Some(None);
+        let decorative = recording_scale.is_some() && self.shared.style.borrow().decorative_text;
+        let stroke_contours = paint.style() == skia_safe::paint::Style::Stroke
+            && self.shared.style.borrow().stroke_text_paths;
+        let contour_path = if stroke_contours || (vector_pdf && decorative) {
             let mut widths = vec![0.0; glyphs.len()];
             font.get_widths(glyphs, &mut widths);
             let mut path = Path::new();
@@ -970,14 +973,9 @@ impl SkiaPainter {
         } else {
             None
         };
-        let raster_contours = contour_path.is_some()
-            && matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_));
-        let path_text = editor_scale.is_none()
-            && matches!(
-                &*self.shared.surface.borrow(),
-                PaintSurface::Recording { .. }
-            )
-            && (joined_glyph.is_some()
+        let path_text = vector_pdf
+            && (contour_path.is_some()
+                || joined_glyph.is_some()
                 || glyphs.contains(&0)
                 // Skia's PDF cmap can map a substituted glyph back to its
                 // presentation character instead of the original Unicode.
@@ -986,16 +984,18 @@ impl SkiaPainter {
                 || paint.image_filter().is_some()
                 || paint.mask_filter().is_some());
         self.with_canvas(|canvas| {
-            if raster_contours {
-                canvas.save();
-                canvas.translate((x, y));
-                canvas.draw_path(contour_path.as_ref().unwrap(), paint);
-                canvas.restore();
-                return;
+            if recording_scale.is_none() {
+                if let Some(path) = &contour_path {
+                    canvas.save();
+                    canvas.translate((x, y));
+                    canvas.draw_path(path, paint);
+                    canvas.restore();
+                    return;
+                }
             }
             if !path_text && editor_scale.is_none() {
                 if self.shared.preserve_clipped_pdf_text.get()
-                    && !self.shared.style.borrow().decorative_text
+                    && !decorative
                     && glyphs.len() == text.chars().count()
                     && !text.chars().all(char::is_whitespace)
                     && (canvas.quick_reject(&blob.bounds().with_offset((x, y)))
@@ -1050,7 +1050,7 @@ impl SkiaPainter {
             // and advances alongside an invisible original-Unicode text layer.
             let mut widths = vec![0.0; glyphs.len()];
             font.get_widths(glyphs, &mut widths);
-            if !self.shared.style.borrow().decorative_text {
+            if !decorative {
                 let recorded_widths = if let Some(glyph) = joined_glyph {
                     pdf_text::Widths::Cluster(glyph.advance)
                 } else if glyphs.len() == 1 && text.chars().count() > 1 {

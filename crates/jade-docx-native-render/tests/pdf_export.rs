@@ -648,6 +648,44 @@ fn pdf_keeps_text_searchable_when_the_glyphs_have_visual_effects() {
 }
 
 #[test]
+fn pdf_paints_isolated_legacy_character_effects_without_images() {
+    use jade_docx_layout::line_metrics::{
+        set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+    };
+    let bytes = rewrite_document_xml(|_| {
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+        <w:p><w:r><w:rPr><w:shadow/></w:rPr><w:t>Shadow</w:t></w:r></w:p>
+        <w:p><w:r><w:rPr><w:emboss/></w:rPr><w:t>Emboss</w:t></w:r></w:p>
+        <w:p><w:r><w:rPr><w:imprint/></w:rPr><w:t>Imprint</w:t></w:r></w:p>
+        </w:body></w:document>"#.to_string()
+    });
+    let previous = word_layout_platform();
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let pdf = common::open_bytes(&bytes)
+        .export_pdf_with_options(jade_docx_native_render::PdfExportOptions {
+            rendering: jade_docx_native_render::PdfRenderingMode::Vector,
+            ..Default::default()
+        })
+        .unwrap();
+    set_word_layout_platform(previous);
+    let pdf = Document::load_mem(&pdf).unwrap();
+    assert!(!pdf.objects.values().any(|object| {
+        object
+            .as_stream()
+            .ok()
+            .and_then(|stream| stream.dict.get(b"Subtype").ok())
+            .and_then(|subtype| subtype.as_name().ok())
+            == Some(b"Image")
+    }));
+    let text = pdf.extract_text(&[1]).unwrap().replace(['\n', ' '], "");
+    for expected in ["Shadow", "Emboss", "Imprint"] {
+        assert_eq!(text.matches(expected).count(), 1, "{text:?}");
+    }
+}
+
+#[test]
 #[ignore = "requires Poppler: set JADE_PDFTOTEXT and run --ignored"]
 fn poppler_recovers_original_unicode_and_effect_text() {
     let poppler = std::env::var_os("JADE_PDFTOTEXT").expect("set JADE_PDFTOTEXT");
