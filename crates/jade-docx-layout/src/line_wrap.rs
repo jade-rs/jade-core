@@ -5060,7 +5060,7 @@ impl WrappedLine {
 
     /// Extra text extent requested by an authored tab beyond the float frame.
     pub fn authored_float_tab_overhang_px(&self, origin: f64, available: f64) -> f64 {
-        (float_tab_fit_width(self.tab_stops.last(), origin, available) - available).max(0.0)
+        (float_tab_fit_width(&self.tab_stops, origin, available) - available).max(0.0)
     }
 
     /// Word's tab positions stay fixed when wrap repair prepends part of a word.
@@ -9438,7 +9438,21 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 // only the overflowing glyphs leaves the tab on the previous
                 // line and incorrectly starts the remainder at the left edge.
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
+                let tab_base = paragraph_style.line_base_x(base_x, lines.len());
+                // On a legacy float line, a later tab can extend the line to an
+                // authored stop or continue from an authored stop past the frame.
+                let continues_past_float = legacy_float_tabs
+                    && (tab_base - base_x).abs() > f64::EPSILON
+                    && !current_line_tab_stops.is_empty()
+                    && (paragraph_style.is_authored_tab_target(tab_base, target_x)
+                        && target_x > line_origin + effective_available
+                        || float_tab_fit_width(
+                            &current_line_tab_stops,
+                            line_origin,
+                            effective_available,
+                        ) > effective_available);
                 if current_width > 0.0
+                    && !continues_past_float
                     && desired_width + segment_width > effective_available + WRAP_FIT_TOLERANCE_PX
                 {
                     let next_line_index = lines.len() + 1;
@@ -9696,7 +9710,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 };
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
                 let effective_available = float_tab_fit_width(
-                    current_line_tab_stops.last(),
+                    &current_line_tab_stops,
                     paragraph_style.line_base_x(base_x, lines.len()) + current_line_indent,
                     effective_available,
                 );
@@ -11373,15 +11387,20 @@ fn measure_tab_leader<C: LineWrapContext>(
     }))
 }
 
-/// Word keeps text at an authored tab stop even when it lies beyond the float frame.
-fn float_tab_fit_width(tab: Option<&TabStopSegment>, origin: f64, available: f64) -> f64 {
-    tab.filter(|tab| tab.legacy_authored && tab.end_x > origin + available)
-        .and_then(|tab| {
-            tab.float_metrics
-                .as_deref()
-                .map(|metrics| tab.end_x - origin + metrics.width)
-        })
-        .unwrap_or(available)
+/// Word keeps later tabs and their text on the line after a stop beyond the float frame.
+fn float_tab_fit_width(tabs: &[TabStopSegment], origin: f64, available: f64) -> f64 {
+    if tabs
+        .iter()
+        .any(|tab| tab.legacy_authored && tab.end_x > origin + available)
+    {
+        if let Some((last, metrics)) = tabs
+            .last()
+            .and_then(|last| last.float_metrics.as_deref().map(|metrics| (last, metrics)))
+        {
+            return available.max(last.end_x - origin + metrics.width);
+        }
+    }
+    available
 }
 
 fn tab_segment_start_width(
@@ -11885,7 +11904,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
             line_index,
         )?;
         let effective_available = float_tab_fit_width(
-            lines[line_index].tab_stops.last(),
+            &lines[line_index].tab_stops,
             paragraph_style.line_base_x(column.start, line_index)
                 + paragraph_style.line_indent(line_index),
             effective_available,
