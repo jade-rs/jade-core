@@ -33,7 +33,7 @@ use crate::commands::insert_text::InsertTextCommand;
 use crate::commands::insert_toc::{InsertTableOfContentsCommand, UpdateTableOfContentsCommand};
 use crate::commands::merge_table_cells::{MergeTableCellsCommand, TableCellSelection};
 use crate::commands::replace_equation::ReplaceEquationCommand;
-use crate::commands::resize_table_column::ResizeTableColumnCommand;
+use crate::commands::resize_table_column::{NestedColumnResizeGeometry, ResizeTableColumnCommand};
 use crate::commands::resize_table_row::ResizeTableRowCommand;
 use crate::commands::set_bold::SetBoldCommand;
 use crate::commands::set_character_style::SetCharacterStyleCommand;
@@ -108,6 +108,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_reader::docx_xml::{XmlElement, XmlNode};
 use jade_docx_reader::styles::StyleDefinition;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(thiserror::Error, Debug)]
@@ -2099,7 +2100,60 @@ pub fn apply_headless_commands_with_executor_to_document(
     selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
-    apply_headless_commands(word_doc, command_executor, selection, request, false)
+    apply_headless_commands(word_doc, command_executor, selection, request, false, None)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ResizeMeasurement {
+    BeforeInsertion,
+    BeforeResize,
+}
+
+type MeasureColumnResize<'a> = dyn FnMut(
+        &WordDocument,
+        usize,
+        usize,
+        ResizeMeasurement,
+    ) -> Result<Option<Rc<NestedColumnResizeGeometry>>, CommandError>
+    + 'a;
+
+fn execute_column_resize(
+    word_doc: &mut WordDocument,
+    executor: &mut CommandExecutor,
+    selection: &mut Option<SelectionRange>,
+    index: usize,
+    mut resize: ResizeTableColumnCommand,
+    geometry: Option<Rc<NestedColumnResizeGeometry>>,
+) -> Result<(), HeadlessApiApplyError> {
+    if let Some(geometry) = geometry {
+        resize = resize.with_nested_geometry(geometry);
+    }
+    executor
+        .execute(
+            Box::new(resize),
+            &mut CommandContext::new(word_doc, selection),
+        )
+        .map_err(|source| HeadlessApiApplyError::Command { index, source })
+}
+
+/// Applies one request, measuring column widths just before a resize and,
+/// for a right-edge resize after text insertion, before the insertion run.
+/// The callback receives the command index and target table order at each stage.
+pub fn apply_headless_commands_with_resize_measurement(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    request: &HeadlessEditRequest,
+    measure: &mut MeasureColumnResize<'_>,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    apply_headless_commands(
+        word_doc,
+        command_executor,
+        selection,
+        request,
+        false,
+        Some(measure),
+    )
 }
 
 /// Apply sequential commands with the DOCX interchange safety restrictions.
@@ -2110,7 +2164,7 @@ pub fn apply_protected_headless_commands_with_executor_to_document(
     selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
-    apply_headless_commands(word_doc, command_executor, selection, request, true)
+    apply_headless_commands(word_doc, command_executor, selection, request, true, None)
 }
 
 /// Builds the round-trip tree a deferred load left out: saving patches it,
@@ -2135,6 +2189,7 @@ fn apply_headless_commands(
     mut selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
     protected: bool,
+    mut measure: Option<&mut MeasureColumnResize<'_>>,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
@@ -2153,15 +2208,89 @@ fn apply_headless_commands(
         if protected {
             validate_protected_edit(word_doc, index, command)?;
         }
+        if matches!(
+            command,
+            HeadlessCommand::InsertText { .. } | HeadlessCommand::ReplaceRange { .. }
+        ) {
+            if let Some(measure) = measure.as_deref_mut() {
+                if let Some(order) = right_edge_resize_after_insertions(&request.commands, index) {
+                    measure(word_doc, index, order, ResizeMeasurement::BeforeInsertion)
+                        .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                }
+            }
+            try_apply_headless_text_command(
+                word_doc,
+                command_executor,
+                &mut selection,
+                index,
+                command,
+            )?;
+            continue;
+        }
+        let geometry = match (measure.as_deref_mut(), command) {
+            (
+                Some(measure),
+                HeadlessCommand::ResizeTableColumnBetween {
+                    table_order_index, ..
+                }
+                | HeadlessCommand::ResizeTableColumnRightEdge {
+                    table_order_index, ..
+                },
+            ) => measure(
+                word_doc,
+                index,
+                *table_order_index,
+                ResizeMeasurement::BeforeResize,
+            )
+            .map_err(|source| HeadlessApiApplyError::Command { index, source })?,
+            _ => None,
+        };
+        selection = apply_headless_command(
+            word_doc,
+            command_executor,
+            selection,
+            index,
+            command,
+            geometry,
+            protected,
+        )?;
+    }
+    Ok(selection)
+}
+
+fn right_edge_resize_after_insertions(commands: &[HeadlessCommand], start: usize) -> Option<usize> {
+    let inserts_text =
+        |command: &HeadlessCommand| matches!(command, HeadlessCommand::InsertText { .. });
+    if !inserts_text(&commands[start]) || (start > 0 && inserts_text(&commands[start - 1])) {
+        return None;
+    }
+    let HeadlessCommand::ResizeTableColumnRightEdge {
+        table_order_index, ..
+    } = commands[start..]
+        .iter()
+        .find(|command| !inserts_text(command))?
+    else {
+        return None;
+    };
+    Some(*table_order_index)
+}
+
+// Text edits and layout measurement run outside the larger dispatch stack frame.
+#[inline(never)]
+fn apply_headless_command(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    index: usize,
+    command: &HeadlessCommand,
+    geometry: Option<Rc<NestedColumnResizeGeometry>>,
+    protected: bool,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    let selection = {
+        let mut selection = selection;
         match command {
             HeadlessCommand::InsertText { .. } | HeadlessCommand::ReplaceRange { .. } => {
-                try_apply_headless_text_command(
-                    word_doc,
-                    command_executor,
-                    &mut selection,
-                    index,
-                    command,
-                )?;
+                unreachable!("text edits are handled before dispatch");
             }
             HeadlessCommand::InsertPositionalTab {
                 paragraph,
@@ -3825,7 +3954,7 @@ fn apply_headless_commands(
                 // An empty id or target list selects nothing: skip it rather
                 // than record an undo step that changes nothing.
                 if ids.is_empty() || targets.as_ref().is_some_and(RevisionTargets::is_empty) {
-                    continue;
+                    return Ok(selection);
                 }
                 let kind_filter = kind.as_ref().map(revision_kind_from_filter);
                 let (start_paragraph, end_paragraph) = (*start_paragraph, *end_paragraph);
@@ -5216,35 +5345,39 @@ fn apply_headless_commands(
                 new_left_width,
                 new_right_width,
             } => {
-                let mut ctx = CommandContext::new(word_doc, &mut selection);
-                command_executor
-                    .execute(
-                        Box::new(ResizeTableColumnCommand::between_columns(
-                            *table_order_index,
-                            *left_column_index,
-                            *new_left_width,
-                            *new_right_width,
-                        )),
-                        &mut ctx,
-                    )
-                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                let resize = ResizeTableColumnCommand::between_columns(
+                    *table_order_index,
+                    *left_column_index,
+                    *new_left_width,
+                    *new_right_width,
+                );
+                execute_column_resize(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    resize,
+                    geometry,
+                )?;
             }
             HeadlessCommand::ResizeTableColumnRightEdge {
                 table_order_index,
                 column_index,
                 new_width,
             } => {
-                let mut ctx = CommandContext::new(word_doc, &mut selection);
-                command_executor
-                    .execute(
-                        Box::new(ResizeTableColumnCommand::table_right_edge(
-                            *table_order_index,
-                            *column_index,
-                            *new_width,
-                        )),
-                        &mut ctx,
-                    )
-                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                let resize = ResizeTableColumnCommand::table_right_edge(
+                    *table_order_index,
+                    *column_index,
+                    *new_width,
+                );
+                execute_column_resize(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    resize,
+                    geometry,
+                )?;
             }
             HeadlessCommand::ResizeTableRowBetween {
                 table_order_index,
@@ -5560,7 +5693,8 @@ fn apply_headless_commands(
                 )?;
             }
         }
-    }
+        selection
+    };
 
     Ok(selection)
 }

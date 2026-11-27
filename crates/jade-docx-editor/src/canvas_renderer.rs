@@ -2418,6 +2418,10 @@ pub struct TableLayoutInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub node_id: Option<u32>,
     pub column_widths: Vec<f64>,
+    #[serde(skip)]
+    resize_geometry: Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>>,
+    #[serde(skip)]
+    save_resolved_grid: bool,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub row_heights: Vec<f64>,
 }
@@ -2429,6 +2433,8 @@ impl Clone for TableLayoutInfo {
             order: self.order,
             node_id: self.node_id,
             column_widths: self.column_widths.clone(),
+            resize_geometry: self.resize_geometry.clone(),
+            save_resolved_grid: self.save_resolved_grid,
             row_heights: self.row_heights.clone(),
         }
     }
@@ -2438,6 +2444,8 @@ impl Clone for TableLayoutInfo {
         self.order = source.order;
         self.node_id = source.node_id;
         self.column_widths.clone_from(&source.column_widths);
+        self.resize_geometry.clone_from(&source.resize_geometry);
+        self.save_resolved_grid = source.save_resolved_grid;
         self.row_heights.clone_from(&source.row_heights);
     }
 }
@@ -12718,7 +12726,8 @@ where
             | (u8::from(
                 paragraph_style.word_platform
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
-            ) << 1);
+            ) << 1)
+            | (u8::from(paragraph_style.fit_on_glyph_advances) << 2);
         word_metric_policy.hash(&mut hasher);
         // The default left path needs no alignment bytes. Justification and
         // its terminal-space compression must not reuse left-aligned wraps.
@@ -42663,6 +42672,24 @@ where
         }
     }
 
+    /// Resolved grids of Windows AutoFit body tables and measured nested tables.
+    /// The caller must use a complete layout of the document it is saving.
+    pub fn resolved_table_grids_for_docx(&self) -> Vec<(XmlNodeId, Vec<i32>)> {
+        self.table_layouts
+            .iter()
+            .filter(|table| table.save_resolved_grid)
+            .filter_map(|table| {
+                let node_id = XmlNodeId::new(table.node_id?);
+                let twips = table
+                    .column_widths
+                    .iter()
+                    .map(|width| (width * 15.0).round() as i32)
+                    .collect();
+                Some((node_id, twips))
+            })
+            .collect()
+    }
+
     /// Refresh an owned snapshot while reusing storage from previous edits.
     /// Values are still copied, so later renderer updates cannot change it.
     pub(crate) fn copy_table_resize_metadata_into(&self, target: &mut TableResizeMetadata) {
@@ -46697,6 +46724,27 @@ where
     pub fn table_order_for(&self, table_id: usize) -> Option<usize> {
         self.table_layouts.get(table_id).map(|info| info.order)
     }
+
+    pub fn nested_column_resize_geometry(
+        &self,
+        order: usize,
+    ) -> Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>> {
+        self.table_layouts
+            .iter()
+            .find(|info| info.order == order)?
+            .resize_geometry
+            .clone()
+    }
+
+    pub fn nested_column_resize_geometry_for_node(
+        &self,
+        id: XmlNodeId,
+    ) -> Option<Rc<crate::commands::resize_table_column::NestedColumnResizeGeometry>> {
+        self.table_layouts
+            .iter()
+            .filter(|info| info.node_id == Some(id.raw()) && info.save_resolved_grid)
+            .find_map(|info| info.resize_geometry.clone())
+    }
 }
 
 /// Constructors that name a browser host, and so only exist for the canvas
@@ -48391,6 +48439,8 @@ mod tests {
             .map(|i| TableLayoutInfo {
                 index: i + usize::from(phase),
                 order: count - i,
+                resize_geometry: None,
+                save_resolved_grid: false,
                 node_id: phase
                     .is_multiple_of(2)
                     .then_some(i as u32 + u32::from(phase)),
@@ -48506,6 +48556,8 @@ mod tests {
         let source = TableLayoutInfo {
             index: 3,
             order: 7,
+            resize_geometry: None,
+            save_resolved_grid: false,
             node_id: Some(42),
             column_widths: vec![72.0, 144.0],
             row_heights: vec![18.0, 24.0],

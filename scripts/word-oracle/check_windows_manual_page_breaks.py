@@ -76,6 +76,159 @@ def spaced_border_content_cases():
     return {f'{phase}-{rule}' for phase in ('before', 'resized') for rule in rules}
 
 
+def nested_table_advance_cases():
+    samples = ('arial-a', 'arial-av', 'arial-f', 'arial-w', 'calibri-w', 'times-w')
+    return {f'{sample}-{weight}' for sample in samples for weight in ('regular', 'italic')}
+
+
+def nested_autofit_advance_cases():
+    return {f'{phase}-{case}' for phase in ('before', 'after')
+            for case in nested_table_advance_cases()}
+
+
+def nested_autofit_resize_cases():
+    bases = {f'n{length}-{sample}' for length in (22, 23, 24)
+             for sample in ('edge', 'rightedge')}
+    return ({f'before-{base}' for base in bases}
+            | {f'after-{base}-w{width}' for base in bases for width in (55, 65, 75, 90)})
+
+
+def nested_autofit_floor_cases():
+    widths = (8000, 8200, 8280, 8340, 8380, 8400, 8410, 8420, 8440, 8460, 8480, 8500)
+    return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
+
+
+def nested_autofit_twip_cases():
+    widths = {'absolute': range(1496, 1500), 'percentage': range(4644, 4647)}
+    return {f'{kind}-{sample}-{width}' for kind, values in widths.items()
+            for sample in ('edge', 'rightedge') for width in values}
+
+
+def nested_autofit_parent_save_cases():
+    return {'same-run', 'separate-run', 'separate-paragraph', 'grid-change'}
+
+
+def nested_autofit_batch_resize_cases():
+    return {f'{kind}-n{length}-{position}' for kind in ('repeat', 'shorten')
+            for length in (22, 23, 24) for position in ('edge', 'rightedge')}
+
+
+def nested_autofit_insert_then_resize_cases():
+    return {f'{position}-w{width}-insert{count}' for position in ('edge', 'rightedge')
+            for width in (45, 65, 85) for count in (8, 12)}
+
+
+def nested_autofit_implicit_frame_cases():
+    return {'implicit', 'indent-zero', 'indent-ten', 'table', 'table-indent-zero', 'cell'}
+
+
+def nested_autofit_text_content_cases():
+    return {f'{count}-n{length}-{position}' for count in ('four', 'eight', 'twelve')
+            for length in (22, 23, 24) for position in ('edge', 'rightedge')}
+
+
+def nested_autofit_text_frame_cases():
+    return {f'{position}-{width}' for position in ('edge', 'rightedge')
+            for width in (600, 612, 620)}
+
+
+def nested_autofit_text_margin_cases():
+    return {f'margins-{left}-{right}' for left, right in ((0, 0), (10, 30), (30, 10), (30, 0))} | {
+        'uncapped-edge', 'uncapped-rightedge',
+    }
+
+
+def nested_autofit_text_indent_cases():
+    return {'0', '20'}
+
+
+def nested_autofit_text_overflow_cases():
+    return {f'{position}-{width}' for position in ('edge', 'rightedge')
+            for width in (8240, 8280, 8320)}
+
+
+def nested_autofit_cell_margin_weight_cases():
+    margins = ('0-0-25-45', '10-10-10-20', '20-25-15-5', '60-0-0-0')
+    return {f'{position}-{page}-{margin}' for position in ('edge', 'rightedge')
+            for page in (612, 720) for margin in margins}
+
+
+def nested_autofit_three_column_cases(hosts=(1, 2)):
+    return {f'{host}-{length}-{margins}-{page}' for host in hosts for length in (10, 22)
+            for margins in ('table', 'individual') for page in (612, 650, 690, 900)}
+
+
+def nested_autofit_host_first_cases():
+    return nested_autofit_three_column_cases((0,))
+
+
+def nested_autofit_child_margin_cases():
+    margins = ('0-0-20-40', '40-5-0-0', '2-9-3-8', '10-30-10-30')
+    return {f'{margin}-{page}' for margin in margins for page in (612, 900)}
+
+
+def nested_autofit_four_column_cases():
+    return {f'{host}-{order}-{margin}-{page}' for host in (0, 2, 3)
+            for order in ('mn', 'nm') for margin in ('10-30', '30-10')
+            for page in (700, 755, 820, 1000)}
+
+
+def nested_autofit_two_host_cases():
+    return {f'{text_column}-{page}' for text_column in (0, 1, 2)
+            for page in (612, 690, 770, 900)}
+
+
+def nested_fixed_parent_width_cases():
+    widths = (2500, 2823, 2954, 2963, 3023, 3043)
+    return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
+
+
+def nested_fixed_grid_fit_cases():
+    shapes = ('equal', 'unequal', 'descending', 'middle-largest')
+    margins = ('table', 'individual')
+    return ({f'baseline-{shape}-{budget}' for shape in shapes for budget in (2801, 2903, 3001, 3103)}
+            | {f'margins-{shape}-{margin}-{budget}' for shape in shapes for margin in margins
+               for budget in (2800, 2903, 3103)}
+            | {f'host-{shape}-{margin}-{padding}' for shape in ('unequal', 'middle-largest')
+               for margin in margins for padding in ('0-0', '20-35')}
+            | {f'width-{columns}-{kind}-{budget}' for columns in (2, 3, 4)
+               for kind in ('full', 'percentage', 'absolute') for budget in (2800, 2904, 3000, 3104)})
+
+
+def nested_fixed_variable_row_cases():
+    rows = ('crossed', 'crossed-first', 'diff-margins', 'diff-margins-first',
+            'left-first', 'margins-first-only', 'margins-second-only', 'one-column',
+            'right-first', 'rotated', 'rotated-first', 'same', 'same-margins',
+            'split-equal', 'wide-first', 'wide-second', 'widest-opposite-padding',
+            'width-and-margins', 'width-and-margins-first')
+    return {f'{row}-{width}-{budget}' for row in rows for width in ('full', 'absolute')
+            for budget in (2701, 2903, 3103, 3701)}
+
+
+def nested_fixed_mixed_width_cases():
+    mixed = {
+        'core': (('absolute-control', 'all-pct', 'one-pct', 'alternating-absolute',
+                  'alternating-pct', 'pct-short-total', 'pct-over-total', 'pct-rows-opposed',
+                  'one-auto', 'one-nil', 'all-auto', 'one-auto-one-pct'), (2701, 2903, 3103, 3701)),
+        'ties': (('single-fraction-first', 'single-fraction-middle', 'single-fraction-last',
+                  'two-fractions', 'two-fractions-near-total', 'two-fractions-above-total',
+                  'two-fractions-same-tie'), (2702, 2770, 2902, 3102)),
+        'order': (('pct25-abs-pct50', 'pct50-abs-pct25', 'abs-pct25-pct50', 'abs-pct50-pct25',
+                   'pct25-pct50-abs', 'pct50-pct25-abs'), (2701, 2702, 2703, 2704)),
+        'margins': (('one-pct-first-margins', 'one-pct-mid-margins', 'all-pct-margins',
+                     'two-pct-margins', 'two-pct-near-margins', 'two-pct-above-margins'),
+                    (2701, 2702, 3102, 3701)),
+    }
+    automatic = ('auto-auto', 'nil-auto', 'missing-missing', 'auto-nil', 'auto-dxa',
+                 'dxa-auto', 'auto-pct', 'pct-auto')
+    return ({f'{group}-{case}-{width}-{budget}' for group, (cases, budgets) in mixed.items()
+             for case in cases for width in ('full', 'absolute') for budget in budgets}
+            | {f'auto-{case}-{grid}-{budget}' for case in automatic for grid in (420, 700, 1100, 1400)
+               for budget in (2702, 3701)}
+            | {f'near-{position}-abs{order}-full-{budget}' for position in ('first', 'middle', 'last')
+               for order in ('', '-reversed') for budget in range(2697, 2707)})
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -112,6 +265,56 @@ CAPTURES = (
      'word-windows-edge-nested-percent-resized-', nested_percent_resize_cases, ('--unclipped-tables',)),
     ('spaced-table-border-content', '2ae9c231f0f24f1db3ffb1dcf4d2750e0cd26d1532db6875e3478bba55f5732b',
      'word-windows-edge-spaced-border-content-', spaced_border_content_cases, ('--unclipped-tables',)),
+    ('nested-autofit-advances', 'f9c1d198abd4127a2b18565b9a5ed3c0d6d6bbec3a8127750afb3dbd08255d30',
+     'word-windows-edge-nested-autofit-advance-', nested_autofit_advance_cases, ('--unclipped-tables',)),
+    ('nested-autofit-resize', 'ff433fbc065d00c29fedcf9b4883aed2315360573e697f3a9628b0ad41b4cdce',
+     'word-windows-edge-nested-autofit-resize-', nested_autofit_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-floors', '1cee360c6106b320e55b1bee7305b65690d451635396683b3d28b346ba4ce173',
+     'word-windows-edge-nested-autofit-floor-', nested_autofit_floor_cases, ('--unclipped-tables',)),
+    ('nested-autofit-twip-rounding', '9d245fc3f85d693bf8ebe5ba8d0e68f0f135e0ad4f2a874f3129e228f6bac3cc',
+     'word-windows-edge-nested-autofit-twip-', nested_autofit_twip_cases, ('--unclipped-tables',)),
+    ('nested-autofit-parent-save', '20baa90e1c64349caa5e4f62d176c79ae90d7613b52d7ada1714fa53a7992587',
+     'word-windows-edge-nested-autofit-parent-save-', nested_autofit_parent_save_cases, ('--unclipped-tables',)),
+    ('nested-autofit-batch-resize', 'e5b5025d5a739bb0d0600b7f8480e4445dfd6e9bbebe5d326094ab22e986165b',
+     'word-windows-edge-nested-autofit-batch-', nested_autofit_batch_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-insert-then-resize', 'da85a47acd53ce3a5fdab52afdb940fb38a655415a9cbd4b0189ef42730433bf',
+     'word-windows-edge-nested-autofit-insert-then-resize-', nested_autofit_insert_then_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-implicit-frame', '5afd2f9d7807d30ae6ea9bfb9a1ee386a896dcbac818aca6368f22a6e7814f3f',
+     'word-windows-edge-nested-autofit-implicit-frame-', nested_autofit_implicit_frame_cases, ('--unclipped-tables',)),
+    ('nested-autofit-text-content', 'b05ee7303b2be4060258c44b6e8f422e798dea9598dc99cb8777214c11eff62f',
+     'word-windows-edge-nested-autofit-text-content-', nested_autofit_text_content_cases, ('--unclipped-tables',)),
+    ('nested-autofit-text-frame', 'cf6ddf00d54d91060ba4300bb2854f5795c5174c1fea5341c3bbd7957c934da1',
+     'word-windows-edge-nested-autofit-text-frame-', nested_autofit_text_frame_cases, ('--unclipped-tables',)),
+    ('nested-autofit-text-margins', '4655cc387ae017dc7e0231b2cc2c774d4fa0d9f5bec67a235e3fb79a6068ecec',
+     'word-windows-edge-nested-autofit-text-margins-', nested_autofit_text_margin_cases, ('--unclipped-tables',)),
+    ('nested-autofit-text-indents', 'e028a6919acaa28f95873a3ad6f5c1aac4a4936155ab72c9a7d66c261083e2aa',
+     'word-windows-edge-nested-autofit-text-indent-', nested_autofit_text_indent_cases, ('--unclipped-tables',)),
+    ('nested-autofit-text-resize', '211ea877a390cbc7d58e9eb70b9eb843910b1436fa02a17d07eda4fc14567168',
+     'word-windows-edge-nested-autofit-text-resize-', nested_autofit_text_frame_cases, ('--unclipped-tables',)),
+    ('nested-autofit-text-overflow', '45f6f45cbda73e9fdd2462dd398c22974d1c9790ceb05e296df70943d161aedb',
+     'word-windows-edge-nested-autofit-text-overflow-', nested_autofit_text_overflow_cases, ('--unclipped-tables',)),
+    ('nested-autofit-cell-margin-weights', '52c4b8ea80dbb19c3b2174760d9b6cbcc2fb0d27685b1965be2e36b39216d267',
+     'word-windows-edge-nested-autofit-cell-margin-weights-', nested_autofit_cell_margin_weight_cases, ('--unclipped-tables',)),
+    ('nested-autofit-three-column-clamp', 'c1985e68cd9297ebed48609bd889a20a0ecf2963020ebb5b4dc1eda1cd3c914f',
+     'word-windows-edge-nested-autofit-three-column-clamp-', nested_autofit_three_column_cases, ('--unclipped-tables',)),
+    ('nested-autofit-host-first', '7fd77c7a3c99418d65ad6850a704e2b03e95fab0361267cb5faa64f1e636df3f',
+     'word-windows-edge-nested-autofit-host-first-', nested_autofit_host_first_cases, ('--unclipped-tables',)),
+    ('nested-autofit-child-margins', '8a647aa23411efd0f5df637c95dec1aff219aae1b33da83837f05ca17fca28be',
+     'word-windows-edge-nested-autofit-child-margins-', nested_autofit_child_margin_cases, ('--unclipped-tables',)),
+    ('nested-autofit-four-column-margins', '4f16a90d49bf5630f8d5526d1d98667a23b48f9369d66acd1db4703d8c72aba6',
+     'word-windows-edge-nested-autofit-four-column-margins-', nested_autofit_four_column_cases, ('--unclipped-tables',)),
+    ('nested-autofit-two-nested-hosts', 'cd39f3e2acf173c90136b8dbbb45528738345ed24398f8313689adc8f13c087e',
+     'word-windows-edge-nested-autofit-two-nested-hosts-', nested_autofit_two_host_cases, ('--unclipped-tables',)),
+    ('nested-fixed-advances', '842bd436081f746899214dc718aa4371d16ae5d0ab7049a61c5742960f3e0920',
+     'word-windows-edge-nested-fixed-advance-', nested_table_advance_cases, ('--unclipped-tables',)),
+    ('nested-fixed-parent-widths', '88c2b573ec528d89c9797815aef9c6b1373b1b4f53985fc2420cc02f4d379595',
+     'word-windows-edge-nested-fixed-floor-', nested_fixed_parent_width_cases, ('--unclipped-tables',)),
+    ('nested-fixed-grid-fit', 'dd83a184031b57208324f102eb1797f37a7e2d4dcdd54bb1c416514d0045a756',
+     'word-windows-edge-nested-fixed-grid-fit-', nested_fixed_grid_fit_cases, ('--unclipped-tables',)),
+    ('nested-fixed-variable-rows', 'f11e49bd496af8243ed8edf17c689392af4b6df6b71c8354243d1d88ac98b7f2',
+     'word-windows-edge-nested-fixed-variable-rows-', nested_fixed_variable_row_cases, ('--unclipped-tables',)),
+    ('nested-fixed-mixed-widths', 'fefe9c0be201338ccf623e6ed759a03df23a83a4fb38e352de36b84993e9b183',
+     'word-windows-edge-nested-fixed-mixed-widths-', nested_fixed_mixed_width_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -147,6 +350,17 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
         'nested-table-resize', 'table-cell-border-content', 'nested-table-percent-resize',
         'spaced-table-border-content',
+        'nested-autofit-advances', 'nested-autofit-resize', 'nested-autofit-floors',
+        'nested-autofit-twip-rounding', 'nested-autofit-parent-save', 'nested-autofit-batch-resize',
+        'nested-autofit-insert-then-resize', 'nested-autofit-implicit-frame',
+        'nested-autofit-text-content', 'nested-autofit-text-frame',
+        'nested-autofit-text-margins', 'nested-autofit-text-indents',
+        'nested-autofit-text-resize', 'nested-autofit-text-overflow',
+        'nested-autofit-cell-margin-weights', 'nested-autofit-three-column-clamp',
+        'nested-autofit-host-first', 'nested-autofit-child-margins',
+        'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
+        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
+        'nested-fixed-mixed-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
@@ -208,14 +422,22 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
                     require_original_font_programs_registered(fonts_dir, snapshot)
                 require(native_pdf.read_bytes() != pdf_bytes, f'{name}: Word self-comparison')
                 painted = pdf_origins(native_pdf)
-                require(pdf_page_sizes(word_pdf) == pdf_page_sizes(native_pdf),
+                page_sizes = pdf_page_sizes(word_pdf)
+                require(page_sizes == pdf_page_sizes(native_pdf),
                         f'{name}: vector PDF page sizes differ from Word')
                 # The snapshot stores list labels in a separate collection.
                 # Match its complete glyph set by page and origin. The vector
                 # PDF also carries the visible reading order.
                 if '--unclipped-tables' in native_options:
                     full_word = pdf_origins(word_pdf, unclipped=True)
-                    compare(full_word, snapshot, f'{name} unclipped layout origins')
+                    # The PDF sheet clips glyphs outside its physical page.
+                    # The screen EMF supplies complete layout in that case.
+                    off_page = check_screen and any(
+                        not (0 <= x <= page_sizes[page - 1][0] and 0 <= y <= page_sizes[page - 1][1])
+                        for page, _, x, y in screen['glyphs']
+                    )
+                    if not off_page:
+                        compare(full_word, snapshot, f'{name} unclipped layout origins')
                     full_painted = pdf_origins(native_pdf, unclipped=True)
                     # Removing clip paths can change extraction order. Compare
                     # those extra glyphs by page and origin, and assert the
