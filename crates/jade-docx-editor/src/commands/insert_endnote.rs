@@ -10,6 +10,7 @@ pub struct InsertEndnoteCommand {
     initial_text: String,
     snapshot: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
+    custom_mark: Option<String>,
 }
 
 impl InsertEndnoteCommand {
@@ -19,7 +20,14 @@ impl InsertEndnoteCommand {
             initial_text,
             snapshot: None,
             previous_selection: None,
+            custom_mark: None,
         }
+    }
+
+    /// The note's reference is `mark` (Word's 任意の記号), not a number.
+    pub fn with_custom_mark(mut self, mark: String) -> Self {
+        self.custom_mark = Some(mark);
+        self
     }
 }
 
@@ -101,11 +109,21 @@ impl Command for InsertEndnoteCommand {
             .document
             .snapshot_including_package()
             .ok_or_else(|| CommandError::Custom("document is unavailable".into()))?;
-        if let Err(error) = ctx.document.insert_endnote_at(
-            model_position.paragraph,
-            model_position.offset,
-            &self.initial_text,
-        ) {
+        let inserted = match self.custom_mark.as_deref() {
+            Some(mark) => ctx.document.insert_note_with_mark_at(
+                false,
+                model_position.paragraph,
+                model_position.offset,
+                &self.initial_text,
+                mark,
+            ),
+            None => ctx.document.insert_endnote_at(
+                model_position.paragraph,
+                model_position.offset,
+                &self.initial_text,
+            ),
+        };
+        if let Err(error) = inserted {
             ctx.document.restore_snapshot(snapshot);
             *ctx.selection = previous_selection;
             return Err(CommandError::Custom(error));
@@ -346,7 +364,7 @@ mod tests {
             let stored_text = note.body.iter().filter_map(|element| element.as_paragraph())
                 .flat_map(|paragraph| paragraph.runs.iter())
                 .map(|run| run.text.as_str()).collect::<String>();
-            prop_assert_eq!(stored_text, format!("\t{note_text}"));
+            prop_assert_eq!(stored_text, format!(" {note_text}"));
             let reference_ids = document.paragraph(0).expect("body paragraph").runs.iter()
                 .flat_map(|run| run.endnote_reference_ids.iter()).cloned().collect::<Vec<_>>();
             prop_assert_eq!(reference_ids, vec!["2".to_string()]);
@@ -549,7 +567,11 @@ mod tests {
         assert!(endnotes.contains("w:uri=\"urn:jade:preserve\""));
         assert!(endnotes.contains("<w:endnote w:id=\"7\""));
         assert!(endnotes.contains("<w:endnote w:id=\"8\""));
-        assert!(endnotes.contains(">second</w:t>"));
+        // Word's space after the number, a run of its own, then the text.
+        assert!(
+            endnotes.contains(r#"<w:t xml:space="preserve"> </w:t></w:r><w:r><w:t>second</w:t>"#),
+            "{endnotes}"
+        );
         assert!(exported_part(&document, "word/endnotes.xml").is_none());
         let relationships = exported_part(&document, "word/_rels/document.xml.rels")
             .expect("document relationships");

@@ -1,0 +1,718 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T152657374Z-70b2d6ba",
+  "captured_at_utc": "2026-11-20T15:26:57.3962370Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m14-manual-w3000.docx",
+      "sha256": "2413f20fda7d5f01a147ce781b140d922318d61beca9233e776817b3e362b57f",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "ceb8a2030cb8751aebc70b0b9f3adab9ea5aca4aab6e6a5c3ea0afbc82780dfb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m14-manual-w3000.xps",
+      "xps_sha256": "363b9904e3de2fe756703eb916bea4e6a78dd30736143b80c4c05ae289b692a6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b8da0d160fd862eebd2f84a1d10e35a7eb028be04c7456b3962d9e000eca46b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m14-manual-w3000.docx",
+      "sha256": "5b7d32e8a81bdc3a69097397f1f74bad7be85d1f6aad611a35fc7ac26808f23a",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "6a879c0623fee8f1c0e4c3edf92e21f225457ce6f76ea52773e13a2a9f699bdc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m14-manual-w3000.xps",
+      "xps_sha256": "47bdd9796d3895ee265da0bbcc27414ba9d46334e7add514c8728cce360335fb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b8da0d160fd862eebd2f84a1d10e35a7eb028be04c7456b3962d9e000eca46b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m14-manual-w3000.docx",
+      "sha256": "6269165f335e1cdddae711edbb654747ba8def61decce533cf9c2dcd47614a6e",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "182126b1666f294158cde2b62fd1c79e9a3df954c539b6f43222e7dadf12ece9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m14-manual-w3000.xps",
+      "xps_sha256": "0bfca8ed624c257811b8c7f8937f5dea42cf813e2497d30210ff959a6a6baf7d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b8da0d160fd862eebd2f84a1d10e35a7eb028be04c7456b3962d9e000eca46b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m14-manual-w8504.docx",
+      "sha256": "3d45d913b448739572d6238a5e1ce29dd8ab5c3bea9eea048fd5d34e198e21c0",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "32024eb6ab59983c092e9adcc1f7197bbeab3bf6939ec627b8dcbd3e0154733d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m14-manual-w8504.xps",
+      "xps_sha256": "e87747ada8f4e5ec03bf57038470c0a3a947ca70c6bed347b9a41604a3271dae",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "1b527d66aa0bbb5935f226724783f66f8455b967ebcfa06746f80a62f3d3e8eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m14-manual-w8504.docx",
+      "sha256": "bd45a7ec67d31fd2ced00df60e47d684b78525c2ad4d6b12dd9365c5b165c667",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "aa2a13e6b0572bdd9bd069cbb0436c0a431f9213d3a7da21acc1aa3b0059345c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m14-manual-w8504.xps",
+      "xps_sha256": "a5353f68c6f3c9a92bdb821080fe80c64aa4af9fb6708fd77f7222c2523d97eb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "1b527d66aa0bbb5935f226724783f66f8455b967ebcfa06746f80a62f3d3e8eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m14-manual-w8504.docx",
+      "sha256": "0f1aea07eabc3f58ee379a3bdac0aee90d371b2f3b67756f62d2b43569abd846",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "3108acb0151125bc906678abf37924992ebc5abb0e28d1891fbea7a8c9d079ed",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m14-manual-w8504.xps",
+      "xps_sha256": "e593326a9a12fe2889fc7bc0aa3a4ad2e339cdfab62321943caa8d1e196016fe",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "1b527d66aa0bbb5935f226724783f66f8455b967ebcfa06746f80a62f3d3e8eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000.docx",
+      "sha256": "4fa15519463d61412e9e2d2f142c0adbfff8793fb1a4a6d84324dffd900e36e4",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "f74af402f2c8ccc80655a318c87795cf1bd4cf6e188d73235ca49f7465c7e496",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "2a465fa055b1e745335ea71006d7d4ed42f503e63d9f0c8e9e111d370a3dc831",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000.docx",
+      "sha256": "d079f4d198ae8bd9256fbad5ed7c22e8f5a5b3062a8e11ff03df1026c3eec031",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "defb4b0e42ab1e874d3aeffdd86e23f6a4d7b8fd5b772bb37a6bee72b323da0a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "1303706594a72b00ba36203be75b8fa61eed5cdea85f86ea9a89b8eceff4affa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000.docx",
+      "sha256": "108032589b38562ad51fe20198e63103c47e027b67471a413767200be66511c3",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "5fe8a5febd9189d41bf671856990c40b3fea95b1b7c470b282f73b3ef8b44f57",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "07abce557de81130ec332cba011683091227cc0e981f65d8eee868921cef8aee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504.docx",
+      "sha256": "98a79d1dc73955085b5c901c3e799990bff943f16eab2b466884c18363bbd6d9",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "1501606069bad8fde7467196ee989ee0c4f8339a506c885df7a08f41897d8ed9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "27960781e74368b74a9c3737839153b1142c66ea4201b2b9bf525c5b177d39e2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504.docx",
+      "sha256": "030cea5fa7225c398ec562a051f3ddfb33acc625637ddda76d5c8637644a6141",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "a65a016af10864efbebcf36c609d2f7feedb665e2529a826f5026aff013fe9d9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "2e1736387c971a0920375070ff6b9b2a93b42f3c87541b51120c258f3117090a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504.docx",
+      "sha256": "93a522bfee207c44d746d630708cd077cedc685556e67335f6c701fa66d4915a",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "15de9f2112636b6ce4d1f98ff1fc12fae7230ad865354d9b0649d4e5004ec63d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "869ecc7866505ffba54b831f693fdd1b86e82c25b536d7aa0b5e465a0b3f4962",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m15-manual-w3000.docx",
+      "sha256": "28c5d98d88933a2cb03c014f36b4051e4a6d7333aa8fb41ade8f6c62f412b9d2",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "52ceacbdc3ce1d3ef1a00654d9f48e1797e3c567eeed911e96a5d0003a77b8c7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m15-manual-w3000.xps",
+      "xps_sha256": "2206b215274696a3e3f10e4a16f73182b1bd0942c66fc1d4904f34fe558739ee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "e554e8e93a7e8ce89a5e809f043b289e8867ab2464168401c53bee3bffb66343",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m15-manual-w3000.docx",
+      "sha256": "0b3afa73b09275c0c1789ee8d30c3bde2c06b36832bf9ff4b86602cc226e2cf7",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "3e7ad830fde32526b86e79a3454a2617ef325419a78dae215d94c35627bd56a1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m15-manual-w3000.xps",
+      "xps_sha256": "fc00b586e5fecfe641927ba39905f9cb6b9ca459dd5137bb17572b34f5c51394",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "e554e8e93a7e8ce89a5e809f043b289e8867ab2464168401c53bee3bffb66343",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m15-manual-w3000.docx",
+      "sha256": "626cd3142bdbcbe1aec7bc05b08ee291417af6c33ae5d728ebaa1bc7b814b664",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "2655b11c02d40caf1b45fff0e9f944fe84ab901d8706114a33df79240522913b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m15-manual-w3000.xps",
+      "xps_sha256": "ba9f3e34a74da7c443d2819f970338cdd4ef23b64234ffb27bc8a3112744ecd0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "e554e8e93a7e8ce89a5e809f043b289e8867ab2464168401c53bee3bffb66343",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m15-manual-w8504.docx",
+      "sha256": "776d04d0204b1f1ea1b9e2e8bc60b75d304f143939beaf0dd2d0ae892c86ccf0",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "5edafb2bf4dbffa2c2b30654b46f4f21987f07480b0cc8de626f1c4a1fbbaf1c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m15-manual-w8504.xps",
+      "xps_sha256": "a55329b448c0ba3df6b57281346f219bbd16eeebc1dbdece4d192f92ea500c0e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "8e4cd463b8d412272e6465a4ce78da172cb74d275c2947ee34e079c713e673e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m15-manual-w8504.docx",
+      "sha256": "092e54944faf470b8e13dce04e8a24615e0541e0ec37569ded57d9c84695b3cf",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "40342601d6369ec8e29745b2b095418865881196546f92206f012200d2ce35e4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m15-manual-w8504.xps",
+      "xps_sha256": "d937610779d044b8b141d814ca23fdfc3bb005e44bd94abc1b6f6217a0867226",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "8e4cd463b8d412272e6465a4ce78da172cb74d275c2947ee34e079c713e673e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m15-manual-w8504.docx",
+      "sha256": "9942554de93f2c1a76731e3a0d7f24dfc4a7b41cbbc77e7413b8ae0602e24ffd",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "137e1f9edd041d0d29a1e6532d5b33bdbf88d95fb7dd43936c3867518da3cfe5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m15-manual-w8504.xps",
+      "xps_sha256": "400b26812c8236ab146833338615b1af35f3df6c6dd6ca0e102badf5878062d2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "8e4cd463b8d412272e6465a4ce78da172cb74d275c2947ee34e079c713e673e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000.docx",
+      "sha256": "52400d06aee929f9b914e757ad984f39e4d04741c87794bea6664b8d3ebb5057",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "b519952709c8bc91fd1e3cfb905ac0160e13a4c42629b310788cc7d38e7acc0d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "f5f84b344ea3bc6178b7f1d6c1ece9789f851463c133a789cddbca403b3fc73a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000.docx",
+      "sha256": "c30ccee05ff17d407c9c8bebb48b4f5041df0d25ffe2e56f83d5aea1dbeb70d6",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "14bd1ce819c8bcad8fd2dfe87289e53168d47bdba1715101a6bba94fcd923340",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "e40a685d06ca9c8ad9cc76325b437ba9adf07083705000b87508fb7bec0447aa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000.docx",
+      "sha256": "9fc54cdd08ac8db22dceaab44624aa3e5648b1674092ec9c4d1f085556154799",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "44c65dea2ba62ac416b36baecb7cf29e4d89fbf56c0ed0b24156c836434cc069",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "5bfdb0531526072e91ffb6db85b39e04357b0da156270d371f5cadc89b538c17",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504.docx",
+      "sha256": "150344b1007cf05525e13261d6cac531fd934824f1b5a3d77e888afd8253aa74",
+      "pdf": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "fd52457acde8d3d79d1c935c352b7c6cc5b51e95b51eb999dbf840130185f64a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "75705500df531cdbf15d9104a779b1d198f688d8b8ad77abf5f7238d79ab939f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504.docx",
+      "sha256": "09d1e02ec37e39814497633f6fab53e219098945ba2bfd639cffe97462da0c68",
+      "pdf": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "6ade40c15a3897104d874c66b1ba4fecd46fbe91fcc8d2ca31242c7fbac9fc94",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "13bb0211a5baf1b797666c74eda10c6154f78bf7e318847d78e888acbb30677a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-font-family-cjk-case-inputs\\word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504.docx",
+      "sha256": "91e40dc90caa6c30b15ce0c3022d523ef995f22ee68b0c7e8d12608b214bdda1",
+      "pdf": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "67f8e7a7882711aa6f80bb36d6ec56e6aecf60676e03435ac3ace28b9195c45f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "40f4ae6e5745869f597f50a1850c3dff44656cfd6ddda6872a3451c91b4f039b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

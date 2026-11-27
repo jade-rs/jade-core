@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T204201374Z-f405280f",
+  "captured_at_utc": "2026-11-15T20:42:01.3857799Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-script-fallback-arial-hang-ja-compat15",
+      "source": "..\\w16-r-script-input-snapshots\\word-windows-edge-script-fallback-arial-hang-ja-compat15.docx",
+      "sha256": "0b689a4ceee289664f3ff107f64e1ecbb019bd4294c029fbd5040451198b4966",
+      "pdf": "word-windows-edge-script-fallback-arial-hang-ja-compat15.pdf",
+      "pdf_sha256": "4c673ec8b9fb68b881f4a9b26576fc4d018324a7d197ac2f885d0c3fac56d49f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-script-fallback-arial-hang-ja-compat15.page-001.emf",
+          "sha256": "b87975d1fb4ec97219bcbc1d787f3ab57ef7739452144d9a33afd803225a4ed8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

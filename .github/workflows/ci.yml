@@ -96,8 +96,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    # A stalled dependency install used to burn the full six-hour default.
-    timeout-minutes: 45
+    # Workspace tests can take 37 minutes before the mandatory 2,034-document
+    # edit/export/reopen audit. Keep dependency setup bounded separately.
+    timeout-minutes: 60
     env:
       # Keep hundreds of test binaries/link jobs within hosted-runner disk and memory.
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -113,13 +114,16 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 10
 
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        timeout-minutes: 10
 
       - name: Cargo property tests (headless API)
         run: cargo test -p jade-docx-editor --all-features property_
 
       - name: Cargo test
+        timeout-minutes: 45
         run: |
           cargo test --all --all-features -- \
             --skip text_extract::tests::extracts_expected_first_wrapped_line_from_yokohama_mini \
@@ -143,6 +147,7 @@ jobs:
         run: python3 -m unittest discover -s tests/word-oracle/mac-probes-20261019/generators -p test_object_spaces_probe.py
 
       - name: Audit edited DOCX fixture corpus
+        timeout-minutes: 15
         run: |
           python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
           python3 scripts/audit-mac-release-corpus.py
@@ -159,6 +164,11 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install Word reference verification dependencies
+        run: python -m pip install -r scripts/word-oracle/requirements-borders.txt
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           workspaces: |
@@ -215,6 +225,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Install Word reference verification dependencies
+        run: python -m pip install -r scripts/word-oracle/requirements-borders.txt
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
@@ -225,8 +240,115 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
+      - name: Assert independent Mac and Windows original references
+        run: |
+          python3 -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
+          python3 scripts/word-oracle/check_platform_coordinates.py
       - name: Compare Mac drawing coordinates with committed Word references
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+      - name: Assert actual captured Mac source with original Word font programs
+        run: |
+          cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+          python3 scripts/word-oracle/check_mac_captured_source.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original
+      - name: Upload original Mac oversized manual-break row coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-oversized-manual-break-row-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-oversized-row-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/nested-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-cell-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-row-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-table-flow-split-rows-continuous-cell-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/latin-break-budget-630
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/latin-row-real-continuation
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac fixed-percentage column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-fixed-percentage-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-narrow-first-2-9-fixed
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-fixed
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac unclipped merged-column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-unclipped-merged-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/unclipped-table-layout-originals
+            !crates/jade-docx-native-render/target/word-mac-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac visible-autofit column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-visible-autofit-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-narrow-first-2-9-no-header
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-no-header
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-0
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-16
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-4
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac automatic-grid column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-automatic-grid-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-table-flow-unequal-automatic-grid-start-column-1
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-table-flow-unequal-automatic-grid-start-column-2
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac table-numbering matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-table-numbering-matrix-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/numbering-table-matrix-mac
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac fixed-table matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-fixed-table-matrix-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/fixed-table-width-matrix-mac
+            !crates/jade-docx-native-render/target/word-mac-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Assert original Mac header-story coordinates and preserved Word versions
+        run: |
+          python3 -m unittest discover -s scripts/word-oracle -p test_mac_header_coordinates.py
+          python3 scripts/word-oracle/check_mac_header_coordinates.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory target/mac-header-originals
+      - name: Upload original Mac header-coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-header-original-coordinates
+          path: |
+            target/mac-header-originals
+            !target/mac-header-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Assert original Mac ZWNJ table coordinates
+        run: |
+          python3 scripts/word-oracle/test_zwnj_table_coordinates.py
+          python3 scripts/word-oracle/check_zwnj_table_coordinates.py --platform mac --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory target/mac-zwnj-table-coordinates
+      - name: Upload original Mac ZWNJ table results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-zwnj-table-coordinates
+          path: target/mac-zwnj-table-coordinates
+          if-no-files-found: ignore
       - name: Upload coordinate differences
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -238,18 +360,31 @@ jobs:
   windows-word-baselines:
     name: Windows Word baselines by version
     runs-on: windows-latest
-    timeout-minutes: 45
+    defaults:
+      run:
+        # GitHub runs explicit bash with -e -o pipefail. An earlier Python
+        # assertion must fail the step even if a later command would pass.
+        shell: bash
+    # All versioned originals are mandatory; the expanded corpus also runs
+    # border, print and editing gates after the four-plane font comparisons.
+    timeout-minutes: 105
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target/windows-word-baselines
       RUSTUP_TOOLCHAIN: stable
       SKIA_BINARIES_URL: https://github.com/rust-skia/skia-binaries/releases/download/0.87.0/skia-binaries-e551f334ad5cbdf43abf-x86_64-pc-windows-msvc-pdf-svg-textlayout-vulkan-webpd-webpe.tar.gz
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_PROFILE_DEV_OPT_LEVEL: '1'
+      CARGO_PROFILE_TEST_OPT_LEVEL: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '2'
     steps:
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The actual synthetic-merge tree and its PR parent are both bound
+          # into the downloadable renderer's provenance record.
+          fetch-depth: 2
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -270,6 +405,33 @@ jobs:
       - name: Verify unpromoted original Windows Word observations
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_observations.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_family_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_style_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_subset_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_wrap_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_column_table_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_minimum_line_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_percentage_table_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_size_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_nominal_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_printer_toggle_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_positive_kerning_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_xps.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_color_span_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_y_pdf_context_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_device_remainder_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_ascii.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_space_pair_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_face_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_slot_spacing_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_header_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_table_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_heading_break_probes.py
@@ -277,17 +439,198 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_missing_font_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_japanese_graphic_text_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_justification_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_justification_size_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_justification_width_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_justification_threshold_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_manual_size_threshold_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_small_slack_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_fallback_spacing_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_balanced_font_slot_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_cross_font_slot_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_fallback_style_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_autooff_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_balanced_space_letter_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_plain_space_letter_probes.py
           python scripts/word-oracle/check_windows_observations.py
       - name: Reconstruct registered origins from original Word drawing files
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
       - name: Verify border displacement and missing-paint rejection cases
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_borders.py
       - name: Build vector drawing probe
+        id: windows-coordinate-renderer
         run: cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+      - name: Record Windows coordinate renderer provenance
+        id: windows-coordinate-renderer-provenance
+        env:
+          WORD_RENDERER_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python -m unittest discover -s scripts/ci -p test_word_renderer_build.py
+          python scripts/ci/record_word_renderer_build.py --executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output target/windows-word-baselines/word-renderer-build.json
+      - name: Upload verified Windows coordinate renderer
+        if: ${{ always() && steps.windows-coordinate-renderer-provenance.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-coordinate-renderer
+          path: |
+            target/windows-word-baselines/debug/examples/word_coordinates.exe
+            target/windows-word-baselines/word-renderer-build.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Assert native shaping platform boundaries
+        run: cargo test --manifest-path crates/jade-docx-layout/Cargo.toml --locked --features native-shaping --lib
+      - name: Assert Office cached-font discovery against original Word output
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_office_cloud_fonts.py
+          python scripts/word-oracle/check_windows_office_cloud_fonts.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert shared Mac originals against Windows Word version expectations
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_float_lookahead_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_title_tracking_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_ms_auto_spacing_probes.py
           python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned preferred-grid coordinates and original vector borders
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-preferred-grid-coordinate-results
+          path: |
+            target/platform-word-coordinates/probe-width-single-pct-2500-pct-2500
+            target/platform-word-coordinates/probe-width-unequal-dxa-2400-dxa-2000
+            target/platform-word-coordinates/probe-width-unequal-pct-2500-auto-0
+            target/platform-word-coordinates/probe-width-unequal-pct-2500-dxa-2000
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows fixed-percentage column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-fixed-percentage-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-fixed
+            target/platform-word-coordinates/probe-unequal-variant-three-24-fixed
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows RTL merged-column coordinates and rules
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-rtl-merged-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows oversized manual-break row coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-oversized-manual-break-row-coordinates
+          path: |
+            target/platform-word-coordinates/table-oversized-row-after-spacing-*
+            target/platform-word-coordinates/nested-after-spacing-*
+            target/platform-word-coordinates/table-row-without-headings-mac
+            target/platform-word-coordinates/table-cell-after-spacing-*
+            target/platform-word-coordinates/table-row-after-spacing-*
+            target/platform-word-coordinates/probe-table-flow-split-rows-continuous-cell-spacing-*
+            target/platform-word-coordinates/latin-break-budget-630
+            target/platform-word-coordinates/latin-row-real-continuation
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows fraction coordinates and vector rules
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-math-fraction-coordinates
+          path: |
+            target/platform-word-coordinates/probe-math-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows visible-autofit column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-visible-autofit-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-no-header
+            target/platform-word-coordinates/probe-unequal-variant-three-24-no-header
+            target/platform-word-coordinates/probe-unequal-continuation-border-0
+            target/platform-word-coordinates/probe-unequal-continuation-border-16
+            target/platform-word-coordinates/probe-unequal-continuation-border-4
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows automatic-grid column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-automatic-grid-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-table-flow-unequal-automatic-grid-start-column-1
+            target/platform-word-coordinates/probe-table-flow-unequal-automatic-grid-start-column-2
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows table-numbering matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-table-numbering-matrix-coordinates
+          path: |
+            target/platform-word-coordinates/numbering-table-matrix-mac
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows fixed-table matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-fixed-table-matrix-coordinates
+          path: |
+            target/platform-word-coordinates/fixed-table-width-matrix-mac
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows header-tab coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-header-tab-coordinates
+          path: |
+            target/platform-word-coordinates/header-tab-overflow-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned numbering coordinate comparisons
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-numbering-coordinate-results
+          path: |
+            target/platform-word-coordinates/numbering-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Assert versioned Windows control-character coordinates and absence of extra ink
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_control_coordinates.py
+          python scripts/word-oracle/check_windows_control_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-control-coordinates
+      - name: Upload versioned Windows control-character results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-control-coordinates
+          path: target/windows-control-coordinates
+          if-no-files-found: ignore
+      - name: Assert versioned Windows ZWNJ table coordinates and clipped text
+        run: |
+          python scripts/word-oracle/test_zwnj_table_coordinates.py
+          python scripts/word-oracle/check_zwnj_table_coordinates.py --platform windows --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-zwnj-table-coordinates
+      - name: Assert versioned Windows page breaks in paragraphs and tables
+        run: |
+          python scripts/word-oracle/check_windows_manual_page_breaks.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-manual-page-breaks
+          cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test manual_page_break --test nested_table_resize
+      - name: Upload versioned Windows ZWNJ table results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-zwnj-table-coordinates
+          path: target/windows-zwnj-table-coordinates
+          if-no-files-found: ignore
       - name: Reconstruct versioned Windows script metrics from original Word output
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_script_metrics.py
@@ -295,9 +638,268 @@ jobs:
       - name: Assert Windows font coordinates with original Word embedded fonts
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_coordinates.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_numeric_spacing_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_courier_grid_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_paragraph_backgrounds.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert versioned Windows Word manual-break XPS origins
+        run: python scripts/word-oracle/check_windows_hard_break_spaces.py --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert versioned Windows Word mixed-face justification and source font metrics
+        run: python scripts/word-oracle/check_windows_mixed_face.py --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert versioned Windows Word mixed-script font-slot spacing
+        run: python scripts/word-oracle/check_windows_font_slot_spacing.py --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert versioned Windows Word space-pair kerning XPS origins
+        run: python scripts/word-oracle/check_windows_space_pair.py --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert versioned Windows Word legacy justification and pending text
+        run: python scripts/word-oracle/check_windows_legacy_justification.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert source-form Windows hyphen paint against original Word fonts
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_hyphen_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_hyphen_paint.py
+          python scripts/word-oracle/check_windows_hyphen_paint.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows Aptos nominal screen origins and validated PDF origins
+        run: python scripts/word-oracle/check_windows_aptos_nominal.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows nominal coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-aptos-nominal-differences
+          path: target/windows-aptos-nominal
+          if-no-files-found: ignore
+      - name: Assert Windows positive kerning screen and validated PDF origins
+        run: python scripts/word-oracle/check_windows_positive_kerning.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows positive kerning coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-positive-kerning-differences
+          path: target/windows-positive-kerning
+          if-no-files-found: ignore
+      - name: Assert Windows Arial and top-bottom geometry against original Word screen and PDF
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_clearance.py
+          python scripts/word-oracle/check_windows_top_bottom_clearance.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows top-bottom coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-top-bottom-coordinate-differences
+          path: target/windows-top-bottom-clearance
+          if-no-files-found: ignore
+      - name: Assert independent Windows Word screen and vector PDF origins
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_output_contexts.py
+          python scripts/word-oracle/check_windows_output_contexts.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows table screen, PDF and vector-rule coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_column_table_gate.py
+          python scripts/word-oracle/check_windows_column_tables.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows minimum-line coordinates and preserve screen geometry
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_minimum_line_gate.py
+          python scripts/word-oracle/check_windows_minimum_lines.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows percentage-table coordinates and preserve screen geometry
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_percentage_table_gate.py
+          python scripts/word-oracle/check_windows_percentage_tables.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows Aptos screen origins and validated PDF origins
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_size_gate.py
+          python scripts/word-oracle/check_windows_aptos_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows Word font-family case invariance
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_case.py
+          python scripts/word-oracle/check_windows_font_family_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows font-family case differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-family-case-differences
+          path: target/windows-font-family-cases
+          if-no-files-found: ignore
+      - name: Assert Windows mixed Japanese and Latin font-family case coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_cjk_case.py
+          python scripts/word-oracle/check_windows_font_family_cjk_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows mixed font-family case differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-family-cjk-case-differences
+          path: target/windows-font-family-cjk-cases
+          if-no-files-found: ignore
+      - name: Assert Windows Arial Calibri Times and Aptos family-case coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_other_case.py
+          python scripts/word-oracle/check_windows_font_family_other_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows other-family case differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-family-other-case-differences
+          path: target/windows-font-family-other-cases
+          if-no-files-found: ignore
+      - name: Assert all versioned Windows family-case metrics and original Word coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_extended_case.py
+          python scripts/word-oracle/check_windows_font_family_extended_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned Windows extended family-case coordinate observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-family-extended-case-differences
+          path: |
+            target/windows-font-family-extended-cases
+            !target/windows-font-family-extended-cases/**/fonts/*.ttf
+            !target/windows-font-family-extended-cases/**/fonts/*.otf
+            !target/windows-font-family-extended-cases/**/fonts/*.ttc
+            !target/windows-font-family-extended-cases/font-cache/**
+          if-no-files-found: ignore
+      - name: Assert original Windows Word Mincho coordinates at all captured sizes
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mincho_sizes.py
+          python scripts/word-oracle/check_windows_mincho_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned Windows Mincho size coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-mincho-size-differences
+          path: |
+            target/windows-mincho-sizes
+            !target/windows-mincho-sizes/**/fonts/*.ttf
+            !target/windows-mincho-sizes/**/fonts/*.otf
+            !target/windows-mincho-sizes/**/fonts/*.ttc
+            !target/windows-mincho-sizes/font-cache/**
+          if-no-files-found: ignore
+      - name: Assert all original Windows Word font-spacing contexts
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_spacing.py
+          python scripts/word-oracle/check_windows_font_spacing.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned Windows font-spacing coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-spacing-differences
+          path: |
+            target/windows-font-spacing
+            !target/windows-font-spacing/**/fonts/*.ttf
+            !target/windows-font-spacing/**/fonts/*.otf
+            !target/windows-font-spacing/**/fonts/*.ttc
+            !target/windows-font-spacing/font-cache/**
+          if-no-files-found: ignore
+      - name: Assert original Windows Word mixed long-run coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_long_mixed.py
+          python scripts/word-oracle/check_windows_long_mixed.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload original Windows Word mixed long-run results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-long-mixed-differences
+          path: |
+            target/windows-long-mixed
+            !target/windows-long-mixed/**/fonts/*.ttf
+            !target/windows-long-mixed/**/fonts/*.otf
+            !target/windows-long-mixed/**/fonts/*.ttc
+            !target/windows-long-mixed/font-cache/**
+          if-no-files-found: ignore
+      - name: Assert original Windows Word PDF paper bounds and glyph geometry
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p 'test_windows_emf*.py'
+          python -m unittest discover -s scripts/word-oracle -p test_windows_paper_geometry.py
+          python scripts/word-oracle/check_windows_paper_geometry.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload original Windows Word paper-geometry results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-paper-geometry-differences
+          path: |
+            target/windows-paper-geometry
+            !target/windows-paper-geometry/**/fonts/*.ttf
+            !target/windows-paper-geometry/**/fonts/*.otf
+            !target/windows-paper-geometry/**/fonts/*.ttc
+            !target/windows-paper-geometry/font-cache/**
+          if-no-files-found: ignore
+      - name: Assert independent versioned Windows Word XPS print origins
+        run: python scripts/word-oracle/check_windows_xps.py --compare-rendered
+      - name: Upload Windows Word XPS coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-xps-differences
+          path: target/windows-word-xps
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word color-span screen and print origins
+        run: python scripts/word-oracle/check_windows_color_spans.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows color-span coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-color-span-differences
+          path: target/windows-color-spans
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word word-boundary screen and print origins
+        run: python scripts/word-oracle/check_windows_word_boundaries.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows word-boundary coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-boundary-differences
+          path: target/windows-word-boundaries
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word repeated-y screen and print origins
+        run: python scripts/word-oracle/check_windows_y_lengths.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows repeated-y coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-y-length-differences
+          path: target/windows-y-lengths
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word paragraph-order screen and print origins
+        run: python scripts/word-oracle/check_windows_y_pdf_context.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows paragraph-order coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-y-pdf-context-differences
+          path: |
+            target/windows-y-pdf-context
+            !target/windows-y-pdf-context/**/fonts/*.ttf
+            !target/windows-y-pdf-context/**/fonts/*.otf
+            !target/windows-y-pdf-context/**/fonts/*.ttc
+            !target/windows-y-pdf-context/.font-cache/**
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word device-remainder screen and print origins
+        run: python scripts/word-oracle/check_windows_device_remainders.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert original Windows Word mixed ASCII coordinates
+        run: python scripts/word-oracle/check_windows_mixed_ascii.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows mixed ASCII coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-mixed-ascii-differences
+          path: |
+            target/windows-mixed-ascii
+            !target/windows-mixed-ascii/**/fonts/*.ttf
+            !target/windows-mixed-ascii/**/fonts/*.otf
+            !target/windows-mixed-ascii/**/fonts/*.ttc
+            !target/windows-mixed-ascii/.font-cache/**
+          if-no-files-found: ignore
+      - name: Upload Windows device-remainder coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-device-remainder-differences
+          path: |
+            target/windows-device-remainder
+            !target/windows-device-remainder/**/fonts/*.ttf
+            !target/windows-device-remainder/**/fonts/*.otf
+            !target/windows-device-remainder/**/fonts/*.ttc
+            !target/windows-device-remainder/.font-cache/**
+          if-no-files-found: ignore
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text.py
@@ -319,6 +921,50 @@ jobs:
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_arial_edge_origins -- --exact
       - name: Preserve spaced table geometry through editing and export
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates spaced_tables_preserve_origins_after_edit_export_and_undo -- --exact
+      - name: Upload versioned Windows manual-break and legacy observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-16.0.19127.20936-manual-break-and-legacy-justification
+          path: |
+            target/windows-font-coordinates/20261119T024743715Z-36d87ffe
+            target/windows-font-coordinates/20261119T025736984Z-43e11204
+            target/windows-font-coordinates/20261119T042208471Z-cb751983
+            target/windows-font-coordinates/20261119T042735438Z-344a3c0c
+            target/windows-font-coordinates/20261119T044014016Z-506f6a6a
+            target/windows-font-coordinates/20261119T071857464Z-a48e4f90
+            target/windows-font-coordinates/20261119T072445458Z-9eeca03e
+            target/windows-font-coordinates/20261119T072846967Z-c342657f
+            target/windows-font-coordinates/20261119T085721179Z-ad4e1a41
+            target/windows-font-coordinates/20261119T090056485Z-6c01f12e
+            target/windows-font-coordinates/20261119T090823813Z-a9ddf686
+            target/windows-font-coordinates/20261119T092533754Z-02a811e6
+            target/windows-font-coordinates/20261119T102627743Z-e19cdbe7
+            target/windows-font-coordinates/20261119T112518348Z-0dd586f2
+            target/windows-font-coordinates/20261119T114842423Z-5f6babdf
+            target/windows-font-coordinates/20261119T123214849Z-2db788c9
+            target/windows-font-coordinates/20261119T125532465Z-61d0e4bd
+            target/windows-font-coordinates/20261119T130101255Z-42e608fb
+            target/windows-font-coordinates/20261119T132210919Z-158142e9
+            target/windows-font-coordinates/20261119T133344101Z-1b09b6f8
+            target/windows-font-coordinates/20261119T133746583Z-14920783
+            target/windows-font-coordinates/20261119T135242965Z-0dd32fe2
+            target/windows-font-coordinates/20261119T140807475Z-2aee0646
+            target/windows-font-coordinates/20261119T142153366Z-edd25613
+            target/windows-font-coordinates/20261119T143721831Z-2fe0958f
+            target/windows-font-coordinates/20261119T145753302Z-cf8cad83
+            !target/windows-font-coordinates/**/fonts/*.ttf
+            !target/windows-font-coordinates/**/fonts/*.otf
+            !target/windows-font-coordinates/**/fonts/*.ttc
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload source-form hyphen paint differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-hyphen-paint-differences
+          path: target/windows-hyphen-paint
+          if-no-files-found: ignore
       - name: Upload Windows border differences
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -330,6 +976,9 @@ jobs:
   windows-native-editing:
     name: Windows native editing and font reuse
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 60
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target/windows-native-editing
@@ -337,6 +986,8 @@ jobs:
       SKIA_BINARIES_URL: https://github.com/rust-skia/skia-binaries/releases/download/0.87.0/skia-binaries-e551f334ad5cbdf43abf-x86_64-pc-windows-msvc-pdf-svg-textlayout-vulkan-webpd-webpe.tar.gz
       CARGO_PROFILE_DEV_DEBUG: '0'
       CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_PROFILE_DEV_OPT_LEVEL: '1'
+      CARGO_PROFILE_TEST_OPT_LEVEL: '1'
       CARGO_INCREMENTAL: '0'
       CARGO_BUILD_JOBS: '2'
     steps:
@@ -350,7 +1001,7 @@ jobs:
       - name: Verify Windows font reuse and rendering
         run: |
           cargo clippy --manifest-path crates/jade-skia-painter/Cargo.toml --locked --lib --test windows_font_reuse -- -D warnings
-          cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked --test windows_font_reuse --test font_styles --test opentype_features -- --test-threads=1
+          cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked --lib --test windows_font_reuse --test font_styles --test opentype_features -- --test-threads=1
       - name: Verify Windows native editing histories
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test native_document --test tables --test typing_differential -- --test-threads=1
 
@@ -407,6 +1058,9 @@ jobs:
 
       - name: Verify unadjusted Word for Mac probe coordinates
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+
+      - name: Assert native shaping platform boundaries
+        run: cargo test --manifest-path crates/jade-docx-layout/Cargo.toml --locked --features native-shaping --lib
 
       - name: Verify native PDF structure and representative rendering
         env:

@@ -1,0 +1,950 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T140807475Z-2aee0646",
+  "captured_at_utc": "2026-11-19T14:08:07.4882303Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "d47f25ef09ffc0163570b0f869c0f80718564e3d0cda8cc66cc55a9afb8deb54",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "c9a6c54697be4f3fdff84e673af0a66da189a4d7b206140a17d393a19380cd64",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "505af5890ed47c39707404e785563c94a69dc4aa3b194534f958677dd189a408",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "f95b0b14e9da8c34bd57df9f40e2c377960236badcf7501eb3db644faf79e266",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "f2dc2cbba05c93493220f705a8f38466d07b7259dfeefec2c95f2f89bcaa94c5",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "368f6c9af408d58b1affb9afbdce9b9c8813bd0ee45a30016ff00a887ec6f0e8",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "a24118f34fd593e57597e046fc77e817805b3572a92bdb2b33c4689998c17190",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "5f88398884257a1df46932f9d9a9c27e275bc9770551981d7ca6615f17ec792c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w3000.docx",
+      "sha256": "ffc00a315bf7791e92fbd8a4e477aa5dfbe90a5e3b85f35994639a50d52e94fe",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w3000.pdf",
+      "pdf_sha256": "c4f55409858ae3d03d77d61f12a00a0dd823912bc9a141832a5bfd5aaca14ce3",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w3000.xps",
+      "xps_sha256": "6acfb72714f8a7ac0bea000566ced9d542d72ad042ab5d805de64256228c93b8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w3000.page-001.emf",
+          "sha256": "4bce3c2051d04d4e8a916bc7d9052d55ad672c5383580bb67cb058b505ba6819",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w8504.docx",
+      "sha256": "fce5371768334a257443c4f317fdd2b7004075c124613a15a8811194d6d59776",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w8504.pdf",
+      "pdf_sha256": "27854816800d399a50056cea3fd06acebd29226929d6c3bd5e449e68ce0d9805",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w8504.xps",
+      "xps_sha256": "4bd5864911055ef164e3857976b8af2be213f2ab193188d20f3914e2364f70f1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w8504.page-001.emf",
+          "sha256": "4c5bd26fd6b3238bbf41621fbef08b64cfb72a0f355106a3163a680ad108c08b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w3000.docx",
+      "sha256": "9c609caabbec7e44c8b844a08f9ed798d66ccdbbd549d345d86147e956645ae2",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w3000.pdf",
+      "pdf_sha256": "62226dc4a83fd1e9e983bab202cd58bbce3b8646030982fe83d2d8b823f48da9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w3000.xps",
+      "xps_sha256": "c6aab0f3cb0210692fd2cf8a987a7285642d488e0b6af66a231d6754c0112b9c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w3000.page-001.emf",
+          "sha256": "f95b0b14e9da8c34bd57df9f40e2c377960236badcf7501eb3db644faf79e266",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w8504.docx",
+      "sha256": "420a1e38315e14a71fa70d6af1a0068af3be09a6b7ea50aae8f9b6ebc1ed64da",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w8504.pdf",
+      "pdf_sha256": "0cac0c424eddd007e03ac09bde68a72cb3dc9d4444a2145b4ed1525e9438873c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w8504.xps",
+      "xps_sha256": "1a498bbea5aa13a69a8fca99029e3336589e8de2025b88f6114ee9475cd5bce7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w8504.page-001.emf",
+          "sha256": "5f88398884257a1df46932f9d9a9c27e275bc9770551981d7ca6615f17ec792c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "1e88d6447d42b4744207b088bef35751bd3652f7a087e10872d11635017d5b7c",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "7f20826f01ee3d6fd5b29e8067c07d926a8ac3272ba587c785028b05688246a1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "bbc5061847e8e034fd6cdf1a6805177cdbdf746c83fe2091b7c9c462e1c5cc24",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "4bce3c2051d04d4e8a916bc7d9052d55ad672c5383580bb67cb058b505ba6819",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "971abfec1864970a18f4da6dac5ace784c74c5039d1e26c0f661b49c74d780cf",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "604853b2d23bd0224aff8615c3d4a48a5bc9ba5f93b8eedbb732abde14436876",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "48f13039e9fe268b3a95efa4f39a87a66a10e0a200f8a344ebd3ca428229be24",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "4c5bd26fd6b3238bbf41621fbef08b64cfb72a0f355106a3163a680ad108c08b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "85412c79f5dcc44ecf6bf70407ac9b753c3a12b4da1e2c5315655e881f0f72d1",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "357b19ea3be8fcc1a7141da6a45e0cf36b60a58a73bd43ca178c456d1bbed460",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "efdb96be02f5eb3cda3cce62679d631fb87a96f61d56fac7d6a567e5129bb05a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "fe79b8fd74a6216f62228170754fca445a3823b004301b9e085cb373f2287b19",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "30429c9580756b463cfcffd22cb4390a8d46ef81d6ab438faa5d51207600f07d",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "59c9af6f6c7ad2767d25f90d7923380a3964afffb4cd3caa22ec63b74cd9df5e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "5381108a04741379f805e62abf82430c72f55793129785e4e490021ccfe20131",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "df5011dca31b3e0be7965cc9380ecce93b741bfaed1c950cefe759c09337e045",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w3000.docx",
+      "sha256": "5e16b45fd9b0fe27e6dd963e32ec57f118fa076b762f028c756b166c4cb42adc",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w3000.pdf",
+      "pdf_sha256": "5a89353dc033c8a69fc4f58749fc9a297c69567322c9c41ee3c0b5b6a379679c",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w3000.xps",
+      "xps_sha256": "868c23c10d17c50decca7a0b2b20b31ada6b3e7d96e314830bd1b1a2ffd699b8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w3000.page-001.emf",
+          "sha256": "83c7d2b3be9384c7402c10b8a731f4357684705980352b9ba0a7264723c29a54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w8504.docx",
+      "sha256": "787037d067e022e721cf62e8cc94c72b6fb637030e00103b85c7bb76c9e2e5d8",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w8504.pdf",
+      "pdf_sha256": "dd00d9bfb41d5e5724bc65c5d1455be163b106990ed5e58a6bdb8b74b3b9cb7d",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w8504.xps",
+      "xps_sha256": "c97f8fbd195f17a74cc7835c6addc323f98d368c2f19ab0729422e67938a7978",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w8504.page-001.emf",
+          "sha256": "0ef77652d6c1630702858f51bbeca43bdca9e206d832b47a5caf029c775d3c1f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w3000.docx",
+      "sha256": "f747d81a5fc4fcc5f33e412e791c1505afd819545107318af53572dbfa773cfa",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w3000.pdf",
+      "pdf_sha256": "af8a30544bf78a1272fd7ee41b1ad470ed3ed213d765ecc22dc9a29f4ef9ae1b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w3000.xps",
+      "xps_sha256": "580bfddd1ec28db36353a7af620367c528715741c38b18f755f2839324c28b97",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w3000.page-001.emf",
+          "sha256": "fe79b8fd74a6216f62228170754fca445a3823b004301b9e085cb373f2287b19",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w8504.docx",
+      "sha256": "cecb8ede921ce6b7f8b891bf47961e0393552d07ba22e5936e1813f543511fdf",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w8504.pdf",
+      "pdf_sha256": "8a5a77ac8ec21f3510614fc6d83843fd67c6630e97dbbe756e05b04e0004f79c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w8504.xps",
+      "xps_sha256": "cdff35b321f17dc060c93d67a54f0646f331cc83ad6c8cd4cfca6c80f47a7327",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w8504.page-001.emf",
+          "sha256": "df5011dca31b3e0be7965cc9380ecce93b741bfaed1c950cefe759c09337e045",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "cafc82d60ca6919c35c5c4a3d2cb8857cedb1e5cf53b863b7dcbc66b72e0b18d",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "d282a1ab03a312cb60d2a9fe12c9adf8c18abb5f10ae9eb91c6a700af5c2df6a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "e29ee377d4d70b8f19616ec3b6ede75a9a46f1c51dc20a025fbf83bcd92bf4ab",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "83c7d2b3be9384c7402c10b8a731f4357684705980352b9ba0a7264723c29a54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "f5489b9c7664a167d259652f1ba5ddbff4e7bd2e2ed3a2cb32ab17b9cb179b99",
+      "pdf": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "ad1d590209b9c81386887f28c3e74bbf25a51ff2162386c25f95e41d8a26d777",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "2b5f54406a59c42537c2b39ec158432edc090551d7b2417f5b2938a858dcc22d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "0ef77652d6c1630702858f51bbeca43bdca9e206d832b47a5caf029c775d3c1f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "e9d0585bd7e2e00e0eff5a2f2943b48e7140108feb12b3fc588cc5fbcaf4cd23",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "4daff94f94d3293e8ced140f31b058064dd941204b893c44af415be75cd479f6",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "00a5c19d751aabb2ae946d9738d6d0d1f106135a8613d99010f2fb55541675b3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "33ddd6effb6982e54b0558574bfc87ed1ce628bd7500e4d65b7da9d0cfa99626",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "f7b66afb55f055643edc2f82000db28704ee93498d3bdc1f57e6a8efddd7883d",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "5f797eac1703cf93170000c1fa307b84225065fee7d2d8933d9631920066e6d5",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "14e68b8d4f99b9e503c1dec9472c8344949c74ff609a3bfa193a9d7eaa4c0ed6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "7d05fd71127ad3aed0f9143dd3a045b17b5a048360df0d7ef7bf38851b6ca812",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w3000.docx",
+      "sha256": "f64691d9fbe44295a9f8c41a132d8fc900020c94e34a3c623c109d360e6eb8c3",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w3000.pdf",
+      "pdf_sha256": "7c969dba179ad214a41a4f1a0ab7355748ed5e27271be5f3a2f2f9f92eff5f66",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w3000.xps",
+      "xps_sha256": "cff899c8ac0205f9627c3dcee2de05e08b78662ee1b3213c475b6992952fc6ef",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w3000.page-001.emf",
+          "sha256": "3855e18934c86b3daa2621c933b78ed855afa7762a1f0e0f136c723ed64c2c55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w8504.docx",
+      "sha256": "69720e8a106c8055379c7de90768ad7dddedc3ff37cd1ade41006d25696b9b17",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w8504.pdf",
+      "pdf_sha256": "af794daec8c513c6cdbf19e01c2bcbfbc782ca6094c52893589a36ba3b8d2dc5",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w8504.xps",
+      "xps_sha256": "824c62b018ffe2636a78b2e8e228aa310ddedd670b1f3b5757e528565dca46e9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w8504.page-001.emf",
+          "sha256": "8cd57a1d3ac75c0b893ee56077285e2987840ad7f672237ddb42e00b216c645a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w3000.docx",
+      "sha256": "0bf383458d7ad1589aa400753beb1dad78f64ebb48ba09a8f4f28f894aa84ee3",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w3000.pdf",
+      "pdf_sha256": "31d8c22ff3bcc6d2b743b460ecf08a1ed2ecc5485947b00f317c11d1702d81e3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w3000.xps",
+      "xps_sha256": "dbf32fdb0708e4a7e805398de8d0a17f894b5fd6be91df5b5bc2faf8e300cbc7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w3000.page-001.emf",
+          "sha256": "33ddd6effb6982e54b0558574bfc87ed1ce628bd7500e4d65b7da9d0cfa99626",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w8504.docx",
+      "sha256": "e0cfc036caeda65373304b8f96b6aaa816c4d0cbaaec28236d5b5566f3b563b8",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w8504.pdf",
+      "pdf_sha256": "efb304424530872ce7fc016950cb42185556f5d164e6e540e116bc4e16339be0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w8504.xps",
+      "xps_sha256": "db5bf3ae41efeb28ec588b03394663bf31de76e9b2235e0005eb67b04954d816",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w8504.page-001.emf",
+          "sha256": "7d05fd71127ad3aed0f9143dd3a045b17b5a048360df0d7ef7bf38851b6ca812",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "6843b1a70bca565a09e5e8cc750faa94e64eb3dfe34f3280dea7a8a72a1ec9d1",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "fa316c9fc3a499a35e064dbb1d236fbd5fcb4fbad1de4154c3f41f12a79c70bc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "6f7519cafe7b0220537aa50f1ee82bbbc1a7e6bed83d358d32432aadbad5d6b2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "3855e18934c86b3daa2621c933b78ed855afa7762a1f0e0f136c723ed64c2c55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "4935f86690429637a42208ef8b6a8a8ba3f1838abc76c3b145d62d2665e298ae",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "eff701ff344a8238e7d777da84aae060653c012e58ad59ad3068ac3e6a8210e9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "208b46dc1b452ec090e41e95d58a00d66841500026e001c54dcc0c8878fcab6c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "8cd57a1d3ac75c0b893ee56077285e2987840ad7f672237ddb42e00b216c645a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "58f3627ea4471a5459600c7a6e03879b67a83a25de0b665a308f418444961b75",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "ff1378eb3db442a8b2eca9fb2d7387320e7f5c229c4f51dabe9a4f0a5979c096",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "d3349677cebf22034cde889a9fb97877b31620ddc34c08993ebc9756062094f4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "f57eb8590bf6edfdb00b5182098464711ee2faee3fec1961c560f2e455813bb8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "7f2998065a76a4b39e2a39d4f68aef3d44437eeb4145aae42c8e73ba8b96429c",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "994bc1354364b845070b812af617193a4c3bffec7f0df9fc69686030c6eab370",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "3347bf25d1edc3a63eae1b11db6aa353c2aa1afca5264d75815eb182fb43d2e4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "78609b990a7ef99809b3642f53c6b817a2b2f21a9146414d8c1beadd3f5dc631",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w3000.docx",
+      "sha256": "f29fc0c8eff414143fa97e9f38ca14fc78e8659937fefe894f853827d7b2df8d",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w3000.pdf",
+      "pdf_sha256": "363fd6c90834fef15d079e5799d891980db3d0c1c844b1bd08615edd7a15e2eb",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w3000.xps",
+      "xps_sha256": "3bfcf1611379539db95726fc2f3bd1b23b6e5e5fcc15978fd174e14dbeff1283",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w3000.page-001.emf",
+          "sha256": "0f789990426ebdb856eab2e702d087dffa62b380880b8cdb0e60897edc0dd0e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w8504.docx",
+      "sha256": "cfed909b14d5d5bbff86acb870107159cf60c124e9aa0ad10853d8b474262d56",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w8504.pdf",
+      "pdf_sha256": "b65559a190318d78d700e912504fe0808bbdd8f5044c73466ed5a0d950b9e623",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w8504.xps",
+      "xps_sha256": "a160a00c4ac23c6a1c5545d875f31a1b5667edbbbdebc6cc78ed5d18b1deffa4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w8504.page-001.emf",
+          "sha256": "2eac751987a92df24066d09370c3aaa5a17139e75657a7f1c100d62ad32e9a33",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w3000.docx",
+      "sha256": "7c5346bfb9a513651d59c8290865172eb082479019cf39c7bdc39eeabfef8def",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w3000.pdf",
+      "pdf_sha256": "3eeda90e6863fb4323f0cc8c30e45fa0c0767e85c9a578319e2dc45f346d2d99",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w3000.xps",
+      "xps_sha256": "269695f26cc13ffc81cf05f33e2992d41751ba9542fb150e2d39e30015c40340",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w3000.page-001.emf",
+          "sha256": "f57eb8590bf6edfdb00b5182098464711ee2faee3fec1961c560f2e455813bb8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w8504.docx",
+      "sha256": "19a35a9dc443f37f317a25c2856018bf421557a746690ce98b254c9a26d12a2a",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w8504.pdf",
+      "pdf_sha256": "80f917de6a8f65c8c3c93b38f85816a93ec6778be1d484db20900dba7dd65850",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w8504.xps",
+      "xps_sha256": "dcc59c284df4f566a13b6633ac2456f2c6341cfbc631dac7fb15f7c8311270b3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w8504.page-001.emf",
+          "sha256": "78609b990a7ef99809b3642f53c6b817a2b2f21a9146414d8c1beadd3f5dc631",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "b91300b47cc82e467589e447589f81dabec38a0cfedca62bea596c0fed8a5b77",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "e6e6215d45eb2b4b77370927d0ef2909c4a5a486a502adfb340dd73879adb6de",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "bd8a74805c1328afa220aa9f216a99002e15c52b08a3135c27660cb97a91fd25",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "0f789990426ebdb856eab2e702d087dffa62b380880b8cdb0e60897edc0dd0e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-gdi-bold-justify-inputs\\word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "4dcd866069d1b2951a5e6fcc3b2b0dcfa033ed722ba5cf30dd1873917d0cca86",
+      "pdf": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "67181a8ce72f57809fe03b58ccb8fdf2a702620cf3643dbbb26210f4d2bf50e0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "614cbc47de5df7b9b15fc1f015767cd3c76289de0ea7c3f51707148e435efd7e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "2eac751987a92df24066d09370c3aaa5a17139e75657a7f1c100d62ad32e9a33",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

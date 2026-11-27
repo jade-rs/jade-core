@@ -21,6 +21,7 @@ fn run(text: &str, italic: bool) -> Run {
         hyperlink: None,
         node_id: None,
         text_node_id: None,
+        text_controls: None,
         revision_node_id: None,
         comment_reference_ids: Vec::new(),
         footnote_reference_ids: Vec::new(),
@@ -194,7 +195,15 @@ fn a_band_repaint_after_a_paste_draws_every_paragraph_in_its_own_font() {
         renderer.set_band_redraw_enabled(true);
         renderer.prepare_incremental_repaint(at, 1);
         renderer
-            .render_bounded_to_page_with_parts(Rc::clone(&edited), &options, None, None, None, 1)
+            .render_bounded_to_page_with_parts(
+                Rc::clone(&edited),
+                &options,
+                None,
+                None,
+                None,
+                None,
+                1,
+            )
             .unwrap();
         renderer.set_band_redraw_enabled(false);
         renderer.prepare_incremental_repaint(at + 1, usize::MAX);
@@ -202,6 +211,7 @@ fn a_band_repaint_after_a_paste_draws_every_paragraph_in_its_own_font() {
             .render_bounded_to_page_with_parts(
                 Rc::clone(&edited),
                 &options,
+                None,
                 None,
                 None,
                 None,

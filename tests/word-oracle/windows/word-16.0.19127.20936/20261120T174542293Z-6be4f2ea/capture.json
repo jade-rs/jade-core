@@ -1,0 +1,3734 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T174542293Z-6be4f2ea",
+  "captured_at_utc": "2026-11-20T17:45:42.3102678Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m14-manual-w3000.docx",
+      "sha256": "fefd46fa9a164b02c07409cfa2d0ec12fa40ec76f43521e03c7ad0208ebe70c4",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "2001e1e8a5f65e00c43fed74879db7db42bab8872faa93434a453d17d808f562",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m14-manual-w3000.xps",
+      "xps_sha256": "b80d533dae093aee7839575ccf1f618eeec15de9d8a1a654f445bc33a823798e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "c8267e42694b4b727ea41fe2ce145dba0fba692f975b438f2929eff1d0c4172e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m14-manual-w3000.docx",
+      "sha256": "878419d36308233a97fae5bbe12aee95217756edcf25b5267e2c48095069689a",
+      "pdf": "word-windows-family-extended-century-lower-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "7b9773dbb1806033c3f04e2320f53aadacd2b6ff1c80d4c54621a35c0e7cc0ea",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m14-manual-w3000.xps",
+      "xps_sha256": "d2ced423368819a29d4f5bc5bbffacf660ef121ea8fa6e37c5a3ca79f39a890d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "c8267e42694b4b727ea41fe2ce145dba0fba692f975b438f2929eff1d0c4172e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m14-manual-w3000.docx",
+      "sha256": "074aa24cc40ff302f2d7fcda4ff38bbee805a73892cc40763fb52430929f1753",
+      "pdf": "word-windows-family-extended-century-upper-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "f326c2d1d6e6f13e1d65a2522f3298e9cf3a9d67cac4473aaca07054c3f4827d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m14-manual-w3000.xps",
+      "xps_sha256": "295e1d0a0b44b1110021be6edb2767991e74d1b9140cfd85bb581628923112cb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "c8267e42694b4b727ea41fe2ce145dba0fba692f975b438f2929eff1d0c4172e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m14-manual-w3000.docx",
+      "sha256": "78ef119f93f2abacfe9e25df7def04260512fa4fbdebdb43127766152c901e78",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "faf7a986119896d0fdbae1d4630a383c8cc37449caca6f25765ffb273e96e04f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m14-manual-w3000.xps",
+      "xps_sha256": "ac3d74f1e1aac5aaff397e7dda33d4e0e69a4c1d05f042ea65239cf46db43d6d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "c8267e42694b4b727ea41fe2ce145dba0fba692f975b438f2929eff1d0c4172e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000.docx",
+      "sha256": "b566d456735bf690122cb94a6a76311d418a3ddf4ff839f92c06d1281ea51b3c",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "740b5d3a111aca38cfd61c68bfb79ef2ac37b3380513cfcf07327129cc455ec2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000.xps",
+      "xps_sha256": "181279cd9366eb387a138a0d6bf488ebabcf5c9f2312f2bfc1810b479b5f44f8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "7b02b579cf73ac91032863f3743d8b25a59aa87f9d850c1692b6cfc686663aea",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m14-manual-w3000.docx",
+      "sha256": "e53081b460dc0f03f4bcb4e9ba2f79f93a8d592836d0a52753db4f28778caf15",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "c1691ccc3a085a279df11931b3d6e314202eff04c43dd0ea5ddca59c6ea95da5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m14-manual-w3000.xps",
+      "xps_sha256": "85fa54e3a7a9d9cfd41da6c4a756a3d86f2fc7bf5a4510cdf11acba6272affda",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "03abbfa655c7a4ddcbdb24945c4ac57bd5c425b6b8403abcbe3f47b32d2087bc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m14-manual-w3000.docx",
+      "sha256": "5c872353bbd8d88386f81d36dedd31b88ec008476bc188c4a109761d917edb91",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "afc8391ef0025de45aef232b8074421c21f9f73af840b11342fdff0d2a55c922",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m14-manual-w3000.xps",
+      "xps_sha256": "56c45b5ded184965ba2c27b550adfe7632f057387e745f8a926a0eae5b61ff4a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "03abbfa655c7a4ddcbdb24945c4ac57bd5c425b6b8403abcbe3f47b32d2087bc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000.docx",
+      "sha256": "4e734234142883a08410ebbfe0475590cbcd7f74fee1680a5610c03674e963c3",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "7eacd3b9478e4000d270261ed096e71106923acef5bf88811c1a47221bdd7dae",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000.xps",
+      "xps_sha256": "c6a1ae67f128460df0759c8fa0ad3eed47dbd50321f48fa78408dff079deced8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "03abbfa655c7a4ddcbdb24945c4ac57bd5c425b6b8403abcbe3f47b32d2087bc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000.docx",
+      "sha256": "165a1abef2b9b93ac4d358adae69cb4eafa57aee9b5a8e30663d7bc550cfa616",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "b79260cdd0acbd365c060758c6ff1028688b14b10d6fed30741c90749109effb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000.xps",
+      "xps_sha256": "ad51326f1f0d7ac892515c4b17f26b047444d16a507d11de2ffbdfff5d763530",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b9552ab55a6a9ab9fd1f343396643029e387888bc1be322378f15edc7d0364ab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000.docx",
+      "sha256": "e78f24661edfd40bd5c5bc0f1915a71688f3d3f46f5d404daeb5e0b7b4b6bd98",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "c36a5370b06965de382350d44ed24674436aec9d7b52638db06c1952f8da9d12",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000.xps",
+      "xps_sha256": "d3b1009071b0d83fa3d420c6f132c07a80bcd3b7afdd31af494da6a2eac2c338",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b9552ab55a6a9ab9fd1f343396643029e387888bc1be322378f15edc7d0364ab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000.docx",
+      "sha256": "359ff39c14d89562e2c9239d86d6759216ffb0878d7da897a2eeb90c572fdc03",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "0933d1fa4d8a188aec4c9bd0c2d5dacae66f7c909bb51c96905d7842eb0916b4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000.xps",
+      "xps_sha256": "dd192c56e4a19fed19efc989a6b4b538387d842d418d9adfbee14f65cb04577c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b9552ab55a6a9ab9fd1f343396643029e387888bc1be322378f15edc7d0364ab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000.docx",
+      "sha256": "91a69b4d70e0270a124c15971ce0115215dec3b352a2f8d097e30442a6230c7b",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "a7d63f93c7651f8203aaa94ba4c14a4f9aa131c6126cf5d260e7ea6cd12bcce7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000.xps",
+      "xps_sha256": "032b37bf833222454c79a4cbc87b9fb52df87b8e4ec0787f80a466664e069ee4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b9552ab55a6a9ab9fd1f343396643029e387888bc1be322378f15edc7d0364ab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000.docx",
+      "sha256": "cb23477db2ed6e0365c7b7dc5eca567e98e844ff4c1c27451a1697399d096847",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "a4d21ea1eaac5bd5c4a05727c45d4acd94bc1cff07f888f7b65a1782f49f0e6e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000.xps",
+      "xps_sha256": "83ab8190598669e26b5ec29f0847d932952a8b7e2708cb28c28bfe00753a545e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "8283c631278e4a9504617c6b8dda4348bae5be6e4c00b83daece028a79f45944",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000.docx",
+      "sha256": "3d996cd680ec00b62dcbba7d63777e0b8243f6b3ab569126093980048a391558",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "eb7f7fd30c31f50e57b680b6c1db56d709f8adc3deec8f9352397e59987868da",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000.xps",
+      "xps_sha256": "f48ee82a3715038f3a6e021926d555316ceee2c0eac6649679944f9a79e5ac8a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "8283c631278e4a9504617c6b8dda4348bae5be6e4c00b83daece028a79f45944",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000.docx",
+      "sha256": "d4b2ff729bf84e4704639a41dabc8687036e92e201fcdb3dadb8df137593ace4",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "dd35239a277acb771c09e8d164267cf90885dde8cfae67c267df1d96568f21ed",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000.xps",
+      "xps_sha256": "8054b29ee2dae83c573253b6a3aa83a29f1335867aea44b14556688bf8abe57d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "8283c631278e4a9504617c6b8dda4348bae5be6e4c00b83daece028a79f45944",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000.docx",
+      "sha256": "5019678619506e13d9c7193548748a4445157402b962e860bde459045ae8327c",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "1d467dbe9d7564aa4f5b5c0f75590d4768afdc1b897357529e0ddd94ca869a87",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000.xps",
+      "xps_sha256": "18b26e8a29d4898077d23e2324792a7937421db29c97ed11a35f1b2e090d931c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "8283c631278e4a9504617c6b8dda4348bae5be6e4c00b83daece028a79f45944",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m14-manual-w8504.docx",
+      "sha256": "9a89a4c47c0066aebd25f0f603f923485c26f73854805c950a8378220a6e9167",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "0805f7beeaa22b74795750e03d02ea7101fabb321f0ed585f9ca057ed1d51c27",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m14-manual-w8504.xps",
+      "xps_sha256": "0e864779e09e8006ad34241c84d4c196fbeb4faca9f2bf2ecb70739358e1560b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "5f09de9d95936eee63a9d88156a0a0fe94db2c12087a29c4858221fead6c8fc6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m14-manual-w8504.docx",
+      "sha256": "b4c6c0edfbb4c04eb5d90651cdd9cede5158659387eb78c7db1d51d9b79533d6",
+      "pdf": "word-windows-family-extended-century-lower-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "501f092f10a2ce179cedcaf78e4c28dab696fbf2a94537819bb872595bb1c67e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m14-manual-w8504.xps",
+      "xps_sha256": "0c6f0545066c8350ccb494caae97aac6ba072e733ed1b39a4b5289329215d3d1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "5f09de9d95936eee63a9d88156a0a0fe94db2c12087a29c4858221fead6c8fc6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m14-manual-w8504.docx",
+      "sha256": "69606ca4561195da07983000dd9e170a37284355c64be1116f1490f776b7d5b8",
+      "pdf": "word-windows-family-extended-century-upper-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "78ed31e30f6bc43d55e088cf9b040cf7cf6e2d9ab22c536e39a6e6c6f02d2962",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m14-manual-w8504.xps",
+      "xps_sha256": "af7f7f11b619e1b5dbdf923c99a673fb441b93c89678703bead08fca5a93a55c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "5f09de9d95936eee63a9d88156a0a0fe94db2c12087a29c4858221fead6c8fc6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m14-manual-w8504.docx",
+      "sha256": "a50574db74f9bbe59cc646dc893391644fc74e496af1618b052e43a2e98f0f2d",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "239a70b4169004e44d9398666b8422e390b262f0a7a8b5bf9367edd0c7de4f94",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m14-manual-w8504.xps",
+      "xps_sha256": "140d900de020f77a2c1eaac28fab580a424b0265ec61f6a9a239712f61d1d2e2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "5f09de9d95936eee63a9d88156a0a0fe94db2c12087a29c4858221fead6c8fc6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504.docx",
+      "sha256": "bb9cfbe13db2da533dbce14239b5b93c79d96915927e8831593af73967505c65",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "7a890488e4dc651aed4da1798a01d36e55baed36e4df780609e99e69948f373a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504.xps",
+      "xps_sha256": "93b94b1bcbdd8df0583a3c020fe73ff463dc8df61c39e0ac564d3b61bb08c56a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "0c851151ed34ea81e0a6594ea8e2f08cac84a3487ba05528b1c5a4a1fc9daff8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m14-manual-w8504.docx",
+      "sha256": "b6a8f2cac12cfc5a9ae9ea9d16e64774044c1fd0bce9bd75290d530d2a304e3e",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "d238a61fa7ce449be4d17c80eedfcd6e51d1d4d6c3ce2ababcb58a22c0493fc5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m14-manual-w8504.xps",
+      "xps_sha256": "58996455e932c0fc236a7afd5e3a0d67758710bd8f22dedef7ade3b8e96bcea1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "3aacdbd171250fb4cc8f4a34f8c29ba264ca4ab2c18acf160f696b2033099b3a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m14-manual-w8504.docx",
+      "sha256": "39799b4ef43f72e3cec613db32babad6232a7da9d59876c0397e7cafc4eee75b",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "6776cc29542e4b6629f1fadd8937ef0576c0b2d2ac82547c1794e90d65f6c158",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m14-manual-w8504.xps",
+      "xps_sha256": "f97f5378d55edbc952d7bf27c30fbe2f072ba7de1feabb9e03c800674d56870e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "3aacdbd171250fb4cc8f4a34f8c29ba264ca4ab2c18acf160f696b2033099b3a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504.docx",
+      "sha256": "55b25d68e85b644b8da8c73b4313decb963996b8fbbb375bb01e1e3c96e5aeb5",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "b8a7f687953d89b56a70718a247b3c84909af51bbf51887382afd2a62d40027e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504.xps",
+      "xps_sha256": "055437dbd71683a3b6bdb02c8d541b5b739b31362858887d65e894eee287b3be",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "3aacdbd171250fb4cc8f4a34f8c29ba264ca4ab2c18acf160f696b2033099b3a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504.docx",
+      "sha256": "763bb9eb6f0a45b68e4b2ac1754fcb6f767339bf9bb777885790afea6297701c",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "e2921313940d2ff5acdda945bd8f749e58b3b670a1ea06be08884a65cba1319e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504.xps",
+      "xps_sha256": "9ce6bdcc6e2e6dcbabb6344467c208637da0b537036ebbe3755cd298dffd5ba2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "f527aa858fcfb3a1a97a68929b95d1122295ea777657af9c0a7d084a6b16635e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504.docx",
+      "sha256": "cc2cf122e6420283cbb11e90fb401b211d99704a8d67e78fbeabb699396c24bb",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "3d0280a22e781340eb4dfaa811a16b783d2253460c90b0d1596f72782fa6a3e8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504.xps",
+      "xps_sha256": "70fcaf359beeefaed00969662afab126895d030a6ca897430261b9114077f177",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "f527aa858fcfb3a1a97a68929b95d1122295ea777657af9c0a7d084a6b16635e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504.docx",
+      "sha256": "a2c4934737d8db29d126ade11b3ced5ffea8f82458eb6e2d6db60a1e25204371",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "0c006ad743a4fc20d44b7262fd201f20a2c3b4d659d6d764877cf852df398d4e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504.xps",
+      "xps_sha256": "8942618506163974da1251f19b3042491bc7d049a29576a1bb59af53f1567034",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "f527aa858fcfb3a1a97a68929b95d1122295ea777657af9c0a7d084a6b16635e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504.docx",
+      "sha256": "98cb0f6be2aa2f2b6b3100253fc23cce13f0983f090e86eb71fa7ffb16d8adda",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "4f793c417bcf7e90ab15ca9319ff71a9e0daa4866e884af416dee2435ef66ebe",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504.xps",
+      "xps_sha256": "e7ff9d69ab0786a4fe482f9fef541f751b201ced4a800b80be1dd301b184071c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "f527aa858fcfb3a1a97a68929b95d1122295ea777657af9c0a7d084a6b16635e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504.docx",
+      "sha256": "1cb76754f8b1a25a7caf16cd7bc123f77624984e6361d9eaf3d4a2ca7a72bddb",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "ea45cc85877fb120aa7d3cd9ad2c20c78a61f900757fe85d19a7ebe453422e11",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504.xps",
+      "xps_sha256": "30008adab486805a91889836aafd42ba5111ddfb851e092d4bc11b0b627b92e8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "ae6d91b794700b283d59b1040f5c511a02353b6451296de20a5e0577e9b0a9ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504.docx",
+      "sha256": "296026f1fead4d654cc98142364f54d1c62e398583cf44d852c050ff958db14b",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "274425c1dab106e7a4c168c90c4ab406fb64695b0b1a7661642eab572b8eb1db",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504.xps",
+      "xps_sha256": "090f761b6aca340c141a0ea2d6557cdca899882f6acc9a7c3aef3cee1ba2e862",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "ae6d91b794700b283d59b1040f5c511a02353b6451296de20a5e0577e9b0a9ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504.docx",
+      "sha256": "8661a354f2374dcab1a1d9af9f1ed0e141b4ea28f842fe31c6cc5a37f14b5733",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "2dc8c23cc02bf287f08e0da7a2c1b954b2f06b1bd492d6ab23a5fc277634695a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504.xps",
+      "xps_sha256": "49f4512d6cef09c034e5f80970f653e33a4a4ccd7d3b25852b3db4af3f0010cc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "ae6d91b794700b283d59b1040f5c511a02353b6451296de20a5e0577e9b0a9ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504.docx",
+      "sha256": "1c55a0f64410b41477aa2800074a3166fcea952a73937f69d48fec70d974d876",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "eeb9a47164a1389f82221376d8d2ced97c660ed09ba3b0ac4bfdf84f9b4a47cc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504.xps",
+      "xps_sha256": "50d0b833e6ff174086ea7534f2622c9d9cf06a5d827ee90b7f9b65cdb0c0d5aa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "ae6d91b794700b283d59b1040f5c511a02353b6451296de20a5e0577e9b0a9ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000.docx",
+      "sha256": "811d859ea21f2356bf1527a22652dbd88372547470f887d3c08af9b775c1cb16",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "a4ae8a5709f706b34cbf1176387f5281d1bbc1884c798c538d950cded632ec65",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "6105f48154e204f3554b9108402f1ea5e510b501d169e9ccd65f859aa839ba84",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "4f6debaf80f2ad7accfba35132e0db0e8a44653984497bbccffe41e81349266a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m14-paragraph-w3000.docx",
+      "sha256": "cae8c872e1a5d838ad735283bbf5e8b364b6e42f68cf9d25aca77b372ce0d3a6",
+      "pdf": "word-windows-family-extended-century-lower-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "299dde234b205e83139f0f604892f4a2823917c425f572b665e613134116b40e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "176d88b52f3619e0d0d4a7f3a3d40f4a53894c431b6584648cc094fa5599ddeb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "4f6debaf80f2ad7accfba35132e0db0e8a44653984497bbccffe41e81349266a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m14-paragraph-w3000.docx",
+      "sha256": "1da0a8d5dfb4a4d404cb4c0877934d0e091f505be109d7ef82fba848c895cd8e",
+      "pdf": "word-windows-family-extended-century-upper-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "59f02d3e39cc8b4b4a0b449cb773dc6d6ee374a436e2c1bbcc6370018d4eef96",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "350d111cdeabdd7825dbfb30434ecbad4668aac7ad8f01a9ff10ee169f9f7f1a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "4f6debaf80f2ad7accfba35132e0db0e8a44653984497bbccffe41e81349266a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000.docx",
+      "sha256": "24c2e219a7cef7059f218edc96f86c4fb2931c2de459bab2b93c24ac36d70ab4",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "b20a86457d0a85b7daa77d6586997f9e2b0864aa7c8a51228eb912cf72dee064",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "93430ae8ba83f9e30795c0f57e3af3480565c478abd425ad6e770afab6cf13ba",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "4f6debaf80f2ad7accfba35132e0db0e8a44653984497bbccffe41e81349266a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000.docx",
+      "sha256": "6e8dcf6eb6d79d7a607558f4e8eacd89aafe0fdbc3ce59be7d205a197706b060",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "68e49093a4d2d8fa5c8ef9c8b20722517cd207582f4af4eac461b2458581dc95",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "40da83a232b2b6b912611cd99146a94f751e601da61c82ddd377c534d4f23f57",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "9f524efc1f9f0e952f829fc5f032658e173b5d4715734a7e16f9c6bed9c2168c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000.docx",
+      "sha256": "0e97ee2e12fd0a98b36e328ea6d40676b6d29e43bf30bea9f25484cee31189dc",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "7e4d76ca5db78be389e1cdd7f1f833a4e4a486fc1db6d87abd5c56842fdccd0c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "628a7983490387d91a76a692509e30c0153d9a04ebf02650407e6fb98ee70217",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "9f524efc1f9f0e952f829fc5f032658e173b5d4715734a7e16f9c6bed9c2168c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000.docx",
+      "sha256": "bdb9ae9c041907799a5f14e736277c374b180f0c46d81b9bedd309d78103006d",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "f6b0934e044983b9f54bc37226c26cd4c05b7ceffcffa9fb4e458f0e56a30433",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "551595db58eb5c66354b886ccbce6ae379ef7e24b400c00967971df9d8492078",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "9f524efc1f9f0e952f829fc5f032658e173b5d4715734a7e16f9c6bed9c2168c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000.docx",
+      "sha256": "02a73ab0d24db2e1de68676403c1ebb3b39ff9d7ae65e41034f9dd145253c0aa",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "019d0090edb7a26a12de3b4c3d51d97e321f743fe7b957feef7b8ecb968a2e7f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "55759b693c379510802ade7c18456966bbb04203b36f6d085a688fb983e6e889",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "9f524efc1f9f0e952f829fc5f032658e173b5d4715734a7e16f9c6bed9c2168c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000.docx",
+      "sha256": "fffde19e1d98e5222f179fd30359f171e6c59b35bfa0ec1419be8303821b6a3e",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "cc169898f8de3c57ecd272065cc0270e32c9a5eb284a2c39df33441a9a904cce",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "a4239e6676cb01dddf6e861803d4ad388907ef4e29403e90c610abab24fb8b84",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "22e8b43d4eccba92242a7cf3abfe118637e5aa3b764893dee0409aeac101a286",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000.docx",
+      "sha256": "d85f07c0c6b79e831f2f09096112bea6699dfa5d71329b9599bc114ee517a4aa",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "882447449bac69eb7b565be82984adf20182eac9a768ccaf7f4b6d90acc1c36b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "1c8750f92acf50b7b48e5435a3e71577c233db78213cda0820a25f1909db51d8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "22e8b43d4eccba92242a7cf3abfe118637e5aa3b764893dee0409aeac101a286",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000.docx",
+      "sha256": "3ac36f82b183af0f88e2e9e0ae32c797e292d43dbc8f953be08e61a026b5c41c",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "d93b41555bcfa4ff95da2d0ce760d0748998c6f76d6093a1ece4444e5ddabd95",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "feb19692d94e540f9b4801405546964ae5721d75d1b355924dbb3919105133ea",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "22e8b43d4eccba92242a7cf3abfe118637e5aa3b764893dee0409aeac101a286",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000.docx",
+      "sha256": "2abbfde5a7a8610c3e4db2c8521b6c192bfc5f6ea147922fac1410897c7a4658",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "f9330be075dfc489fba2e1e2bf940541ebe1ae1804f74fee8be1a54ebfcb0293",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "bbed505d4dfc0862a6dd1928bb9129a412326b2092ebbf423bcd182627a5ae03",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "22e8b43d4eccba92242a7cf3abfe118637e5aa3b764893dee0409aeac101a286",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000.docx",
+      "sha256": "29d84736864f2e6c8f5d4ac801ac52729312dc4f42d0c8bb067f38668a9e7465",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "bf49a086e55bb73d010adcedeea42d669bd3e5c39995406396db908d98842e7c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "d8e81c7e3e329192a733eff413dfd31b565836b447c93a853a90c5e5a7e0ad3b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "6a392a010c51bdb9835fee9e8dafa692d9dc8dce6efbbd02ce520f55d94c5b70",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000.docx",
+      "sha256": "9fc0617b35e9001402eeaf9cd6005512ae1b799e6c12cbe5b22f28152e4ae6bf",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "cf3ace91f4d2e06bec832cb8e365ba5c1ed7af0bcbf57aeb9efca8c9bd34c53a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "c6ad72d64d32795aafd114e5582733929222bf22c256c96995b4c8084d9126f0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "a25a9ca893af5a6e3edb7f206b675a227f25a98453ba0bd502e5863b4965523d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000.docx",
+      "sha256": "2eb605607a74e53ec4b94e85fe93638bd03b4012d1b41beee5a2e56a6cbc03f3",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "18f8ebea97eb263305d8d994034280214c801f310069ebb0cd3ea8c38a6baa1f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "6c421b9f62ee62484bb0a5a40f6ab5d1c32dcbe3512e34eea41643cccf5aac28",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "3fec131aeba680c728c8fb5a1acb184e6a8e133a8c1718422a244d21dcf7957e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000.docx",
+      "sha256": "ba3a1532a5bb3150dd2f5a9a61ba0442a81b72b0009a6ac66b7b3e6d8dfb1bcb",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "35556d3ab902f135d8d9887a91614ec89c0a15cbc6f196b64395498d627321e9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "18396a506dcd5b2f6c5a15140198e3c811d1085a5a54903651d859adf2e8b260",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "3fec131aeba680c728c8fb5a1acb184e6a8e133a8c1718422a244d21dcf7957e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504.docx",
+      "sha256": "c07cea8b7904536208f7370be4a01b896cefe669b5061a2c2996448abf551481",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "2d68d9ff7f6343108f8ce143b5b899e81459c886d593fe9cf9251ee5c35a0f22",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "2f86528e544cdb3395d268d6ed1e839947957bf1ed38dc30d7acf4ba00cb79c4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "12e8e65e0a8559e7dd4b33b411fa04761747e92506604bdaa15585846a197bf0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m14-paragraph-w8504.docx",
+      "sha256": "bd5287a4e060e69f5796d7bd1adad3ce4e10b82bcc73efc0166e8864b4c39816",
+      "pdf": "word-windows-family-extended-century-lower-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "1f2e56a8844dffff4789123d53a5284c1d6e0265146201f54d4a2df164946400",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "9d87489e05d685b2f87a06f6c4cb7914d09f39629704b240b1892c88865c52c5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "12e8e65e0a8559e7dd4b33b411fa04761747e92506604bdaa15585846a197bf0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m14-paragraph-w8504.docx",
+      "sha256": "106839e5f7d557f0214148e2c6626f72de0148fdccf00f8f189b99345be0e6f2",
+      "pdf": "word-windows-family-extended-century-upper-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "82a8df161f09954762ceb6d41e192093bb7a32febb8690a89e17612dc59eb260",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "4372b6010b5e5426da555182bcf9684eae309a998a0e7711c7f90cc4dc546cd7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "e3119865ba0bcd5913fe49ba321b32b590ff44bd8672c819d124b86cfb27ef2f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504.docx",
+      "sha256": "3c94a6867242c63848e81f9005bbc23aae4b8f84be585938dd85dedef33302b6",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "d03c876206ddfd5c37a07573c35978d049e712508bdae7879d70309e460c1cbe",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "ae7897a76d6803f6e52f0267ff6bc0f7fca57f289ba69dda042785eb811c008f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "12e8e65e0a8559e7dd4b33b411fa04761747e92506604bdaa15585846a197bf0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504.docx",
+      "sha256": "6f5a0a35aa549d108b8467778694dacaabc9d6ef0675ad79e2f9d65ac823d945",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "9ae8b9255abc7e13b25e0b95a6fd149b3b1d8ca406d1b01b3c0121a3e91e5c18",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "ef18852764da1450ae147d1ec9bfdd44d0cb131185166b7e4a476ebd19b4236f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "f1d5c4ec989e654488bdcd780876be262d1034c7b4fa1099d0dc5dce497a914f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504.docx",
+      "sha256": "c5d7521b83bd53bea8e191fc8f2f8922626a82665b3b1e0e308ef00441d3da9e",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "c45a28e45a74e954e91c1902f26f375ea41f276c4688d483cce4cef1dcde9fee",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "e51022036a36e285d1cb8e44303b083c74ea59ae2c21e4d79344b513280a873e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "de2cc77a1bbcaa6705c1cfb470cf9ebb004f6248798da7246f37b2f67f6cdb7b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504.docx",
+      "sha256": "e83efc39b29770ca8c3d31bf5b787ae861469bd61bc1aae72829e8d9a11a13dd",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "8ea017feed17dafcf24c58c23d32fbddadeb802d0f0be6d2e3b3958fd3450298",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "f7fedf6c8df5a01905112e91c2061bb2a534d14a23c3dca18947f49c56eae212",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "f1d5c4ec989e654488bdcd780876be262d1034c7b4fa1099d0dc5dce497a914f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504.docx",
+      "sha256": "729f99865ef795f68687e56fbd35cff456183e484372bae6b8d0941f3062e3dc",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "4ce2857ee4c8a0fdab2e61d4e54734c7f93ade08d41d3b341e1acd88c55a8e4c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "1bf14b2899e2c2b88fda59f385433156ee48fd785ead4871de4376cffdc0cb5c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "f1d5c4ec989e654488bdcd780876be262d1034c7b4fa1099d0dc5dce497a914f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504.docx",
+      "sha256": "db96492e00525caadddbdd8dcfe11da2cae7d58770a2f5d2ab8f95a0872238ae",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "e1762cc333ec09c3a828ed04b61b9f486854271c6a3f6b3f3de5823e57be717e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "165905f8d2f5f28b8bf31e70d19642bea42a0c54c33781152cee23b2a6feeb1a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504.docx",
+      "sha256": "cd976f6c3c05c7b5047f9df6772b8f35fc4434cd83349dac9d6a28335cc37473",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "e83076805457d9b9eb594c43316f3e44ab2f946b1ac3aa1ad505c1eee2517c61",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "de288e59d3c086c1677f5f4cb3d655a25680a6fb4790bd91020d8a7236e94413",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504.docx",
+      "sha256": "e7ed4782c2e9deeb13c07d050fe6cff941b8892ba5baa692b251a64e3a56bcfd",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "352a76a58ca4bed7fb28ba578eb2999bdf0e5b054a3abfc29ac18f811f593faa",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "348ca79179c988e612d33e589aa534d2b521390748f5fc64232bac3d3663c7a5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504.docx",
+      "sha256": "0e3f31f5ef93f6f90bd906670e6b5be879de86d843701ee868d501ae39cf4a19",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "f838389881ba586843e8fd43d5e4d745f9fb37e5abb1e06a8d2b1a6ea6db497a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "77c6429f6d9fcaf86a133b4c8b26073ff6b30bef91a014a202288feb63dbc1b7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504.docx",
+      "sha256": "ed55a44e3078c20721b1a7a58160bd84c89e2c5e763849566996e8cddf2ee228",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "fd585b80335d1e09812b96ead2a6cbd79f06394de5f3ca906b0cd6e1d19568a2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "65ba2339c7f859132cd0c0c8fe6ea5b8a436fd0ea30e2582b6ca4e93a0c0dad8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "dd1a44a8793a94071d5ecac5201d698ce01308b07fb5888d342375e31b4231e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504.docx",
+      "sha256": "2bc4300a9dee9d80c758cd2aac8ce7e2d8dafaa9c3e204b39d6c18ca641ba882",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "ffd35ce67e88a267c73d87396defc3d210857c89aba5502c27b1a906a3ee02f9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "f7a21def134899b61912ce89ef8f334b84264d39ffb27fc52555123c4458bb2e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "dd1a44a8793a94071d5ecac5201d698ce01308b07fb5888d342375e31b4231e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504.docx",
+      "sha256": "4f3681138f936d4d60e7dba133d7239308a5bb37258bdf1f64f524475a966fb7",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "36fdd881f52e5d253009312a6db4aec81d3bec1633212ecc58687d5782c0f02d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "89d639bb1704454ed2442e20efef2b03a93fc8a10c00ee9c77d5778c1a7dbe78",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "dd1a44a8793a94071d5ecac5201d698ce01308b07fb5888d342375e31b4231e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504.docx",
+      "sha256": "26f0425d14c4767f1db20f00c3940daf44083ab7085e9da5a82ce01dc1089398",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "4f9d73104eb53f6f7fba8790b2ff54c01d18c2edf31dd0bc6c1063645645fba0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "653e6d864d7f431a6f047d1bbc13be75fadef638601b504d4059bec3a3bc544e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "4087686f8845166e73388bc0772faa098de00d18518106b5bfe067935821801d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m15-manual-w3000.docx",
+      "sha256": "e938a7891df5e68fe2c682b4bc55b8d56002bb5dfa98b54a4db9d4118f5eeca0",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "036edf56640ac38042f3d9b2f137354e867df3695dc4de06b0cc2e5762233ddd",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m15-manual-w3000.xps",
+      "xps_sha256": "8054938f34b01e6fac9a60423294ab0e40fd10f31c6885f92d09f4fb40da6418",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "cbb7b191771e94e319f6c6e97504f8fc2d0d090166f1a86ac3987e2d2875ab42",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m15-manual-w3000.docx",
+      "sha256": "91651a26bc58545ebdf8cc79b3fac975fccfd33d76e7fac0bfd6746e0d24ef58",
+      "pdf": "word-windows-family-extended-century-lower-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "d76455786628e36e37da7130ea1f012c3c98a7b154a2b00133e3500360859ea4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m15-manual-w3000.xps",
+      "xps_sha256": "f8d5b9d708595a552aeab6bbd3c01335c93244f7ff826466b88559cf524eb230",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "cbb7b191771e94e319f6c6e97504f8fc2d0d090166f1a86ac3987e2d2875ab42",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m15-manual-w3000.docx",
+      "sha256": "18ebd26e7a75cc82b981531f230dd24619e780b285d914d6d11b891f58356f2f",
+      "pdf": "word-windows-family-extended-century-upper-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "80f5a279e07111178496ed9448c0705caca5cc1f24679ffe1af0b3a66149df97",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m15-manual-w3000.xps",
+      "xps_sha256": "63e80fef3e2dcdf4174a5ef79ed0b0568bb8f0fdd52dd5d2f3b5113081e9bb54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "cbb7b191771e94e319f6c6e97504f8fc2d0d090166f1a86ac3987e2d2875ab42",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m15-manual-w3000.docx",
+      "sha256": "345abe92597dc1063edca5a041aa24077f8e86f61350c5213db2c2e47557b73d",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "b66be93b7f584b746465c5fbea49c1ae494af6998b57f5ea38e5539a981ffb1a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m15-manual-w3000.xps",
+      "xps_sha256": "926fbe13ffd722faebac83c10682cc358d3a78bd88ae938d2b3d18fedaa19134",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "cbb7b191771e94e319f6c6e97504f8fc2d0d090166f1a86ac3987e2d2875ab42",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000.docx",
+      "sha256": "53515bc0b487b05e0f9705e526a9204e95ed9173b3bc304888637ee672bc8d1b",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "9e4d0b02caf0a83c34bd888144ced551d048759f1d5e14a6579c3dcbbda66767",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000.xps",
+      "xps_sha256": "0ecda3454d0c4e6c0d8ea0b4f97d7a0de793a4a0e118c38150fa90ce36377d3e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "13bf243ccf7d0143c57fecf674c738b83ede89cb58dfe158018ca0df783d3ee7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m15-manual-w3000.docx",
+      "sha256": "9cad805c2a85fa5bc1e3b3ea0544916d9efc0e1af06544483607524d0e330956",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "94f0bc2e925b76ea3be0ef2360041bcfd0fa15f47f662be5777ae99165305252",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m15-manual-w3000.xps",
+      "xps_sha256": "2cd071a50e5f4aebd5d203621f30cfe8827fcdc684588c6f4b132563e9701d07",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "13bf243ccf7d0143c57fecf674c738b83ede89cb58dfe158018ca0df783d3ee7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m15-manual-w3000.docx",
+      "sha256": "934b2b9518ea5320b3cfb12495feb2994bd3b9346310f2535eb1e1b253ddc998",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "4f91cd999f6b53e38ed1c8bcb7b3cb8fac7c7297fd766d9622c69da9c5cf1e00",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m15-manual-w3000.xps",
+      "xps_sha256": "86ce902371cc0c1ca40d6dd8662a6bd46b3f68c1651622ebe1b9f93380475993",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "11cd50675aefbae92bd089ce6283a67369e1e64fb4b1fe022a923f31b708bd4d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000.docx",
+      "sha256": "f0f1177df51e405a2b48e135048018497bbc01bcd1b7cbf7addb6db0bbfc974e",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "75fdb8f8834ba766475fe409896667af93dc57a7dbf3664561ae6848d4e9acfa",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000.xps",
+      "xps_sha256": "e5774f3897cb7f2e69738c70407eb81bf808aa40616334a76ba155d1728ab091",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "11cd50675aefbae92bd089ce6283a67369e1e64fb4b1fe022a923f31b708bd4d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000.docx",
+      "sha256": "86c3ac9134f08d5b733e8b184202a226205ddaa6aa7ea80344a032bd116bb9b6",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "f57e52c080c95e1d1adb17c4846be618735ae533ca55cb1fba56f687b9c6aa0d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000.xps",
+      "xps_sha256": "6211139f93540abe3ce8744e0cf91c6d6fec35cc976c90d78bb60a0f085318a7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "aa4a77b8aafa05e557b92ae8f067b57274dc850b3038cff32b4307dd645464a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000.docx",
+      "sha256": "54a98bc92a8c0575e25aa137952b48413f4c1566892d522468e4cb3a31b0b43a",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "a93d1117ee4e74508731434d8fa96288cd67f871927ddcb956b2e39f640a5e22",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000.xps",
+      "xps_sha256": "6cae4fbd3506675e094ae11634eec5d289ea480e5dd4c80d77d04095f9038201",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "aa4a77b8aafa05e557b92ae8f067b57274dc850b3038cff32b4307dd645464a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000.docx",
+      "sha256": "286e84b30fd7c9cfee4c10da465e35c2369effde30fe8a0bf34edc2191ed0f66",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "cd12152c1291963fd1574742a27448c4f1542c0093e584760e171a02b5cd7feb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000.xps",
+      "xps_sha256": "b29f685aca52afff0050bca0c4e734b73493063a555246facbfce60d0545c4a2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "c6532eb3ba775d521d420db94719516a5b4cd9a1b47c40f04e288cd946701840",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000.docx",
+      "sha256": "619ace6578d0ac1b5167d9bbda13c12f2a11dd49e5fcccba9d1cc8333ede4dd8",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "8f2f7fc5823bb8e65aca3caf812a404b4db31c294a3fad7ca569b3948b6f5b17",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000.xps",
+      "xps_sha256": "21c684556b4f7955717d8853953af3ea3b9f0156c34952f96c78d4fe18039260",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "aa4a77b8aafa05e557b92ae8f067b57274dc850b3038cff32b4307dd645464a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000.docx",
+      "sha256": "691954e81081e4197e8d6ef6afcdd5741745a3bc7ec7501b29c0e39f812be2ac",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "a8e874c7f45d1c9678467cc093709dca769a9f5bd30b8b627acc4345a52b5a30",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000.xps",
+      "xps_sha256": "a02cbc33d9fc07d54a68d0beeb474b17df7dbf68ce6a3d6c8e56803859e47ec4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "f5338850bafecf587411501fc2ae0c86edc3b5e6568c0e0d4a7f031ce09e7388",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000.docx",
+      "sha256": "726034675172863e4450c66e08fe3b8c72f9e5b33dac5b5279187aae3c4e80b5",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "d97dea13886c2162b1dd5e1333384fe84c73b993d1c842a36ced6df93ab1f8fd",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000.xps",
+      "xps_sha256": "0803fcfb3b4d7dcfca1e0b989d7db23a72ec14d866284835cfdb35493a3f7f85",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "f5338850bafecf587411501fc2ae0c86edc3b5e6568c0e0d4a7f031ce09e7388",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000.docx",
+      "sha256": "4002629d36ec51f4219036db393da573f33779e4c252e29ced4d35a80be5ce84",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "57761ceba5b63ad53ccc6488d2b9856741ab933f663185182b87f6243a165ac9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000.xps",
+      "xps_sha256": "735d38c033dfb76465b6e976b0930399b099634c663971c0095a8e51b91340f1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "a653f7531bbadb76c7d2de12d6a7c3293fde3c84e983b7bf6a85831ae4dd553b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000.docx",
+      "sha256": "55ef42782c998aeffe5192e1bde52a7b5696158a6199fffcc59f508844b14f49",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "944225a497353cecdeed0df1c5084ef9e14ccdeba4b0f5df4299e80db030a6ff",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000.xps",
+      "xps_sha256": "4f45f17a5a085d0d7a98dd7915e1bdfaaadf4e27a1b735bb38bb9e21cd89abcc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "f5338850bafecf587411501fc2ae0c86edc3b5e6568c0e0d4a7f031ce09e7388",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m15-manual-w8504.docx",
+      "sha256": "f626ac25fec9c40bbdc78f791e60e53ec5bd144ea6401ef2258337f3c316bc85",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "0b5fcce279e9ecca7e8553c901b236bf37dcdd5e66163238d1294528cc19bc7c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m15-manual-w8504.xps",
+      "xps_sha256": "74f840df3b62750e95413a30d090e8b3efd2ee37b5b558817ad0ce15ed7cf3dd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "fa1bb7f2fb0c8f2b6f071e0bc772d559ab7b52c6e6ab79473905cb9d8edddd1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m15-manual-w8504.docx",
+      "sha256": "def011a2b9f7d4162c4c42aedf067cc9940775a77eaf7e89f0ff5ba9e93fa1dd",
+      "pdf": "word-windows-family-extended-century-lower-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "f69235dda990d4e2e5669968cf8862c2255b9a66971deb70faa77b554145308e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m15-manual-w8504.xps",
+      "xps_sha256": "9408aedfff1f870a2b3aeff7aed022c8c698ff19dfd6f44d807e30afa59ccb03",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "fa1bb7f2fb0c8f2b6f071e0bc772d559ab7b52c6e6ab79473905cb9d8edddd1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m15-manual-w8504.docx",
+      "sha256": "945cd64c9ecf5c6c506a946c228a9268b2da1f8167cfa953f81df1af7057ed01",
+      "pdf": "word-windows-family-extended-century-upper-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "1d949941285d09f880fdbbb5a2c0530522685c676bdbe5cf02c8b8760b1cef99",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m15-manual-w8504.xps",
+      "xps_sha256": "950acb17681b1cef43d7ced96810804105bdb67952bf0ded06602742059ace1b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "fa1bb7f2fb0c8f2b6f071e0bc772d559ab7b52c6e6ab79473905cb9d8edddd1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m15-manual-w8504.docx",
+      "sha256": "569303eb8c053683be854cfd3344c9acbed31365961695d5d6ab7523e3b1e03e",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "edc80db4a513b7032455afae737a7a834f17155ccd985d38da28333ccf08cf50",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m15-manual-w8504.xps",
+      "xps_sha256": "87a3bb5c6b4ebfbec5999825cba3e6ba28c0302982912eef58deadf97b8a36a0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "fa1bb7f2fb0c8f2b6f071e0bc772d559ab7b52c6e6ab79473905cb9d8edddd1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504.docx",
+      "sha256": "3bcc859ca5092f28fd1f006d2ddf8c02f981b015ae391fe508ac634da0108fb5",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "09a28280d618ccea230861a63a5d7ca063872eebcf511647dc8b2faeab8f35f7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504.xps",
+      "xps_sha256": "d735b59bb0943501a96c6c04636e79e309d7a3a6ebde7ae44a8da34aa662fdcf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "efaa07cb620cf72f1fe96778befde901877942025a9dc78effffdd40f81803b0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m15-manual-w8504.docx",
+      "sha256": "c70964413e7129d697a98e8199e21976f658f7f63be91986a600300dc3a452fe",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "f215d7313dffa1aca9c5cc305911fdda898ab1bde404bf25d199df152aeb6a70",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m15-manual-w8504.xps",
+      "xps_sha256": "66c5d084da97fbb8dde96334f956acfefb43e35094e695ab036bd59ed43a5d70",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "e29fee1ee8e75592c6dd573cb8624ec173a2149dd88bd83aa9bbf41400004b89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m15-manual-w8504.docx",
+      "sha256": "0f52761ef702544afca2566883abfa67639d0f1f1486e4357af63c5cf1b86511",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "c06b9f34ccd1e98784d89e7f686e1d83be088c96afe0d98226d3c18908e3d360",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m15-manual-w8504.xps",
+      "xps_sha256": "42687264be4cc8f1d5d76f77ffc162626c195dfcea7b172bbf215ea1adc8f803",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "e29fee1ee8e75592c6dd573cb8624ec173a2149dd88bd83aa9bbf41400004b89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504.docx",
+      "sha256": "530b2f6a2bfb1d46b56d1fdeac8187f954c0a407ee5c737287085cabecfe0d1c",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "221aff011ae07a4b9c8d029cbe8fc236524d0b266c0e16ed78085c6724897fcc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504.xps",
+      "xps_sha256": "b5bcbeda1521095e8cf560a194a91dc18e4b28cc395f29be747991264da918c1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "e29fee1ee8e75592c6dd573cb8624ec173a2149dd88bd83aa9bbf41400004b89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504.docx",
+      "sha256": "5ff6ccdd89642f3422ca1bf52f43d950c2e7ee6ad786ed17c3809fd9632d38da",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "69b3cb008c9f3c0b4530e40ed77e0c39d4894d8a34fa1832de6550d0ea536876",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504.xps",
+      "xps_sha256": "1623b44a66a53851eb45ffe7bf7d621d0f07f5397c7e5ea6f2b062893a5025e8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "40cd8224d6f8e0442b52db225d0fa8fc8e8741ce2b03d49ae8a490f9c008c146",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504.docx",
+      "sha256": "b609a013d9e4e585c5852d14b2db455fb1bc06dc1517afab5fbbf022bcca6c72",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "f556bb61927ae8352fdd4b72c10c9a4e8eec3f2267c4fa3a4838bbe8aa8efa9a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504.xps",
+      "xps_sha256": "7c35de3f0c808b37f8453ec967cc18d047e6566472164c1415c247f8fa61c290",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "40cd8224d6f8e0442b52db225d0fa8fc8e8741ce2b03d49ae8a490f9c008c146",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504.docx",
+      "sha256": "a8827a115d40814200c86af29c7a7c209cf3cf7f09c45109936953bb5a08169b",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "c787a056fa02dd0cf1d61ac2673709f41ce695f095913adf841419b3ae618083",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504.xps",
+      "xps_sha256": "259f678636aa93219ed1fd9154f4cb4fc36c9d765c5458c945ff344ab014863a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "40cd8224d6f8e0442b52db225d0fa8fc8e8741ce2b03d49ae8a490f9c008c146",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504.docx",
+      "sha256": "e0c73433e4399d68ec027209d06eaa7d91891b0891ff977973f0999291c0dcc4",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "1e3750264275b35593e1827acd0c84316147a494b9da6a6efa52e20b606eb818",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504.xps",
+      "xps_sha256": "bd06fa0bd154074844f42c56909d804a7307bfb46b46586cc42c68e626c3516b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "40cd8224d6f8e0442b52db225d0fa8fc8e8741ce2b03d49ae8a490f9c008c146",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504.docx",
+      "sha256": "2df132a277765bd2509a3649edb71a3fa028f97a47dd35a553c7d7ff49211718",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "9dbade30f99c06ca8a2726cfbfce90742e1c48477e483a50d8cb426ab1f802ed",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504.xps",
+      "xps_sha256": "81d3e277b68f5f4a1e81a8674f166cf452babf7544fe2432772ab035d3481868",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "c85aab11b4853b9ec85fb133bc61abffd48edb6285cb11ba64a01486f9afe3a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504.docx",
+      "sha256": "e1e436e53eaf3b45579eebb3862c045e00939ef18783ea2c0939edb5cd228199",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "fce7966df2449511dc11cbf8b2da830410046da0d6f9bdf467cd9caa1e03a10c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504.xps",
+      "xps_sha256": "123830d450e603abfa5a6966d1d0b5734b0463d0afa9d02e5cb4a8927a629ab0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "c85aab11b4853b9ec85fb133bc61abffd48edb6285cb11ba64a01486f9afe3a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504.docx",
+      "sha256": "bc41988ceb9e71a1a8fac8dfe92cf09ce8a5fef9079812dacf7529a8a8f3760c",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "90e1bd4f9ca9bb066679b301336153ea70a18356cf1532623d536621458d747f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504.xps",
+      "xps_sha256": "ec27ef9702e662d079dd501ff3a593a46f47a737c34a1a4ddc35ee7a6292c53d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "c85aab11b4853b9ec85fb133bc61abffd48edb6285cb11ba64a01486f9afe3a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504.docx",
+      "sha256": "0aaa9ab8881dae76dd62c8c74574440424925f14a58dea1a23e8ffd8d662015a",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "93f5e7f9fae6ae8df55d4d985d444d220b5c3390e245eda3d21a67a18e9ea86b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504.xps",
+      "xps_sha256": "af86bf67e7144292e4393d1f0f8e098343c632948c392b89a31b40e0818faecc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "c85aab11b4853b9ec85fb133bc61abffd48edb6285cb11ba64a01486f9afe3a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000.docx",
+      "sha256": "06e5d03be43e965b2d2f1a78bcf0457a8a46231c117046ea5df6d5fbf829afb9",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "3689d36b7f31a4d56ee22c5316a9c1a740ff58247341b8f134e132d8f55b589e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "89cca2c6b1ea976c3047c654b995e7dd162be98fcf8b2032acd6287083fc7c54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "8283543dbaa156f037a8e226c3220c947039e63d14badaa68123e4aec4926105",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m15-paragraph-w3000.docx",
+      "sha256": "f502586348139b7a251c88476e009a8ef875ed7dbe8545915192b982083c8cf8",
+      "pdf": "word-windows-family-extended-century-lower-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "e155f7e52d506b790eb3b39b1c39267c4ef8fc07fbf05487c7b6c15ca3871b61",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "6af1dc33b24ac8eb0f54ae56a8645a2d20b2783c45e9851ec18b159d85d86ba2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "8283543dbaa156f037a8e226c3220c947039e63d14badaa68123e4aec4926105",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m15-paragraph-w3000.docx",
+      "sha256": "05372412c617cb33ce52c711619f5dbad629a007b8122b4d5d101e6e70ae1045",
+      "pdf": "word-windows-family-extended-century-upper-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "8c5befcdd0642115dff7975b326a86d24d779456c7e3ac90e4494c9ed96d62ea",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "26799747425853c2c464a752a37f7020203b35696c6e0c8a0235f50b10c4973a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "8283543dbaa156f037a8e226c3220c947039e63d14badaa68123e4aec4926105",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000.docx",
+      "sha256": "9bedcb26be380f5dd64aa542de4140c36fbfba3c791080b3e835a09ef6c978f0",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "7fd06366b5759bd15abb89d4b675344c72bbc6aa4d71c37f942502b1024127ca",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "89d5717f52d5b298b4f7ffe326e4f74fb7741ab521ec2b1309d02654ac5d07f6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "5fcc80736c47f4c5b9f0ba92765e81c68f8ffbed3b2253a1112d2a73d06939af",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000.docx",
+      "sha256": "899ee0f5633e192687f0965485d4ae2b5d6dace631b56f766877fe8d98010501",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "f05b342ba47f455ddfdce7ce491c388e017fd0f17615a2abe90dc6c6349283da",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "85a6cd04548744467a84bd099e80f5a47fa0899d8413083a7575333298a0d1a7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "32e7fed9a3abea8c76e8d638484056cde50462593163044b67b547179803d540",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000.docx",
+      "sha256": "17937b89680c101fc484132e0ebfa818986c713b3e7598682eada610562a85d7",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "ee0a18b04ae1923d7c01ed29db1ed23505fbedb5e56ca38179f619ebbb91708e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "46405d5c11689430cf3d6b64c03c8c0d3afb04bdb07305da87d808e9f5046c38",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "12b05c632ec38c5fb106bbe52dd269aa5bf0d4e993fa31eed95a04d85b763a0a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000.docx",
+      "sha256": "b0bbe592aa792bb6f3311cd0601c2f5188ad4604534605a1525100e7aa3dc39a",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "15042a4293e5501977856d5ae08c3ecbb93a0c83e18022a900091658c73a8c9b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "46ad6225613dbff2d34e445b3b5396d3575e0bf03ec4d1c63c16e47ea2bcb245",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "32e7fed9a3abea8c76e8d638484056cde50462593163044b67b547179803d540",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000.docx",
+      "sha256": "87361a08240619e163395655d12d7c0aad530050644d088d0cadf0f9e56332f3",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "4cded0c28668af8461b06823f206c229f2d600ccf168b8897164b90ef2abf3ce",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "9c22dc2dc96297c9493521790f00299d6b45669ad903338a7b7348f41df23e24",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "32e7fed9a3abea8c76e8d638484056cde50462593163044b67b547179803d540",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000.docx",
+      "sha256": "da77d2526b4219e3ca3dce888a2a754e5dfd3de81d2a6d2a6876ded7f9adacdc",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "d2948b2edd4d3d2c2c6978b743ea902a49eb97126dbe733324af2dfa4922c0c6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "a0eda6073d2d906a63b91086c440b4abafabc476663585ba3565d729752a264b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "ed69b1c8e85501adb1359479a37ce6666bd7a51f65e872b98442c53e4e916386",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000.docx",
+      "sha256": "7a2f644848c98b1235b32111c1f1436f2a3415b365ab1fd4092cff5b1833da43",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "5f139ec7593b83325f8d64e69cca77684f4c157047a4f9dd9b685eb9ef9cfa49",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "f03e4cec9db5ca1160b01f5a0a062b4b18226d74a40d1c1f1c52b25a9e105783",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "ed69b1c8e85501adb1359479a37ce6666bd7a51f65e872b98442c53e4e916386",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000.docx",
+      "sha256": "6fc3e63e37c2c09b458f302f944f0b1aac317dc63a9c3524cdc16d957a31b52c",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "60eb383c44a13a8169296866ca279a77bfd1a31c1de7dc49b01354364ae1c771",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "b696edaea7bd53005014e7b0b83d511673711b3ec355ecd6f5e537d625e8232c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "00071301c16080c76f8decea8e56807647697034d11264dab328e8134378a871",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000.docx",
+      "sha256": "093b720796b2a42289eb60bafeee48a4ac385fffc74776c9b4d8f37c17f45e93",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "4c606f7404b87bf3cdeef5d3e7beef860184c7d05c2f5a4b9044c54c9d54fc08",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "00300df9b30f6d406f3a28ef9c327c2276585ab6bd57e8757ab5001ba31553e3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "00071301c16080c76f8decea8e56807647697034d11264dab328e8134378a871",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000.docx",
+      "sha256": "f565640ad0049b19aae8f18045990c79c58ebe638fb8b495fb05b34c83722f96",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "875e8f57b4823bba0768a1e8ca9e4262a588c33ddbe1e3878a16c32d3bec9310",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "effafde3de0bf7c9fcd1b635e1fae0cf451ab1662b0f896128833940012dfb6c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "745a5ad1fd6de2e30738a6a44d025f000439160d9ae1b45e6a834b2576d1b29f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000.docx",
+      "sha256": "c6b5b63052906853de91c8d9b5d3213f621341f243565d3998d2af0cf730403f",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "5920b286837d4a89a262566660cbb91245ee111359a949b3e9ed9a365ede68f7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "7109bbd46dae295c82b7d9a0207cca2481a795f87e89b3fd49a0467755aaec49",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "a25a9ca893af5a6e3edb7f206b675a227f25a98453ba0bd502e5863b4965523d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000.docx",
+      "sha256": "0ae7a28839aa81a7d4bf57fada471a4c02df49ffc6960ff6b14eb0585388db04",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "d3ae748c9382a217720ebbe2bed2ae28419088114b99b12e4cc68bf70efde5dc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "bd8244009ebededc09a8a7e9eb91301d7dd9ac9d3de364ea6bf88cf710c38f3b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "a25a9ca893af5a6e3edb7f206b675a227f25a98453ba0bd502e5863b4965523d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000.docx",
+      "sha256": "f29caf3345a9062ab2202bb7a7fe04faa365e7d3c6491c65a471a67f8301729e",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "e077ed1a0dc4b73a68964666905d038d7312db5a7de850d4fbcc0b3268219678",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "5b547cd089ed26ae100500a62f84bf61129823d89d8d58d7ad8a6afb3c30b493",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "a25a9ca893af5a6e3edb7f206b675a227f25a98453ba0bd502e5863b4965523d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504.docx",
+      "sha256": "f0543634635ee451aef24aa9153b2ff4c9daed466e36635887bbd359b6e5b946",
+      "pdf": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "d6937974d12e52dd5b60ed9009ca1d6e9cd340b97ff149c86b4c6106a0eeabd0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "00913c0a7819bd264874e4863888cebfb0c39a13423c4dadaafde3722b9431f2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "12e8e65e0a8559e7dd4b33b411fa04761747e92506604bdaa15585846a197bf0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-lower-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-lower-s12-m15-paragraph-w8504.docx",
+      "sha256": "1d741df5a2fd5ce4a6b93ca36767c43bc4d8ab80cdbb9980d620edca593a2c53",
+      "pdf": "word-windows-family-extended-century-lower-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "d8994f248526a9be0cf8a20d75e1b3886ee48db578eef7c6595af73743c6db3d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-lower-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "a5966d517b5de2ec0c84e22066f126ed70b7a0e18396edcf746c13ee23fb08e5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-lower-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "e3119865ba0bcd5913fe49ba321b32b590ff44bd8672c819d124b86cfb27ef2f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-upper-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-upper-s12-m15-paragraph-w8504.docx",
+      "sha256": "5c745bae476ba28c2383d6c66b08ca715d63a2c4d32004184a71b3b65eeb76e4",
+      "pdf": "word-windows-family-extended-century-upper-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "60ac66fb9eaf2de20ad41cafb7cb6b0dba6181dcb731e68ca38ae10634e3b1ef",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-upper-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "859b895ad894ab8cc93c0e75a1ff1a07045843954945e461abc892e31724a8a7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-upper-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "12e8e65e0a8559e7dd4b33b411fa04761747e92506604bdaa15585846a197bf0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504.docx",
+      "sha256": "9006687f9363e28901cd39db485d8a5305ba95782b00f9deb8001149ef5e3360",
+      "pdf": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "b1161914c53d1719223d6e7685b75762d4b7353eeb0dd5e222a923e1d75e685c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "a774b6767eed83bb693ff8ce44efdb080510b2c38b1d8c3ca26123c2ed96d0b3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "12e8e65e0a8559e7dd4b33b411fa04761747e92506604bdaa15585846a197bf0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504.docx",
+      "sha256": "f5ffc071b36a12ae63135def44952e3fb32fc453b1d68ba9f9a1ffd318a03b1b",
+      "pdf": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "e23ff9a11d1b2cd355b93c3b4391ac5a34251f169f529846608a1a4cca557611",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "111a0357200214bdbced9b20e34c0c6e8a8653ec0a1670bdd896394eebe919e5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "de2cc77a1bbcaa6705c1cfb470cf9ebb004f6248798da7246f37b2f67f6cdb7b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504.docx",
+      "sha256": "56d0a0f6da0a8f0f16bec9a3e9f8fee4287622c7e1e7388982692ddd5586ec5a",
+      "pdf": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "3f9e155b0d622288db25ed43629f9052b972351ffef0e49529a656c8e489443d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "7339fe7c1b2bb67bdee5797cd5f115ac824eed5856425a63e7420aeef28dfee7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "f1d5c4ec989e654488bdcd780876be262d1034c7b4fa1099d0dc5dce497a914f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504.docx",
+      "sha256": "04a4e28ec0e4e05fc6e3e0e75c4b5d82692bca8978558891dbfb47bb96ccbc4e",
+      "pdf": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "a02e7bd756e7c93f4e2f3c242302205700d668ce6a81db8247920517f486a820",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "2dbfedd0c260f93e3d470514b7b80e232121b3bf5da973bbebadc6bb0c1321fd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "f1d5c4ec989e654488bdcd780876be262d1034c7b4fa1099d0dc5dce497a914f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504.docx",
+      "sha256": "88a9ccbc65d80f024b69c5fba6eb13bb6e9f5b49e79ba19b6e37da9eb8ea2a05",
+      "pdf": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "c89ee797a1823372f5b35e77b3d21b25b32988d5a63d0bded063b5396c6389a7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "1b6a8b48c9c7729f9c7eb49945c872e19609c78eb0bd7ab725a85637590bc584",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "f1d5c4ec989e654488bdcd780876be262d1034c7b4fa1099d0dc5dce497a914f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504.docx",
+      "sha256": "dde2f5b1d57cb2607ecb4f0fcabbb91310f97778c3868db9104732852123baec",
+      "pdf": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "20b6dee3c08d9d2c4e6feb78ea88602f61d7e9cab12e0a3a65ebc67329ede0fa",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "7a897be2ee1f49f6b27055d2232666a0c6390c6c4f0ec4bc9a19cdaa7f0f9be7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504.docx",
+      "sha256": "7d4ee9a171e55763f711f07898ad51535c22b05c46a2c45d2ea210ab8760639a",
+      "pdf": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "9369dfde9f8aab064a3553963230a8c16fa1f9b943806507f169c18419ef467b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "069bd451e306a70fc7888f556f7455aa08d4caa6c04b35cef9f76a87971b976a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504.docx",
+      "sha256": "5b308da28b074e8545db592c611f8cdab99f61517596f8368f099b7008608085",
+      "pdf": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "bd050a3fb64db2accf4468e52920e261eab0d708aacd5e483338122cc8c14b48",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "7d188a72b20bf2e9b502e0ce8d34e2f1884d07b253b5b0170bc9a7f54265008d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504.docx",
+      "sha256": "5ed393c54d407ca5bed6f0e1df856374086e084698db580e496674c506646cf0",
+      "pdf": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "2a2322155cc5352f6ffe86171cdd7c8f1da1eb24565e927597b921644b6277e4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "3403c3f393b8dbdcfc0e7818e8cd201a43951d5ac8550b575c504d09faf2242a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b93fe755b2bfde39677f4416a13abce81f8b6dca5e1527f46f2edafc5d99fa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504.docx",
+      "sha256": "38a4e2feb22172d9af4789a8aa7a68291cf4e2d4c772a5fc9af87d9675324449",
+      "pdf": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "c5af278f0e807132cf3fafdf3f7174143deff2e9ed91b5c5e924f8eb4f6210c3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "446dfbf3cc65edc2979876454e4874a32265982af56dbab021b711486e371661",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "dd1a44a8793a94071d5ecac5201d698ce01308b07fb5888d342375e31b4231e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504.docx",
+      "sha256": "049c8a8bea8f9c38b20a5509b61e39b118183d387cf0c83c0d3dd9e136464ff2",
+      "pdf": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "a76a395df65b6fe4fd67ebda3765e3667a7a9f592d0fd2bdb6ace212c939b789",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "0b76c6efcd10c7d9fc6546518790d6986656ad454190281bc9a9c3c40a2ebb7b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "dd1a44a8793a94071d5ecac5201d698ce01308b07fb5888d342375e31b4231e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504.docx",
+      "sha256": "07c12f0531bd18b258ac6cd630f52874e7709a2cde87962cf237ba52e8316b81",
+      "pdf": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "018b5652009d63983686fa708dd4aa754113f4570d31d40a7fee7f0264757659",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "556be30334fc1ab30a0a225a10fe6db200882dc526e20b6c396b0c41465ea0ec",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "4087686f8845166e73388bc0772faa098de00d18518106b5bfe067935821801d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504",
+      "source": "w21-font-family-extended-inputs\\word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504.docx",
+      "sha256": "8df61b91630414c37ef706cb3aa60f8afe34f8d94885ef4cc5f317075c5b449f",
+      "pdf": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "2948ddf97396a85b85e48229d26753cd8615356cb95fc9e516edc3802428998c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "2d886c1a3e9c443a1801058ecce367cb53d832cf5a52857a7ad89e2de7d40ebf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "dd1a44a8793a94071d5ecac5201d698ce01308b07fb5888d342375e31b4231e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

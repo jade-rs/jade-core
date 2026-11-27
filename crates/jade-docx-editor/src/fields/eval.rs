@@ -92,6 +92,13 @@ pub(crate) struct Outcome {
 }
 
 /// The raw result of one field, before the general switches.
+/// A PAGE value and how it shows: from the layout's label, or numbered
+/// from the story's section start in its `w:fmt`.
+enum PageNumber {
+    Label(super::PageLabel),
+    Story(u32, Option<String>),
+}
+
 enum Evaluated {
     Value(FieldValue),
     /// Final text the general switches do not touch (an error message).
@@ -370,8 +377,35 @@ impl<'a> Evaluation<'a> {
         ))
     }
 
-    fn page_number(&self, paragraph: usize) -> Option<(u32, Option<String>)> {
+    /// The label the layout gives a physical (1-based) page.
+    fn page_label(&self, physical: usize) -> Option<&super::PageLabel> {
+        self.env.page_labels.get(physical.checked_sub(1)?)
+    }
+
+    /// What a PAGE field shows for a physical page in a list (INDEX, TOA,
+    /// PAGEREF `\p`): the layout's label, else the page itself.
+    /// `None` for a page past those a layout finished: the field keeps
+    /// its result, as PAGE and PAGEREF do.
+    fn page_text(&self, physical: usize) -> Option<String> {
+        match self.page_label(physical) {
+            Some(label) => Some(label.text.clone()),
+            None if self.env.page_labels_from_layout => None,
+            None => Some(physical.to_string()),
+        }
+    }
+
+    /// The PAGE value of `paragraph`'s page and how to show it: the
+    /// layout's label when there is one, else numbered from the story's
+    /// section starts and formats.
+    fn page_number(&self, paragraph: usize) -> Option<PageNumber> {
         let physical = (self.page_of)(paragraph)?;
+        if let Some(label) = self.page_label(physical) {
+            return Some(PageNumber::Label(label.clone()));
+        }
+        if self.env.page_labels_from_layout {
+            // Past the pages the layout finished: not known yet.
+            return None;
+        }
         let section = self.story.paragraphs.get(paragraph)?.section;
         let numbering = self.story.sections.get(section);
         let start = numbering.and_then(|numbering| numbering.start);
@@ -390,7 +424,7 @@ impl<'a> Evaluation<'a> {
             }
             None => physical as u32,
         };
-        Some((displayed, format))
+        Some(PageNumber::Story(displayed, format))
     }
 
     fn section_page_count(&self, section: usize) -> Option<usize> {
@@ -486,9 +520,7 @@ impl<'a> Evaluation<'a> {
                             .unwrap_or(1);
                         Evaluated::Value(FieldValue::Number(start as f64))
                     }
-                    (_, Some((page, format))) => {
-                        self.number_with_section_format(code, page, format)
-                    }
+                    (_, Some(number)) => self.page_number_result(code, number),
                 }
             }
             "NUMPAGES" => match self.env.page_count {
@@ -775,6 +807,9 @@ impl<'a> Evaluation<'a> {
                         if target == own {
                             return Evaluated::Final(self.relative_word(bookmark.paragraph < here));
                         }
+                        let Some(target) = self.page_text(target) else {
+                            return Evaluated::Keep;
+                        };
                         return Evaluated::Final(if japanese {
                             format!("{target} ページ")
                         } else {
@@ -783,7 +818,7 @@ impl<'a> Evaluation<'a> {
                     }
                 }
                 match self.page_number(bookmark.paragraph) {
-                    Some((page, format)) => self.number_with_section_format(code, page, format),
+                    Some(number) => self.page_number_result(code, number),
                     None => Evaluated::Keep,
                 }
             }
@@ -937,16 +972,37 @@ impl<'a> Evaluation<'a> {
 
     /// A number in the section's page number format, unless a `\*` or `\#`
     /// switch asks for another.
+    /// A PAGE or PAGEREF result. A field's own numeric switch formats the
+    /// PAGE value; otherwise it shows as its section does.
+    fn page_number_result(&self, code: &FieldCode, number: PageNumber) -> Evaluated {
+        match number {
+            PageNumber::Story(value, format) => {
+                self.number_with_section_format(code, value, format)
+            }
+            PageNumber::Label(label) => {
+                if self.has_number_switch(code) || label.text == label.value.to_string() {
+                    Evaluated::Value(FieldValue::Number(label.value as f64))
+                } else {
+                    Evaluated::Value(FieldValue::Text(label.text))
+                }
+            }
+        }
+    }
+
+    fn has_number_switch(&self, code: &FieldCode) -> bool {
+        code.format.numeric_picture.is_some()
+            || code.format.formats.iter().any(|name| {
+                jade_docx_reader::field_format::format_number_switch(1.0, name).is_some()
+            })
+    }
+
     fn number_with_section_format(
         &self,
         code: &FieldCode,
         number: u32,
         format: Option<String>,
     ) -> Evaluated {
-        let has_number_switch = code.format.numeric_picture.is_some()
-            || code.format.formats.iter().any(|name| {
-                jade_docx_reader::field_format::format_number_switch(1.0, name).is_some()
-            });
+        let has_number_switch = self.has_number_switch(code);
         match format.filter(|format| !has_number_switch && format != "decimal") {
             Some(format) => Evaluated::Value(FieldValue::Text(format_number_value(
                 &format,
@@ -1494,11 +1550,14 @@ impl<'a> Evaluation<'a> {
         for ((_, main), sub, mut pages) in grouped {
             pages.sort_unstable();
             pages.dedup();
-            let pages = pages
+            let Some(pages) = pages
                 .iter()
-                .map(usize::to_string)
-                .collect::<Vec<_>>()
-                .join(&list_separator);
+                .map(|page| self.page_text(*page))
+                .collect::<Option<Vec<_>>>()
+            else {
+                return Evaluated::Keep;
+            };
+            let pages = pages.join(&list_separator);
             match sub {
                 Some(sub) => {
                     if last_main.as_deref() != Some(main.as_str()) {
@@ -1569,14 +1628,18 @@ impl<'a> Evaluation<'a> {
                 } else {
                     pages
                         .iter()
-                        .map(usize::to_string)
-                        .collect::<Vec<_>>()
+                        .map(|page| self.page_text(*page))
+                        .collect::<Option<Vec<_>>>()?
                         .join(", ")
                 };
-                format!("{name}{separator}{pages}")
+                Some(format!("{name}{separator}{pages}"))
             })
-            .collect();
-        Evaluated::Paragraphs(lines)
+            .collect::<Option<Vec<_>>>();
+        match lines {
+            Some(lines) => Evaluated::Paragraphs(lines),
+            // A page past those the layout finished: keep the table.
+            None => Evaluated::Keep,
+        }
     }
 }
 

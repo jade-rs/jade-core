@@ -1,1 +1,2 @@
 # Proptest records minimized revision-history regressions here.
+cc c90b9f45d18aa63ad59de90f9092b6b02b33ae851dcbd4f1d3ffe816453971a7 # shrinks to operations = [View(1), ScopedDecision(false, None, 0, None, None), View(2)]

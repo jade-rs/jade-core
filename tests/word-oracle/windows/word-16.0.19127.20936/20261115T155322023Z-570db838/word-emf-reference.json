@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T155322023Z-570db838",
+  "captured_at_utc": "2026-11-15T15:53:22.0274131Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size24-left-italic-balance1-compat15",
+      "docx_sha256": "991a9b66a7920cc113b6b7d91e244d1bf58bfc68fa7e735aa13ef5341dcdc1ee",
+      "pdf_sha256": "bd68365f7be4f336e41c90df2449f93eee893c3ad8b0d5ce507ff323c5c78251",
+      "pdf_file": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size24-left-italic-balance1-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size24-left-italic-balance1-compat15.page-001.emf",
+          "sha256": "c0f105404050a8c8e7748377791e503135af4a8ce1e4f684eb4c282b32bec612",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          125.87700969213228
+        ],
+        [
+          1,
+          "g",
+          101.03660552308001,
+          125.87700969213228
+        ],
+        [
+          1,
+          "日",
+          119.63598064906267,
+          125.87700969213228
+        ],
+        [
+          1,
+          "本",
+          143.63517436000805,
+          125.87700969213228
+        ],
+        [
+          1,
+          "語",
+          167.63436807095343,
+          125.87700969213228
+        ],
+        [
+          1,
+          "A",
+          202.3132029832695,
+          125.87700969213228
+        ],
+        [
+          1,
+          "B",
+          218.27266680104816,
+          125.87700969213228
+        ],
+        [
+          1,
+          "C",
+          234.23213061882683,
+          125.87700969213228
+        ],
+        [
+          1,
+          "A",
+          251.6315460592622,
+          125.87700969213228
+        ],
+        [
+          1,
+          "B",
+          267.5910098770409,
+          125.87700969213228
+        ],
+        [
+          1,
+          "C",
+          283.67046966337426,
+          125.87700969213228
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          161.99615165336374
+        ]
+      ]
+    }
+  ]
+}

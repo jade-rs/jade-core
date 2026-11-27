@@ -1,0 +1,3332 @@
+{
+  "schema": 1,
+  "mac_parent_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/manifest.json",
+    "sha256": "44a338789155b19cdba9562029724c009df41a807faee4475603fa0259f7d4cc"
+  },
+  "mac_parent_reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "osVersion": "macOS 27.0.1",
+    "export": "Save As > PDF",
+    "pdfSha256": "af6002b0cef4c27ace08f968cc953b7ff9c679f7eb0f9c966a7c8c839092af5b",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "purpose": "Original versioned Windows Word measurements, now required in CI for screen EMF and physical PDF geometry using original embedded fonts at unchanged0.375pt per-axis tolerance. Source DOCX, Word PDF/EMF and executable/font identities remain immutable.",
+  "fixtures": [
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b0-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b0-m14.docx",
+        "sha256": "74097542c13140604891e03ad8b7c8cb64ef82bd1b95a43d1822cbb56b260ee0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o26p25-b0-m14",
+        "source_sha256": "74097542c13140604891e03ad8b7c8cb64ef82bd1b95a43d1822cbb56b260ee0",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b0-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b0-m15.docx",
+        "sha256": "4c6fe523a323e282dbf020d52d1c099be66058bc5d209fc565dc723e4d2d016f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o26p25-b0-m15",
+        "source_sha256": "4c6fe523a323e282dbf020d52d1c099be66058bc5d209fc565dc723e4d2d016f",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b7p5-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b7p5-m14.docx",
+        "sha256": "837e098fba4b886b375a826cd77b1fbd28daea88a7dc55f3595873fbd41e4cc0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o26p25-b7p5-m14",
+        "source_sha256": "837e098fba4b886b375a826cd77b1fbd28daea88a7dc55f3595873fbd41e4cc0",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b7p5-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b7p5-m15.docx",
+        "sha256": "f59901e7fa10b538d7b044f2623f0190060e2d52772036f607da5ec84b7e7905"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o26p25-b7p5-m15",
+        "source_sha256": "f59901e7fa10b538d7b044f2623f0190060e2d52772036f607da5ec84b7e7905",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b0-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b0-m14.docx",
+        "sha256": "bba5f410182ca9f62babb8eff38a8c3e2b6aaea54f4e56e0e07c75ecbaecacf5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o52p5-b0-m14",
+        "source_sha256": "bba5f410182ca9f62babb8eff38a8c3e2b6aaea54f4e56e0e07c75ecbaecacf5",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b0-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b0-m15.docx",
+        "sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o52p5-b0-m15",
+        "source_sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b7p5-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b7p5-m14.docx",
+        "sha256": "fdf45279f4e78d162aa92c2bab9a46395c7ac143515f970963c2fe92f43a80c2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o52p5-b7p5-m14",
+        "source_sha256": "fdf45279f4e78d162aa92c2bab9a46395c7ac143515f970963c2fe92f43a80c2",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b7p5-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b7p5-m15.docx",
+        "sha256": "c1cf9b6c399a20ed8a7fc601068c74bdd182da84864683ba0cd71c8de9ae897d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o52p5-b7p5-m15",
+        "source_sha256": "c1cf9b6c399a20ed8a7fc601068c74bdd182da84864683ba0cd71c8de9ae897d",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b0-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b0-m14.docx",
+        "sha256": "c7e47430f32e05b8567099b56db2170c1c8a13bc5ccdb110e6bed2d97b615eab"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o78p75-b0-m14",
+        "source_sha256": "c7e47430f32e05b8567099b56db2170c1c8a13bc5ccdb110e6bed2d97b615eab",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b0-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b0-m15.docx",
+        "sha256": "cf0156e2a0eb70bfc25ed7105efece4d683df38f38a3ec3c4e7d506a6f010188"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o78p75-b0-m15",
+        "source_sha256": "cf0156e2a0eb70bfc25ed7105efece4d683df38f38a3ec3c4e7d506a6f010188",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b7p5-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b7p5-m14.docx",
+        "sha256": "66a224359973cb498d48ec1a0ac9675ad76557e8dbc29c59a23ad405077eb04d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o78p75-b7p5-m14",
+        "source_sha256": "66a224359973cb498d48ec1a0ac9675ad76557e8dbc29c59a23ad405077eb04d",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b7p5-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b7p5-m15.docx",
+        "sha256": "19c78e4aa523774246779086bdb00eacebedc669ba11b9837529aea67f2635f2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s11-o78p75-b7p5-m15",
+        "source_sha256": "19c78e4aa523774246779086bdb00eacebedc669ba11b9837529aea67f2635f2",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 11,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b0-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b0-m14.docx",
+        "sha256": "9c6c5b9d6d9826635406eb6c0b37972049093bc0fc8bf91bde5c98ff8e27a5ee"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o26p25-b0-m14",
+        "source_sha256": "9c6c5b9d6d9826635406eb6c0b37972049093bc0fc8bf91bde5c98ff8e27a5ee",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b0-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b0-m15.docx",
+        "sha256": "7586cc9fdd9d242905d43b695bb9b0a44bc61f553192c218c102069fcd381b6a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o26p25-b0-m15",
+        "source_sha256": "7586cc9fdd9d242905d43b695bb9b0a44bc61f553192c218c102069fcd381b6a",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b7p5-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b7p5-m14.docx",
+        "sha256": "1954568da5fd0e24deafb2442f0b23e2277e9f2ad61057488324acc072cabe5b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o26p25-b7p5-m14",
+        "source_sha256": "1954568da5fd0e24deafb2442f0b23e2277e9f2ad61057488324acc072cabe5b",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b7p5-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b7p5-m15.docx",
+        "sha256": "b27c3d375d7a123a7b37c198dfb68fa9fe7e9873156b2b1bc55b9873022814a6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o26p25-b7p5-m15",
+        "source_sha256": "b27c3d375d7a123a7b37c198dfb68fa9fe7e9873156b2b1bc55b9873022814a6",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 26.25,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b0-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b0-m14.docx",
+        "sha256": "5715598e38b214f498dc5f2149e28f48a23353174b486ac1657f61f48f47ce60"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o52p5-b0-m14",
+        "source_sha256": "5715598e38b214f498dc5f2149e28f48a23353174b486ac1657f61f48f47ce60",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b0-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b0-m15.docx",
+        "sha256": "bee14f609cad4a26e36ca7147d4ae1d57c8f2dffa6b45de9c05dde016da9100d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o52p5-b0-m15",
+        "source_sha256": "bee14f609cad4a26e36ca7147d4ae1d57c8f2dffa6b45de9c05dde016da9100d",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b7p5-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b7p5-m14.docx",
+        "sha256": "f0b989c605ded27ea494d7f1a46e8bb7487da6aaba093a35cedb99f310c621a8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o52p5-b7p5-m14",
+        "source_sha256": "f0b989c605ded27ea494d7f1a46e8bb7487da6aaba093a35cedb99f310c621a8",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b7p5-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b7p5-m15.docx",
+        "sha256": "ceed8ef97528c2edf8347087f1f96fb9502bc07581c50d0de4981b6e494d6135"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o52p5-b7p5-m15",
+        "source_sha256": "ceed8ef97528c2edf8347087f1f96fb9502bc07581c50d0de4981b6e494d6135",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 52.5,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b0-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b0-m14.docx",
+        "sha256": "b041d353f3884a405d816987fb814fa3004408eb5f0c58e4c68241cd76c4dd05"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o78p75-b0-m14",
+        "source_sha256": "b041d353f3884a405d816987fb814fa3004408eb5f0c58e4c68241cd76c4dd05",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b0-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b0-m15.docx",
+        "sha256": "2585a2462d3b187fef002c6a92dec1edd3ae486365c1fe5215fc32842c377e91"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o78p75-b0-m15",
+        "source_sha256": "2585a2462d3b187fef002c6a92dec1edd3ae486365c1fe5215fc32842c377e91",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 0,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b7p5-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b7p5-m14.docx",
+        "sha256": "49f6164e180e7b524d48456f837b27fb44a31471eb61ba885b207a856aa12263"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o78p75-b7p5-m14",
+        "source_sha256": "49f6164e180e7b524d48456f837b27fb44a31471eb61ba885b207a856aa12263",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 14,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b7p5-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b7p5-m15.docx",
+        "sha256": "2c5aaa8c9b08d1b78be521b1f43b87f91a28e18adb57a967ad145df03fcf20fb"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/capture.json",
+        "sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+        "sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792"
+      },
+      "capture_id": "20261118T120144879Z-9889c406",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-top-bottom-s14-o78p75-b7p5-m15",
+        "source_sha256": "2c5aaa8c9b08d1b78be521b1f43b87f91a28e18adb57a967ad145df03fcf20fb",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "font_size_pt": 14,
+        "vertical_offset_pt": 78.75,
+        "distance_bottom_pt": 7.5,
+        "compatibility_mode": 15,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDHEE+Arial-BoldMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "653c94842283fd1ba7eb507c1b492955b02bdda105ec41513d01510268b83040",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Bold",
+            "Fet",
+            "Fett",
+            "Félkövér",
+            "Gras",
+            "Grassetto",
+            "Halvfet",
+            "Kalın",
+            "Krepko",
+            "Lihavoitu",
+            "Lodia",
+            "Negreta",
+            "Negrita",
+            "Negrito",
+            "Pogrubiony",
+            "Tučné",
+            "Vet",
+            "fed",
+            "tučné",
+            "đậm",
+            "Έντονα",
+            "Полужирный"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    }
+  ]
+}

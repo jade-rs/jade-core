@@ -323,6 +323,46 @@ impl DeleteTextCommand {
         Ok(())
     }
 
+    /// Delete in an empty body paragraph whose next paragraph is a table's,
+    /// or Backspace in one whose previous paragraph is a table's and that is
+    /// not the body's last: the paragraph is removed and the position the
+    /// caret goes to is returned. `None` when this is not that case. A
+    /// paragraph between two tables stays, since removing it would join
+    /// them.
+    fn remove_empty_paragraph_beside_table(
+        &mut self,
+        ctx: &mut CommandContext<'_>,
+        index: usize,
+    ) -> CommandResult<Option<TextPosition>> {
+        let document = &*ctx.document;
+        let count = document.paragraph_count();
+        if document.revision_session().is_some()
+            || !document.is_body_paragraph_surface(index)
+            || document.paragraph_is_in_table(index)
+            || !paragraph_is_removable_empty(ctx, index)
+        {
+            return Ok(None);
+        }
+        let table_before = index > 0 && document.paragraph_is_in_table(index - 1);
+        let table_after = index + 1 < count && document.paragraph_is_in_table(index + 1);
+        let next_is_body = index + 1 < count && document.is_body_paragraph_surface(index + 1);
+        match self.direction {
+            DeleteDirection::Forward if table_after && !table_before => {
+                self.remove_empty_paragraph(ctx, index)?;
+                Ok(Some(TextPosition::new(index, 0)))
+            }
+            DeleteDirection::Backward if table_before && !table_after && next_is_body => {
+                let previous_len = document
+                    .paragraph(index - 1)
+                    .map(paragraph_len)
+                    .ok_or(CommandError::ParagraphUnavailable)?;
+                self.remove_empty_paragraph(ctx, index)?;
+                Ok(Some(TextPosition::new(index - 1, previous_len)))
+            }
+            _ => Ok(None),
+        }
+    }
+
     fn remove_empty_paragraph(
         &mut self,
         ctx: &mut CommandContext<'_>,
@@ -590,6 +630,20 @@ impl DeleteTextCommand {
                     self.previous_selection = previous_selection;
                     *ctx.selection = Some(SelectionRange::collapsed(
                         ctx.document.model_to_rendered_text_position(new_focus),
+                    ));
+                    return Ok(());
+                }
+
+                // An empty paragraph beside a table goes, as in Word: Delete
+                // in one just before a table, Backspace in one just after a
+                // table (with more text after it). The caret goes into the
+                // table's nearest cell.
+                if let Some(focus) =
+                    self.remove_empty_paragraph_beside_table(ctx, start.paragraph)?
+                {
+                    self.previous_selection = previous_selection;
+                    *ctx.selection = Some(SelectionRange::collapsed(
+                        ctx.document.model_to_rendered_text_position(focus),
                     ));
                     return Ok(());
                 }
@@ -2392,6 +2446,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -2427,6 +2482,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -2452,6 +2508,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -4084,6 +4141,74 @@ mod tests {
                 before_xml
             );
         }
+    }
+
+    /// Word removes an empty paragraph beside a table: Delete in one just
+    /// before the table, Backspace in one just after it. Between two tables
+    /// it stays, since removing it would join them.
+    #[test]
+    fn an_empty_paragraph_beside_a_table_is_removed_as_word_does() {
+        let table = r#"<w:tbl><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid><w:tr><w:tc><w:p><w:r><w:t>cell</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+        let texts = |word_doc: &WordDocument| -> Vec<String> {
+            (0..word_doc.paragraph_count())
+                .map(|index| paragraph_text(word_doc.paragraph(index).unwrap()))
+                .collect()
+        };
+        let delete = |body: String, at: TextPosition, direction: DeleteDirection| {
+            let data = build_docx_with_body(&body);
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            let mut selection = Some(SelectionRange::collapsed(at));
+            let mut executor = CommandExecutor::new();
+            executor
+                .execute(
+                    Box::new(DeleteTextCommand::new(
+                        SelectionRange::collapsed(at),
+                        direction,
+                    )),
+                    &mut CommandContext::new(&mut word_doc, &mut selection),
+                )
+                .expect("delete");
+            let after = texts(&word_doc);
+            let caret = selection.map(|range| range.focus);
+            executor
+                .undo(&mut CommandContext::new(&mut word_doc, &mut selection))
+                .expect("undo");
+            (after, caret, texts(&word_doc))
+        };
+        let p = |text: &str| format!(r#"<w:p><w:r><w:t>{text}</w:t></w:r></w:p>"#);
+
+        let (after, caret, undone) = delete(
+            format!("{}<w:p/>{table}{}", p("before"), p("after")),
+            TextPosition::new(1, 0),
+            DeleteDirection::Forward,
+        );
+        assert_eq!(after, ["before", "cell", "after"]);
+        assert_eq!(caret, Some(TextPosition::new(1, 0)));
+        assert_eq!(undone, ["before", "", "cell", "after"]);
+
+        let (after, caret, undone) = delete(
+            format!("{}{table}<w:p/>{}", p("before"), p("after")),
+            TextPosition::new(2, 0),
+            DeleteDirection::Backward,
+        );
+        assert_eq!(after, ["before", "cell", "after"]);
+        assert_eq!(caret, Some(TextPosition::new(1, 4)));
+        assert_eq!(undone, ["before", "cell", "", "after"]);
+
+        // Between two tables, and as the body's last paragraph, it stays.
+        let (after, _, _) = delete(
+            format!("{table}<w:p/>{table}{}", p("after")),
+            TextPosition::new(1, 0),
+            DeleteDirection::Forward,
+        );
+        assert_eq!(after, ["cell", "", "cell", "after"]);
+        let (after, _, _) = delete(
+            format!("{}{table}<w:p/>", p("before")),
+            TextPosition::new(2, 0),
+            DeleteDirection::Backward,
+        );
+        assert_eq!(after, ["before", "cell", ""]);
     }
 
     #[test]

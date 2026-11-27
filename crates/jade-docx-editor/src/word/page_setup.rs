@@ -1549,7 +1549,13 @@ pub trait WordPageSetup: WordSession {
     /// 改ページ, 段区切り and 文字列の折り返し at the caret, over the
     /// selection.
     fn insert_page_break(&mut self, kind: PageBreak) -> Result<(), String> {
+        use crate::commands::insert_manual_page_break::InsertManualPageBreakCommand;
         let range = self.selection_range().ok_or("no caret")?;
+        if kind == PageBreak::Page
+            && InsertManualPageBreakCommand::supports(self.word_document(), range)
+        {
+            return self.execute_command(Box::new(InsertManualPageBreakCommand::new(range)), false);
+        }
         let (start, end) = range.normalized();
         let text = match kind {
             PageBreak::Page => "\u{000C}",

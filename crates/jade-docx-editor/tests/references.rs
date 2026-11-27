@@ -10,6 +10,8 @@ use jade_docx_editor::word_document::WordDocument;
 use jade_docx_headless_api::HeadlessEditRequest;
 use serde_json::{json, Value};
 
+mod common;
+
 fn load_bytes(bytes: &[u8]) -> WordDocument {
     futures::executor::block_on(WordDocument::load(bytes, &Default::default())).expect("load")
 }
@@ -488,4 +490,97 @@ fn a_footnote_separator_is_emptied_and_drawn_again() {
         .unwrap());
     assert!(part(&document, "word/footnotes.xml").contains("<w:separator/>"));
     assert!(reload(&document).note_separator_shown(true, false));
+}
+
+#[test]
+fn bookmarks_written_between_paragraphs_cover_exactly_those_paragraphs() {
+    use jade_docx_layout::selection::TextPosition;
+    // Hosts that mark whole paragraphs (a contract's clauses, say) write the
+    // markers as children of w:body. The last end comes after the last
+    // paragraph, just before w:sectPr.
+    let body = concat!(
+        r#"<w:bookmarkStart w:id="1" w:name="First"/>"#,
+        r#"<w:p><w:r><w:t>Alpha one</w:t></w:r></w:p>"#,
+        r#"<w:bookmarkEnd w:id="1"/><w:bookmarkStart w:id="2" w:name="Second"/>"#,
+        r#"<w:p><w:r><w:t>Beta</w:t></w:r></w:p>"#,
+        r#"<w:p><w:r><w:t>Gamma three</w:t></w:r></w:p>"#,
+        r#"<w:bookmarkEnd w:id="2"/>"#,
+    );
+    let document = load_bytes(&common::package(body, &[]));
+    let first = body_paragraph(&document);
+    assert_eq!(text(&document, first), "Alpha one");
+    // Before: First ended at (first + 1, 9), inside "Beta", and Second
+    // started there too, carrying the previous paragraph's length.
+    assert_eq!(
+        document.bookmark_position("First"),
+        Some(TextPosition::new(first, 0))
+    );
+    assert_eq!(
+        document.bookmark_end_position("First"),
+        Some(TextPosition::new(first, 9))
+    );
+    assert_eq!(
+        document.bookmark_position("Second"),
+        Some(TextPosition::new(first + 1, 0))
+    );
+    assert_eq!(
+        document.bookmark_end_position("Second"),
+        Some(TextPosition::new(first + 2, 11))
+    );
+    // Markers inside a paragraph keep their offsets.
+    let inline = load_bytes(&common::package(
+        r#"<w:p><w:r><w:t>ab</w:t></w:r><w:bookmarkStart w:id="1" w:name="Mid"/><w:r><w:t>cd</w:t></w:r><w:bookmarkEnd w:id="1"/><w:r><w:t>ef</w:t></w:r></w:p>"#,
+        &[],
+    ));
+    let paragraph = body_paragraph(&inline);
+    assert_eq!(
+        inline.bookmark_position("Mid"),
+        Some(TextPosition::new(paragraph, 2))
+    );
+    assert_eq!(
+        inline.bookmark_end_position("Mid"),
+        Some(TextPosition::new(paragraph, 4))
+    );
+}
+
+#[test]
+fn bookmarks_stay_with_their_paragraphs_when_a_paragraph_is_added() {
+    use jade_docx_layout::selection::TextPosition;
+    // Enter at the end of a clause adds a paragraph between two clauses. The
+    // stored positions are body indices that the split does not move, so the
+    // second clause was reported on the new paragraph and its own text fell
+    // outside every clause.
+    for body in [
+        concat!(
+            r#"<w:bookmarkStart w:id="1" w:name="First"/>"#,
+            r#"<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>"#,
+            r#"<w:bookmarkEnd w:id="1"/><w:bookmarkStart w:id="2" w:name="Second"/>"#,
+            r#"<w:p><w:r><w:t>Beta</w:t></w:r></w:p>"#,
+            r#"<w:bookmarkEnd w:id="2"/>"#,
+        ),
+        concat!(
+            r#"<w:p><w:bookmarkStart w:id="1" w:name="First"/><w:r><w:t>Alpha</w:t></w:r><w:bookmarkEnd w:id="1"/></w:p>"#,
+            r#"<w:p><w:bookmarkStart w:id="2" w:name="Second"/><w:r><w:t>Beta</w:t></w:r><w:bookmarkEnd w:id="2"/></w:p>"#,
+        ),
+    ] {
+        let mut document = load_bytes(&common::package(body, &[]));
+        let first = body_paragraph(&document);
+        assert!(document.split_paragraph_at(first, 5));
+        assert_eq!(text(&document, first + 2), "Beta");
+        assert_eq!(
+            document.bookmark_position("First"),
+            Some(TextPosition::new(first, 0)),
+            "{body}"
+        );
+        assert_eq!(
+            document.bookmark_position("Second"),
+            Some(TextPosition::new(first + 2, 0)),
+            "{body}"
+        );
+        assert_eq!(
+            document.bookmark_end_position("Second"),
+            Some(TextPosition::new(first + 2, 4)),
+            "{body}"
+        );
+    }
 }

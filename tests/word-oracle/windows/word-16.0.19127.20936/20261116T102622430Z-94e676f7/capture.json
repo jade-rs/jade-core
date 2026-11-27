@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T102622430Z-94e676f7",
+  "captured_at_utc": "2026-11-16T10:26:22.4356147Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-large-half-device-independent-gothic-size37p5-regular-compat15",
+      "source": "w16-ay-large-half-device-independent-input-snapshots\\word-windows-large-half-device-independent-gothic-size37p5-regular-compat15.docx",
+      "sha256": "a55407a94c1b1bd153dad110fb63dd45aa293d185a32c920358b856a4fd51351",
+      "pdf": "word-windows-large-half-device-independent-gothic-size37p5-regular-compat15.pdf",
+      "pdf_sha256": "7c8161b0c75c9fbec39b45eaf36e02f63d2e8c76a1dc10e33abd738b5975504b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-large-half-device-independent-gothic-size37p5-regular-compat15.page-001.emf",
+          "sha256": "7bb54b0722aa257113220e995e8b1b4a8f629e6f0c9220464442587a348eff1e",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

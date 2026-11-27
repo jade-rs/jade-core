@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T222255678Z-1e82bc66",
+  "captured_at_utc": "2026-11-17T22:22:55.6816931Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15",
+      "source": "w18-t-minimum-line-metrics-input-snapshots\\word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15.docx",
+      "sha256": "4b8bfbcea8baaa60f5dbb65e055d6319572f9a1c92862bdbccf8f39568168d61",
+      "pdf": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15.pdf",
+      "pdf_sha256": "6c1e4bbdd447a93e48b4612040173f128b9afa5ebb86b46ce1f2c63fb564369e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15.page-001.emf",
+          "sha256": "003ee7d0562752fe9f864075988cf0e5306959fcf7d637bdae6d9faa526d1681",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

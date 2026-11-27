@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T144316734Z-95e7b23d",
+  "captured_at_utc": "2026-11-17T14:43:16.7378423Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-styles-display-size20-italic-compat14",
+      "source": "w17-q-numeric-styles-input-snapshots\\word-windows-numeric-styles-display-size20-italic-compat14.docx",
+      "sha256": "4c875c977b207023ecd4c95056b3f89b72e9095c864aa5ec32aa2915de6ab05d",
+      "pdf": "word-windows-numeric-styles-display-size20-italic-compat14.pdf",
+      "pdf_sha256": "5078aad4ed9f838d2f981d3408d7080e3735a9bd04319a3275153a0da883d311",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-styles-display-size20-italic-compat14.page-001.emf",
+          "sha256": "08d6ef94ebb657140994e8ed39a18f6de6d71a334d9e8892ccc64a0e3544f630",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

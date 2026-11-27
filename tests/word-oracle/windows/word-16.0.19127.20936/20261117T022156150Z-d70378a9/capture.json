@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T022156150Z-d70378a9",
+  "captured_at_utc": "2026-11-17T02:21:56.1533293Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-float-lookahead-square-compat14",
+      "source": "w17-h-float-lookahead-controls-input-snapshots\\word-windows-float-lookahead-square-compat14.docx",
+      "sha256": "86f66e9c32c87c40931e2d171f81b2ee1a409b2adfa7294abd8be5f18a6fffe7",
+      "pdf": "word-windows-float-lookahead-square-compat14.pdf",
+      "pdf_sha256": "f2253f992f39344a166e55072a1228b5cb9557bdb240981cbf7c67820e046d5c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-float-lookahead-square-compat14.page-001.emf",
+          "sha256": "55c1f8405afc8773f1871f27d50641244043a790e453dae465aa9a71b3feb6c7",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

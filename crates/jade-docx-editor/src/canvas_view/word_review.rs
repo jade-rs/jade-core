@@ -182,9 +182,17 @@ impl OffscreenDocumentView {
             user_name: state.options.author_name_or_default(),
             page_count: Some(renderer.page_count()).filter(|count| *count > 0),
             paragraph_pages,
+            page_labels: renderer.displayed_page_labels(),
+            page_labels_from_layout: renderer.has_page_labels(),
             prompt_answers: answers,
             ..FieldEnvironment::default()
         }
+    }
+
+    /// Whether [`Self::apply_document_command`] runs its command: not in
+    /// preview, nor while a header or footer is being edited.
+    pub(super) fn document_commands_allowed(&self) -> bool {
+        !self.state.borrow().preview_mode && self.body_commands_allowed()
     }
 
     /// Runs one field or protection command over the whole document.
@@ -192,8 +200,18 @@ impl OffscreenDocumentView {
         &self,
         command: impl FnOnce(SelectionRange) -> Box<dyn Command>,
     ) -> Result<JsValue, JsValue> {
+        self.apply_document_command_at(None, command)
+    }
+
+    /// [`Self::apply_document_command`] whose repaint keeps paragraph
+    /// `anchor`'s page in view (`apply_inline_style_anchored`).
+    pub(super) fn apply_document_command_at(
+        &self,
+        anchor: Option<usize>,
+        command: impl FnOnce(SelectionRange) -> Box<dyn Command>,
+    ) -> Result<JsValue, JsValue> {
         let command = RefCell::new(Some(command));
-        self.apply_inline_style_with_scope(
+        self.apply_inline_style_anchored(
             |_| {},
             |selection| {
                 let make = command
@@ -203,6 +221,7 @@ impl OffscreenDocumentView {
                 make(selection)
             },
             true,
+            anchor,
         )
     }
 
@@ -275,6 +294,12 @@ impl OffscreenDocumentView {
             serde_wasm_bindgen::from_value(answers)
                 .map_err(|error| JsValue::from_str(&format!("invalid field answers: {error}")))?
         };
+        // Every page's number first: a lazily laid out document has only
+        // the pages the viewport needed. A page left unlaid keeps its
+        // fields' results.
+        if self.document_commands_allowed() {
+            self.complete_layout()?;
+        }
         let env = self.field_environment(answers);
         self.apply_document_command(move |_| Box::new(FieldCommand::update(scope, env)))
     }
@@ -300,6 +325,13 @@ impl OffscreenDocumentView {
         if code.trim().is_empty() {
             return Err(JsValue::from_str("a field code must not be empty"));
         }
+        // Every page's number first, as `updateFields`, for a code that
+        // reads one: a PAGE or PAGEREF on a page the lazy layout has not
+        // reached would get an empty result, which the saved file keeps.
+        // Not when the command would not run (preview, a header open).
+        if self.document_commands_allowed() && fields::code_reads_pages(&code) {
+            self.complete_layout()?;
+        }
         let env = self.field_environment(HashMap::new());
         self.apply_document_command(move |_| Box::new(FieldCommand::insert(code, env)))
     }
@@ -309,6 +341,13 @@ impl OffscreenDocumentView {
     pub fn edit_field_code(&self, code: String) -> Result<JsValue, JsValue> {
         if code.trim().is_empty() {
             return Err(JsValue::from_str("a field code must not be empty"));
+        }
+        // Every page's number first, as `updateFields`, for a code that
+        // reads one: a PAGE or PAGEREF on a page the lazy layout has not
+        // reached would get an empty result, which the saved file keeps.
+        // Not when the command would not run (preview, a header open).
+        if self.document_commands_allowed() && fields::code_reads_pages(&code) {
+            self.complete_layout()?;
         }
         let env = self.field_environment(HashMap::new());
         self.apply_document_command(move |selection| {

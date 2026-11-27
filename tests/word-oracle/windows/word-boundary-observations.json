@@ -1,0 +1,1598 @@
+{
+  "schema": 1,
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261118T210016694Z-b59e679c",
+  "mac_parent_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/manifest.json",
+    "sha256": "5bdf55d8189ea1e0fff9df8a8b3e39765eddf41d0e1eb5a8302b9d74bd680e75"
+  },
+  "mac_parent_reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114.3",
+    "osVersion": "27.0.1 (26A434)",
+    "export": "Print > PDF > Save as PDF",
+    "pdfSha256": "0cfaa13cafca33030c441fc58558543b6ccd4f2819e499d205202c6ed64fa1b8",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "font_facts": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/font-facts.json",
+    "sha256": "25361876948cd57b8fb41eddb4cebc83eac6726d0b6ea34ed02a3a39687c55c9"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-word-boundary-bold-s14-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s14-m14.docx",
+        "sha256": "86a797ae0b717ff1c9490bd60a7a1d00a7c1d8e34999e9a33c5016d8045a43d4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "bold",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bold-s15-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s15-m14.docx",
+        "sha256": "64f5e5096c1e8a5bd205f660ef45da8cddcf239c3ec883c8932c5f08c48d3404"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022212035Z-803272ac/inputs/word-windows-aptos-size-control-display-bold-size15-compat14.docx",
+          "sha256": "d160a8c721ee348cd7b251ac6c1c9bc21d8649e304bd940b5b5b898b4acca1c1"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "bold",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "word-boundary-print",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bold-s14-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s14-m15.docx",
+        "sha256": "8705a8a702f46e888e5d369a884cb77b342b77c21cf424f82ddba10c2037e54e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022202483Z-416493a7/inputs/word-windows-aptos-size-control-display-bold-size14-compat15.docx",
+          "sha256": "cf02d80b65b8162d44bbac795848e0eff6b9b28c980db15467f7d5c06f704b43"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "bold",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bold-s15-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s15-m15.docx",
+        "sha256": "bc244e820c217a9e3e848b82b68c3edb5eabe1f135cfb25712113264c3f34edf"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022214884Z-67a71cea/inputs/word-windows-aptos-size-control-display-bold-size15-compat15.docx",
+          "sha256": "ae233871a8bb91cb49e745e3e5f0142fcb743e9f59529a2062443488a3077d76"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "bold",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "word-boundary-print",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s14-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s14-m14.docx",
+        "sha256": "c45f0baf6803843bbe666746b69722c2b9f571cc5f04260eef18e945415c0033"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022248477Z-f486da1c/inputs/word-windows-aptos-size-control-display-bolditalic-size14-compat14.docx",
+          "sha256": "c6e8d3b9f9bc03c93d73ef0a1cf0356f1854f650e7a763b09ca99f0bd699d83c"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "bolditalic",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s15-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s15-m14.docx",
+        "sha256": "91170ef00694e306c3e2f19894610e4b4be103844691c993a1dd3440bb90e8c7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "bolditalic",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "word-boundary-print",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s14-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s14-m15.docx",
+        "sha256": "01bd80c18af17732d3cf1eeba352eff9b4af893e0b4aaf16cef4fab84bdf6959"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022251269Z-c30761f1/inputs/word-windows-aptos-size-control-display-bolditalic-size14-compat15.docx",
+          "sha256": "51a2f3a59b0929c179e4ceca66e60b1ae8b3fe6e887fffcb78ff00ecae3c42e5"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "bolditalic",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s15-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s15-m15.docx",
+        "sha256": "236d0580f3acf54a7c16e3f51669a80baf92f1c2f3658a5cbb46b02ffcb9c3ae"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022303342Z-d1578168/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat15.docx",
+          "sha256": "846bda13f69e02a64deeb1c0cce46af86ecea6447d6a73cf035a8bda2e49db43"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "bolditalic",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "word-boundary-print",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s14-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s14-m14.docx",
+        "sha256": "353d8b95e73ffc8ef65fae42cee9c0bbce90c4cae4cf9487f52d93c0aec34268"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "italic",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s15-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s15-m14.docx",
+        "sha256": "fce5496160379295bd09ca18f77837689087ada15b1e38706cce95e8e89eae29"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022358568Z-ff1a82e9/inputs/word-windows-aptos-size-control-display-italic-size15-compat14.docx",
+          "sha256": "eec870efa54bb675e9243001e26b826508bb87208421021c1170b52f00bba378"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "italic",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s14-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s14-m15.docx",
+        "sha256": "2d947971ae1a88c50b2fadcffe6299ad19f97f208e45e631f4580b4b1e6250a2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022349284Z-31160e5d/inputs/word-windows-aptos-size-control-display-italic-size14-compat15.docx",
+          "sha256": "dc817720bf68e61c0ef73581739ec7d009e2ab178db2873244059868140527f6"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "italic",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s15-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s15-m15.docx",
+        "sha256": "09fd3222645455b06fdd499f7f83753a9451cac2d1b6565abdb66100aaeaad51"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022401349Z-8f8c5a0d/inputs/word-windows-aptos-size-control-display-italic-size15-compat15.docx",
+          "sha256": "fb7b7933a7591edebea7c8160c2c996b3e0871ba2788906666cf529f9bc5a18b"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "italic",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s14-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s14-m14.docx",
+        "sha256": "41e638087971a7e62978b9223cf9dfb8070165f97cd389e002646e589f79d8f9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "regular",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s15-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s15-m14.docx",
+        "sha256": "8bea6d361de2b995628659d971d32d39229de44f7b3a24dc6a78612fc34ac7d8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022450284Z-0066e044/inputs/word-windows-aptos-size-control-display-regular-size15-compat14.docx",
+          "sha256": "8ab8feb7615858668d8284302d838da0903732f304d496c4da71898a375853b9"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "regular",
+        "compatibility_mode": 14,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s14-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s14-m15.docx",
+        "sha256": "51338b142baa3dc40fd1d153856f7e85e5c9c4b35f28a9349206d9fd57d59af3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022441790Z-60ff9267/inputs/word-windows-aptos-size-control-display-regular-size14-compat15.docx",
+          "sha256": "1834c207502c32fe19110a607780fb1503465d8183292126cb96766a96c03143"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 14.0,
+        "style": "regular",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s15-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s15-m15.docx",
+        "sha256": "d146963c96bb67a4dbdbe8a9611e08c31e7fa7ab4ab408c0b545b2b3720443d2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/capture.json",
+        "sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+        "sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022453947Z-600a7f1b/inputs/word-windows-aptos-size-control-display-regular-size15-compat15.docx",
+          "sha256": "5cf47c37b7816a9a7545383cfbbf94dc962c467daef376b0962c5d712f1417b0"
+        },
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "font_family": "Aptos Display",
+        "font_size_pt": 15.0,
+        "style": "regular",
+        "compatibility_mode": 15,
+        "patterns": [
+          {
+            "label": "r",
+            "text": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+          },
+          {
+            "label": "a",
+            "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "label": "y",
+            "text": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+          },
+          {
+            "label": "hyphen",
+            "text": "------------------------------------------------"
+          },
+          {
+            "label": "one",
+            "text": "111111111111111111111111111111111111111111111111"
+          },
+          {
+            "label": "r-space",
+            "text": "r r r r r r r r r r r r r r r r r r r r r r r r "
+          },
+          {
+            "label": "ra-space",
+            "text": "ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra ra "
+          },
+          {
+            "label": "ray-space",
+            "text": "ray ray ray ray ray ray ray ray ray ray ray ray "
+          },
+          {
+            "label": "X-ray-space",
+            "text": "X-ray X-ray X-ray X-ray X-ray X-ray X-ray X-ray "
+          },
+          {
+            "label": "X-ray-negative-space",
+            "text": "X-ray -12 X-ray -12 X-ray -12 X-ray -12 X-ray -12 "
+          },
+          {
+            "label": "12-space",
+            "text": "12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 "
+          },
+          {
+            "label": "Xray-12-space",
+            "text": "Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 Xray 12 "
+          }
+        ],
+        "kerning_thresholds_halfpoints": [
+          200,
+          2
+        ],
+        "paragraphs": 24,
+        "page_width_twips": 17280,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "screen_gate_promotion": "word-boundary-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "word-boundary-xps",
+      "glyph_count": 960
+    }
+  ]
+}

@@ -228,6 +228,10 @@ impl Command for InsertParagraphBreakCommand {
             .rendered_to_model_text_position(position)
             .offset
             .min(paragraph_len);
+        // After a reference mark ("Hello¹|") the mark stays in this paragraph.
+        let behind_mark = ctx
+            .document
+            .rendered_position_follows_reference_mark(position);
 
         let split_at_end = caret_offset >= paragraph_len;
 
@@ -243,7 +247,7 @@ impl Command for InsertParagraphBreakCommand {
 
         if !ctx
             .document
-            .split_paragraph_at(position.paragraph, caret_offset)
+            .split_paragraph_at_keeping(position.paragraph, caret_offset, behind_mark)
         {
             if let Some(snapshot) = self.previous_snapshot.take() {
                 ctx.document.restore_snapshot(snapshot);
@@ -274,14 +278,18 @@ impl Command for InsertParagraphBreakCommand {
         // Word: Enter at the end of a paragraph starts the style's `w:next`
         // paragraph (a heading is followed by Normal). A split inside the
         // text keeps the style on both halves.
+        // The new paragraph is the next one of the story: the notes a
+        // reference left before the split put their paragraphs between.
+        let new_paragraph =
+            next_story_paragraph(ctx, position.paragraph).unwrap_or(position.paragraph + 1);
         if split_at_end {
-            apply_next_style(ctx.document, position.paragraph + 1);
+            apply_next_style(ctx.document, new_paragraph);
         }
         if let Some(split) = self.split_undo.as_mut() {
             split.finish(ctx);
         }
 
-        let new_focus = TextPosition::new(position.paragraph + 1, 0);
+        let new_focus = TextPosition::new(new_paragraph, 0);
         *ctx.selection = Some(SelectionRange::collapsed(new_focus));
 
         Ok(())
@@ -502,12 +510,16 @@ impl Command for InsertParagraphBreaksCommand {
                 .rendered_to_model_text_position(position)
                 .offset
                 .min(paragraph_len);
+            let behind_mark = ctx
+                .document
+                .rendered_position_follows_reference_mark(position);
             let split_at_end = caret_offset >= paragraph_len;
 
-            if !ctx
-                .document
-                .split_paragraph_at(position.paragraph, caret_offset)
-            {
+            if !ctx.document.split_paragraph_at_keeping(
+                position.paragraph,
+                caret_offset,
+                behind_mark,
+            ) {
                 if let Some(snapshot) = self.previous_snapshot.take() {
                     ctx.document.restore_snapshot(snapshot);
                 }
@@ -536,11 +548,13 @@ impl Command for InsertParagraphBreaksCommand {
             }
             // Same rule as the single break: Enter at the end of the text
             // starts the style's `w:next` paragraph.
+            let new_paragraph =
+                next_story_paragraph(ctx, position.paragraph).unwrap_or(position.paragraph + 1);
             if split_at_end {
-                apply_next_style(ctx.document, position.paragraph + 1);
+                apply_next_style(ctx.document, new_paragraph);
             }
 
-            let new_focus = TextPosition::new(position.paragraph + 1, 0);
+            let new_focus = TextPosition::new(new_paragraph, 0);
             collapsed = SelectionRange::collapsed(new_focus);
             self.applied_count = self.applied_count.saturating_add(1);
         }
@@ -607,6 +621,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -1496,6 +1511,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1518,6 +1534,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1537,6 +1554,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1599,6 +1617,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1624,6 +1643,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1643,6 +1663,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),

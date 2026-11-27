@@ -604,31 +604,35 @@ fn draw_warped_text<P: Painter>(
         // A warp maps the line's own extent onto the whole path, as WordArt
         // stretches its text along it: measure every glyph first, then
         // place each at its share of the line.
-        let mut glyphs: Vec<(&jade_pptx_layout::PlacedRun, char, f64)> = Vec::new();
+        // Each glyph still sets its run's font before drawing; the string is
+        // built once per run here rather than once per glyph below.
+        let mut glyphs: Vec<(&jade_pptx_layout::PlacedRun, char, f64, usize)> = Vec::new();
+        let mut fonts: Vec<String> = Vec::with_capacity(line.runs.len());
         for run in &line.runs {
-            painter.set_font(&font_shorthand(run, options));
+            fonts.push(font_shorthand(run, options));
+            painter.set_font(&fonts[fonts.len() - 1]);
             let mut buffer = [0u8; 4];
             for character in run.text.trim_end_matches('\t').chars() {
                 let glyph = character.encode_utf8(&mut buffer);
                 let advance = painter.measure_text_width(glyph)? + run.letter_spacing_px;
-                glyphs.push((run, character, advance));
+                glyphs.push((run, character, advance, fonts.len() - 1));
             }
         }
-        let mut span: f64 = glyphs.iter().map(|(_, _, advance)| advance).sum();
+        let mut span: f64 = glyphs.iter().map(|(_, _, advance, _)| advance).sum();
         if span <= 0.0 {
             // A painter that cannot measure: share each run's laid-out
             // width among its glyphs.
-            for (run, _, advance) in &mut glyphs {
+            for (run, _, advance, _) in &mut glyphs {
                 let count = run.text.trim_end_matches('\t').chars().count().max(1);
                 *advance = run.width / count as f64;
             }
-            span = glyphs.iter().map(|(_, _, advance)| advance).sum();
+            span = glyphs.iter().map(|(_, _, advance, _)| advance).sum();
             if span <= 0.0 {
                 continue;
             }
         }
         let mut pen = 0.0;
-        for (run, character, advance) in glyphs {
+        for (run, character, advance, font) in glyphs {
             // How far in from the ellipse this run's baseline sits.
             let inset = match warp {
                 ArcWarp::Down => (last - run.baseline_y) + last_size * 0.2,
@@ -639,7 +643,7 @@ fn draw_warped_text<P: Painter>(
             if character.is_whitespace() {
                 continue;
             }
-            painter.set_font(&font_shorthand(run, options));
+            painter.set_font(&fonts[font]);
             painter.set_fill_style_str(&run.color);
             let mut buffer = [0u8; 4];
             let glyph = character.encode_utf8(&mut buffer);
@@ -1097,6 +1101,10 @@ pub struct PainterMeasure<P: Painter> {
     /// The font last pushed to the painter. Setting it per call is the
     /// expensive half of measuring a grapheme at a time.
     last_font: RefCell<String>,
+    /// The style `last_font` was built from. Layout measures a grapheme at a
+    /// time in long runs of one style, and rebuilding the string for each is
+    /// wasted work: the same style always gives the same string.
+    last_style: RefCell<Option<RunStyle>>,
 }
 
 impl<P: Painter> PainterMeasure<P> {
@@ -1108,23 +1116,29 @@ impl<P: Painter> PainterMeasure<P> {
             painter,
             default_font: default_font.into(),
             last_font: RefCell::new(String::new()),
+            last_style: RefCell::new(None),
         }
     }
 }
 
 impl<P: Painter> TextMeasure for PainterMeasure<P> {
     fn measure(&self, text: &str, style: &RunStyle) -> f64 {
-        let shorthand = shorthand_for(
-            style.size_pt,
-            style.bold,
-            style.italic,
-            style.font.as_deref(),
-            style.east_asian_font.as_deref(),
-            &self.default_font,
-        );
-        if *self.last_font.borrow() != shorthand {
-            self.painter.set_font(&shorthand);
-            *self.last_font.borrow_mut() = shorthand;
+        // Same style as the last call: the font string is the one already
+        // pushed, so there is nothing to build and nothing to compare.
+        if self.last_style.borrow().as_ref() != Some(style) {
+            let shorthand = shorthand_for(
+                style.size_pt,
+                style.bold,
+                style.italic,
+                style.font.as_deref(),
+                style.east_asian_font.as_deref(),
+                &self.default_font,
+            );
+            if *self.last_font.borrow() != shorthand {
+                self.painter.set_font(&shorthand);
+                *self.last_font.borrow_mut() = shorthand;
+            }
+            *self.last_style.borrow_mut() = Some(style.clone());
         }
         self.painter
             .measure_text_width(text)

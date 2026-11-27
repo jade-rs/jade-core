@@ -1,0 +1,2806 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T203250101Z-16f5e085",
+  "captured_at_utc": "2026-11-20T20:32:50.1158360Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504.docx",
+      "sha256": "f0c89d105fbdbaabe3357ecfae9966aa819ae8a0a025e31d5c68f6f6aa50b2ee",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "5a5d44d7dc6d72c941d3724a4acfef59d08f24b9db37186cfe00b0c43d53cca5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504.xps",
+      "xps_sha256": "bf0b3906d243ce6171e7e6431de911feda7536cce9804b591093af8ee5e66e63",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "423e1401452013e7c93c53cb8209c3e7ba47b665aec66af8daf950998a07b5a1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504.docx",
+      "sha256": "ec0897ed147adde337b6bdd7d8ccbbf4abd043b0b68ef217d8b46550a38c772b",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "00535d68137d4e2e8531098cd9fe9a14c3d661020de1ad255d54735e56df2466",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504.xps",
+      "xps_sha256": "333b9b6a31e1a2c6134c0dec419f729e52331a50700d3d32f793845812b3ca55",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "112e8cce7f148fe496ebe2f15edaa53d6097e929ffccc9343c0d8883e5f382a6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504.docx",
+      "sha256": "84f1ba7ed5613e1d089b20abf577444b68cb67b9289a21d52f54f3953bc54678",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "f2c40526b1420fbfe1f995f422af7d8e201854962de027b193fefd92696130ed",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504.xps",
+      "xps_sha256": "acdc1c2fbdd1df66cf769e631e0ecb183f4793fa28e42b53241d49c091835d67",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "dbf9ac74688a47a98a9f78e8085adde1fbd7030206a78a94cdccfd3ba45f52db",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504.docx",
+      "sha256": "523da6185285ad6d0b0fe1337cb9d4074e9479497b19951510376183ab4fd637",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "26ec44f36f74b2ca3e0bb3f3907d206e4dc684f3d983a9844aa2dd50dac6dce1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504.xps",
+      "xps_sha256": "0929f912ddb2a2406b0ead3aee0c99d788a85ddbff97d218cc7e24a38f9b52df",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "f4173d745bc550386d7eaa4fd43945f5b45bf3361895c741b5e7a51b2df41801",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504.docx",
+      "sha256": "8bd6b51adfb5c40b42d0c7f728686e23e6536a509b7fa3d797a24d3697ee7dc6",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "5ec263529e0ad4737685095f541fac1800a08d99d840fa953d4ce3e648b89761",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504.xps",
+      "xps_sha256": "b67dd94f746abedeabb7ec57f86978cc1c0a112368bff1c27ea42f77f3fd9f8b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "10744063380846ffb4b8ae853e8b32e8833866f5f869a04b404d1c26127074d8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504.docx",
+      "sha256": "1c0f9a452107fcc48aa8df07ff95d289cd0038137daedc4821d2840039f82add",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "96aa1bc77d1b96b52072ee75120257612f3eb28db5b20b6933758fb869146c1e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504.xps",
+      "xps_sha256": "bd2cec38e10fef7715a100170bb570ce42196749d7305e63f4915847da7ebc07",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "6f6a9f53858a734d67b2b0f8e0e5fc472f907f9b7a79181bdb2d356c0fe67f34",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504.docx",
+      "sha256": "b838c2605ff60be35badc072c0240b743ee3972466b4aba168e9caf13c153b19",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "8ed6be179d631554f049b012c862bd1f6fce824071128a0c1a5c852a5291ccf1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504.xps",
+      "xps_sha256": "03b356fd79dba7107d76f28adab3f19e8b737da39737230de5d9e456e78fc94c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "905ece7a7df33b9956b1cfc30b3e6f18519637a88ea624a64b278e213bafc39a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504.docx",
+      "sha256": "c95db92a0c6ebdc2f92c7ab8a436ec7aadc02ed5a4ca53e5480ecf353e6a604c",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "bf9369b8649583fbf4dfa0e1e94a3aab300cc9156fb430548f80d3d5e9b27e16",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504.xps",
+      "xps_sha256": "1e039764ef4394fc99a8103c4af0fd72319511fd1300728eeddf67eb794c779d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "469bdfbee3b0f81bed4ac4e327211c2c6a117162a5f7b69f0269dbf503a30be8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504.docx",
+      "sha256": "42824517bc9361ce07b26b5d3241590e29e1d4eb6f5d10ae8398c89c3b03e434",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "5941aa5b52e65fa01c1b2da40ba52732e3b02dd8c2899564a9df6a35ad690b20",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504.xps",
+      "xps_sha256": "a2c02afd841faf9a6e3c4e0b8a344395be61b3a578bfaeeb7e439e75b4b988c1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "158e9b1dda42cf93730e897dcc2af5b9ce14715951f3bb045f8d219cc4874dbf",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504.docx",
+      "sha256": "eeff02b25881eb7fb5c3c8ce608deed3ca377c5a3fb19d4b582a50d8ad0026bd",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "1e9144f07ab5f9d47c45a25ee01580b4e17954bc356dd95f7219f6eb4cdd0a99",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504.xps",
+      "xps_sha256": "581e367acdbc65803b0c486d67a6737397154501b87f4d7f77ecd8cc51df7eb1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "33aa721dc6f9a4a574e3d1c0b98fa157785873960e3151f3f868b290793832c0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504.docx",
+      "sha256": "d6d3a111b3d2a45cf8ec115d368602ee37317b18a383207d20820a62ead0643b",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "20d4a3c376688dd27c23e3e70b502da8ff316e0e2076c8e03762ef4553c5152b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504.xps",
+      "xps_sha256": "623308651322a173f533d20fb12597f2d64c1b37f25c034519103c22eb429707",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "1eb54985cc2cf950cdf0b5aca0776638a80085b3429ef2c8e47c418bb279f172",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504.docx",
+      "sha256": "8f59a6e4d2e6f6a18bbcaf83ee88108e49d9073a4f0ec7fd82d86dfc33c26756",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "8b28965303d574666e35ecd2ac34f3bdcb789dd20cffcef2cf2dc4d800239b7f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504.xps",
+      "xps_sha256": "c4eac39af02cf8a9cf66c088dfc94bfc37fbeef79f7f5a9324cff7d4cfe60a54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "ed135897e8e62a3d2a0c22717f951a54fa91b6ec0b98bda2afed36b632990f0d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504.docx",
+      "sha256": "940324c8db7d4835f0ac7a29be5ee92d2d2c8bab2ecb958e1cc518381ce680f6",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "ae8a364f011a60858b5d56c877c6fb53fb57723d60b638a3c19d791feaa1d802",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504.xps",
+      "xps_sha256": "ad8adcd58dd1bf48df0efd5a73be0842b9fdcf0d76a5fa8aa2ce9e97cdda0b2c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "0a8c0d2bb0daf0c63ed54f3f9141785d68ec86457a67bf236c32b7c20a6037ff",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504.docx",
+      "sha256": "4deedee7db6325c4845d47cbadcbf7281061a3f6691588deb84b595a9d6bc0d7",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "31a11de1c3b29e790a226dc26a2bfc728dcfc35495dbc158fa223626618b21b4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504.xps",
+      "xps_sha256": "7f2f411bf0cfbb17437f86c0903fc3ad93cb6749f483611306baee7c67575db7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "92392fb77f755b02edb53286a91ca54fc7b827430de219cb1b4fa8eafbe75b0a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504.docx",
+      "sha256": "98c6c42b0bb6edabbd2c997b87f413e5114571659f0136dd2450e59e5b746040",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "d613f74d18059f828ce8a0bc482e593915f7fb8aa9ed273c3d4657dce648b3a8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504.xps",
+      "xps_sha256": "44ac3faed708c36162cec03a9823af238c3e4292e79e58eb19c0235dbcae8b27",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "36203cdac3a3f367797f1ecfcc1fcaf170b1e4ba54374ea6f7219926ed4347a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504.docx",
+      "sha256": "7b6d2780122433dfb9c983b70eadfb6fd54ea750dd5c3da644777e1c6a96d304",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "4fc3fce5b1628e01f7a4350353b44ea830230ef30a9968b6a0ee62f48a3747ac",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504.xps",
+      "xps_sha256": "d8b01831a1070d298a86e52257af4b4b43e33896687ca382f439ec8bf90ee78e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "fad8010fb8c3f5ef5818a644e5d9f833d3f351f8541c91b71a5d199acef328ca",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504.docx",
+      "sha256": "ef96baa57742086608cdd4b64f202435b82d3057f9be0e76ef89fdde490208b2",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "3ac5fec9f779498cde6d14ae37c7b2fcece2ba4586dcd8feab67f513a7d39946",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504.xps",
+      "xps_sha256": "e2835e621e4ef9dc070d312d85359ca94a14be2cdd46b3968ef1bbb31b3ac3b8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "3caa3e1bc570f007764a93b1435872eb8a94c7477111c825a097fa94c3898e55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504.docx",
+      "sha256": "7a09c3a9ed904e2cf9f98352b9870d70fc8434909f4c6226049395a049f0423e",
+      "pdf": "word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "da084c26ce8a562a70984ce2f2ac66b48a87383b746472da203c346976d28f30",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504.xps",
+      "xps_sha256": "076ffc4d9734ea4251aba5be870ccf97ce0056003e61703a91285a2ffd7bfc23",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "99941023752940c613172d57865928066d3e2ef4e36bc62e6d488f5c6b6c4c6b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504.docx",
+      "sha256": "9cae51ed52cd330dd309baedaf81e2074b6b041b7fd9050ed21ab4475b4ab382",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "fbf746d7d9d355031f732b30aa035ce5e0bef133386f5f97aeded1ddd09db19b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504.xps",
+      "xps_sha256": "83eaf129b2b22587423f86faddd0272b4393df787833f24f9f81072ec320d37a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "4c5dc399d8b78bb07236d47fb2019f3cc26973d5a5430f0bf1c12aa012a7179b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504.docx",
+      "sha256": "33c33700b50acf35a3d5e7f5c4b3b2eac9586106456659ffc2635e2fe2bffb41",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "0333de0f58930b62aa3bbb93c056a5392353875469e9bb095fb4cdf7d6d79974",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504.xps",
+      "xps_sha256": "8a85bd03e867fa46b9663146b2a307de80fe1a5d289b027f719bd8ce624cd46e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "1c92dee18060c87573725d99e944eaaf24d90c27f22ec7939a6d58fc5beefd49",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504.docx",
+      "sha256": "5b1ed909b28dfbee7702f6d2ae9313f07f7e58137ea6c4242fc9c1d5148a8ae4",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "ecec5807a6dc217fc492abb2fe838db84f30ba7da724591c40b0c5704ef6570e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504.xps",
+      "xps_sha256": "608bff98a879182bfebbae78ab0017b956de5b1cebdde5adfe125c00fd36ca9a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "45ae4484d9f26adc24ed5426c64beac74f4ab77b84fd9ad9c66ab5433831674e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504.docx",
+      "sha256": "0d97c032dad25d665286018414686d5d2ff7c20e888b31df6201d3791c22a356",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "479c10fa96e84f4547b92c1a3f5e054e67731da8eea9f85cdfe263e1b57e2641",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504.xps",
+      "xps_sha256": "537fe53e8f258e0d349ae54c6cd27e7e6fcc2f5ba1f054ab61bff82112208bed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "395ad86bfca0346a367241008ec54bfb42a93533a2ddfb6b9ed5a6478572a31c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504.docx",
+      "sha256": "15825410522374e8e7f5aa47acad98b387760ac026954b764493c67a1d94cee6",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "c48f3f36d5c6dde09d2be623403071673b730a1629f733a3d18e6f96c1050a33",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504.xps",
+      "xps_sha256": "e77cb1d4900c972af9cfbcacb99e2d0dcad7a1f6b043cc4cda8299602600a6f1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "237a11f0ff4aba6158e901c69364392437e6ce1962b7442920ecb0093a8d0750",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504.docx",
+      "sha256": "cb43c3f5c3e28c24df2a0a4f492ebcaa4b8c420564a4cb07acbb582300f58605",
+      "pdf": "word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "0426ba978958137c049ef4a96bc59eced7343f8fc1f0ed85da456f82dca178e2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504.xps",
+      "xps_sha256": "3725b2e733a20f6ceb82748b2feff8532538ca93058da0c12eb28fe7ec3a16fb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "f28c428e4d3fa4b97718d7ddd1ffe4c28a3f97009e625f77264f3508f75a0e54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504.docx",
+      "sha256": "02b062dd423e66345c2d5fd725fcac227868e5a96dd076bbd91b6f8dccce014b",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "614b742224e86501690f57b13819e53f5d4f37e450d89e196cf9433ef107da5f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504.xps",
+      "xps_sha256": "5f81318de3300c7c2932d13c560de3220f62adece4fef77e62cea922d398e382",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "e7d81d3b49e5766d00636f8c129ed9031cfa075cbb3038066e83b79dfec43788",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504.docx",
+      "sha256": "0416c315d116343cef574bc85ce8a4fec9a8867f126e026a8a9fce19d231396b",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "aaa4bdc0c672315972d92ef7f71f8e4e8e183abd8834be5c0432ef948106c132",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504.xps",
+      "xps_sha256": "b51b22af951b5b8de18b6ffaf85433e94b77a620b3399a353a7489a1992b0a3f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "6fcab75dddc939669bfb0a14cfba9206baabd3680dda0d4fe7b0254949acbe33",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504.docx",
+      "sha256": "e4f58b58b60d44124e8e574d617c792cf91d1150362fda6a7269115f67366af2",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "3bde5101754d50f57ba9ee29a41fe5dbebb3aa89bec6554c479d3ec85b2ffca1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504.xps",
+      "xps_sha256": "27d56e718eb13140fd5a5ff833fbe159233f8eef899bd32b3b465a692c612b06",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "652cc8543b68e79c60ec4b47213002bf0c98b19021ef71f19b8fe0c1fd3ac670",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504.docx",
+      "sha256": "106d28601681cad769dde9f0becf1e7391d59937f69aeb8b5e9f0c8cb4682eef",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "0290e83bfd692332464245f05d3e9199fad3206809cc533947e1efef5538852b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504.xps",
+      "xps_sha256": "f177068121d7936310d72d6b30d5d9b7d617392d9f7ee6dae2fbd5a0241977f5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "13c57da149b1617c8b5fd2f27c75036b87c31061daf3da3f15365cbf52ec4162",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504.docx",
+      "sha256": "cfb744703ed368c63e7dba49b32a3434e65b3397a61e2230c58cd6a597550066",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "be280ba7220247614aaf6c9b7cfe974e7a2e89921ffffca7529aacb09a5e9465",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504.xps",
+      "xps_sha256": "54ed35e73e4f87a6be00783adee74c71c253726919b84d7d8984a19d4abd4766",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "c705ff17cb5819b1d3665d065419eeb440903dd763fa776f0e119a4d473cddad",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504.docx",
+      "sha256": "433e978c60fa40b875c447555ba2ce1cffbc6aa36952631286860c7e18e910b9",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "458a0b38ffed99f8d0b0ec337393a505e147f7acd0ac5c3bc119394e3c7cb65c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504.xps",
+      "xps_sha256": "22b85c1a874b4287c219923397f819d098cd7e3cee1376a511bb2436b256b46b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "ffd0032b558fd2e31cc22895df325a9dc7baa0cbac92c30bf523b13ea52fcd7e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504.docx",
+      "sha256": "8b0e1701da54e29612072fadac9f753a785ca510a0261325c78430f71bac3328",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "479f10f1cecb705d341f744960aa140df138568cb8855c1aa1fdba904947b7a1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504.xps",
+      "xps_sha256": "f100d3b33a4d4781505518dfb11b238158389f09662fa95ccae7037a8dd1b390",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "f17bf9b4bcf1fa2acb3fadd270d899a95940d2b576518633cec41e1d118cf716",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504.docx",
+      "sha256": "d9bd312407e2c6c194b27bbcc620a4df912073d2b5a674da306e49f86151119e",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "5ce6e057a803737d16b54643c28eef285f0da73eb5257468005c0fcce4cc4a99",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504.xps",
+      "xps_sha256": "238ac5058823cf7b8be12bc8e925e88e9384c25b792d5cf7a9d54842756ae437",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "955d42f5c0d4ada192435002f42bbc606dd1729c6c32edf8fd726ef7793a9638",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504.docx",
+      "sha256": "ada2538d9cc1a33f74af9514cf6a9689b7325b57425c3cf5dfb5dbc206ca38eb",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "06315dd4c397d99b27734b38eb4abfdd652832c653357d37d44f15405a39851a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504.xps",
+      "xps_sha256": "3f0b685e7301b74e88aedec6c47ff3880911a8138fbb28fa9af0ba9e2df169d0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "25f2157875dc4261e3b60ebb288a1a88072767463937edf4b2d91e2002570ee9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504.docx",
+      "sha256": "b7ba9e408f387a0c17b75223fe722b3203cd2da838f31150f7cd147d2224325b",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "377558ae7b7d644e5395c1d26662529abfd3f7c8208b6cb266852d33a11ce2ae",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504.xps",
+      "xps_sha256": "4a4d5b5108f4272d0509df96ffbd7ad9cc4b48026908ef7d6a19a7dacc38802c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "25808342d0743e6f9c49b4259b7e6f5f6bf645e172b3132e74ac0dd91588b85a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504.docx",
+      "sha256": "3271544aea3610d2610a7a2fa11872dbce196183232fce3615f1ab85f4c957df",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "c4b1036e9985b33983dac167d85d0598fe95a24e6e6d02be5316079113dd7b0e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504.xps",
+      "xps_sha256": "d9ff44e9771c0650af83ee6d32e96ea35bffe802a5db69bb7b8ac43eed6b0931",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "afe5d43df5d01a47c9479c67f93823bde5525cf0a3322057618b1ec8abc1eb9f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504.docx",
+      "sha256": "4ef782216e4e55627c93f3fbe2a83f690fdb6a52620e550902bf82ae091570f7",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "17936085e185da382f9a543b25dba9c88d055323c6e20f17fb359845ae52f778",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504.xps",
+      "xps_sha256": "938b9649300790f842ba5903d50754fc9d6505a65aeea4433cbeb9adebec8f5a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "a791b1b1939e21d7ea1a24d54b81de7999365a6daea336162a3c9b9b8435276c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504.docx",
+      "sha256": "dbc2fce6f9f6f737e86b85ceae7bfd94f829f7907b70b2295d4538d26f913082",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "4f76c598c600bd8fd0108ddc712bb9d4f7ff37de6a83fee42bb4c88be0c1bc0a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504.xps",
+      "xps_sha256": "8836ff1a8212f2cb5ecbb237e31353f1ca02f6d9381d6d73d03397b24972b64b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "0600fe7fa45d6e89b906181a8e6255f7806ff59f17ebf36ea61f49334a12d42d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504.docx",
+      "sha256": "396f9a79f54714847deb95a872a1165476e8febb67557d567acc9559c8619797",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "9c0fa33a258c51437cb443fe4881bd8162beb58ba8a3d096fdcefa24fb97c0c1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504.xps",
+      "xps_sha256": "3ab4f68904eccf0742529875a52f52fb143e8e683938f8269403872afc7cbda1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "4a67714fa7d656e41b67ed999a742fa9b23e9b542f165e761b59b4a871b0e706",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504.docx",
+      "sha256": "ad8ea3b5188fb8e7650cfa0b82e9a07b5432fb7ce9db82ab379d832dd7bcca09",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "568986d0c74dbf6d5b5b1b1a1f4a48a1028717a2cc0d25858464198fed1716d1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504.xps",
+      "xps_sha256": "f7400b2b216d6e0832427fff7a9bffcd44e675382fe2c820fe91da8c335ffe2d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "534831ce7e2134fc44d1d41100c522dcf9ce4bca2a5f9cb8f180877a60fba3dc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504.docx",
+      "sha256": "96d94781ef448bde724c7811f76a1ac091a766e24cdc6efe91d532428d17e3ea",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "7378ba360b791122993b520108841ac59bcef00def815c00a765c8f6b94da122",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504.xps",
+      "xps_sha256": "2086e8fad581068767e625ad60373a1d660057612571db4b81e9b69a94831493",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "85b271242c8232c9b59153c9827325f0936c0703c4ed163ffb370e7b5a9e3eb5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504.docx",
+      "sha256": "cd57dc3c65567568379e54800cbc34da526a1d412b5c2044e9caf25f52b83b8b",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "63d039ebb22a1e10295153553dd1bec92af2babb38ff46963a1f68d8175adb88",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504.xps",
+      "xps_sha256": "f69d3056d1897f27517acbb2ee3960696b772344661261ed8fc50687d395cf1b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "34d4568aaf0602792d6fd538007425e622afbee1dd09544b4dcc85527299625a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504.docx",
+      "sha256": "a54a3d1b214df0dabebdd8760bda943ab555e243abfa953ba6f252a1bba91eaf",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "f3bc32696e707b3c9b8b67d8cf88720c2b8256ae4355167c5ee3ed955beca56d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504.xps",
+      "xps_sha256": "068c2a6dd57de15bbf10a28fd2b608371083d327fecae29fc392ad57e3d0c485",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "9f7397c4c4138011539bc810cb8316004d868928932b497e19dcfeb5a0e539ce",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504.docx",
+      "sha256": "ae273b44dde7feed5000232e0a91f6a23381e0f76a8a81fd078e21726a8c4888",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "a36e5c90f580d2d7341f805ff44b3b4140effb90bf0e25c4be338a5565806ec4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504.xps",
+      "xps_sha256": "3432ab645f38ab83f103f6781aef496274cb4933d533fb96b17aad9800f70313",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "0ab9699cdbfa952b110183ed2b01f8e3278b3f80681352a1baa8b40f4c6ad979",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504.docx",
+      "sha256": "4c2ed21188cc1a4e50a7e39165f787ae79306c988336a1fec85b15a88a208cf2",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "e6fa1e92daf36ec25e7ef3f956af97669c77c7c8e6748b8c7dda32072663d284",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504.xps",
+      "xps_sha256": "471a3af0b317a96b6fa7c9ad8472e799d5a305a361d833c18d0f95fe6ab6e42e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "1abbd4d9d83bff956d11ba8e965dc9e3eb132a1f212947469b8b7d71339c51ab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504.docx",
+      "sha256": "5200214f1fe35115203f1784db99667e30a4d4324441afb1e8d735b87bf54ee7",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "966f0af0d58f3f87f04b25968eb5c91ad2c53347de6faa2048c70f6fb9db42d1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504.xps",
+      "xps_sha256": "06d9ca066fb1dcf3ba00bd61461054d7c7c8e320c60c33378467b0dfcf383dc2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "690eebdae1ff57d248dc7c6dbd6eb19f50de9614256cdff94c0015abb635a6f9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504.docx",
+      "sha256": "271aef4c2c09e2bb8e601bd702595565111fbef92b09d718b59b14e1e846f6b1",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "6455f50256e162bcfb584b9c1cd0059c5c1703204b97599e4fa4a07b64865e1e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504.xps",
+      "xps_sha256": "db589a652de9aa4488f2031647fd5f95a5cce0e068a84bde8de493155dac4baa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "5240f1930cd3c9fd1d7c987fe59d651e920965cbe4621c78fd824fea0dfb224a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504.docx",
+      "sha256": "febb3c15b3e46d7ae38a649b267ccac53ca6c0dafa5ed1eef3fca2dc6b9e31bf",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "623d625c7ffa22b1052dac59827b0ef12491b9c8685eca389b6c487a46809b59",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504.xps",
+      "xps_sha256": "a5380bf3687a31012fcc034851fba19818d4097532c09a604b8f0b48dd43ea05",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "405acac104417af32f667fd854f3a46f33a246cfd71468defc6fd41377ac7d32",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504.docx",
+      "sha256": "089ed21a947cb07f9375d46eeb851ef03f3204cc50f05545f1af490c3a673fdb",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "e54dfb22a7d0f159757ac58b91446c8f354cc302cf3243987f89beefee764633",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504.xps",
+      "xps_sha256": "df346d0f09b71543ccab0bdf204da43f843c6555cda60f2edf8626eed7a9e0e3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "8ae31c147a4203bdbfb3cc42b0dc983fa2af368b7b8e90a8aaeb5a9e6b765fbe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504.docx",
+      "sha256": "db43d438af25c4720d650cc163c1db102379368df3e35f6752e66dca68438393",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "3cad69ab2ce1a2cf9c956790256bd44977ff054190bfd37aee863da97f7d8096",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504.xps",
+      "xps_sha256": "c0669771fb65dba28cbc847e52c5eb6599f62523da310d565cab67135e62c90c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "ee077a4985ea91868ed15b47cd30ea15d4e176f03679c0dbd08e3a90d7b2d21c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504.docx",
+      "sha256": "dd5421504b5bceb3f34ab2a316b9821f8539d99a6b0b89c189e8736850e51a25",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "cdc9710e801ac0cdd49a9a8670f18b971ee1926339a1efff9b21fa12c416e159",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504.xps",
+      "xps_sha256": "6e7e0895e3fd6b536dad859934ef55db14ee47048e4e9ad47876e79a348c0a54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "73dcc1673ba656c6ddefe4b1f379ca663e296c9499296f5b893aa2afee5ec886",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504.docx",
+      "sha256": "1e4159b5a8768ee13cfe119a513155246cabae9dd19f309946e8e2a8b636d7a2",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "e6104102e8b092b17d7aac8ba5581d53c8d777e9e8e7cd3625970d1ac827d3a7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504.xps",
+      "xps_sha256": "e67c9ba579935ac92a973b97ebd146f099d8a22ff78fa8389ea0b9629f8f92d7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "33cb97f3d25b62f9ced4c3eee1e24f38463105a3238cda032cc4bb51e0b71fb4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504.docx",
+      "sha256": "15d49f05991ca55cf46ad8dae653eaae62b52a7583dde293bcb41a87f6543624",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "6b5e5a463846098899baf31e2afd704f4e43e41d8610fc46da94ebea80621c86",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504.xps",
+      "xps_sha256": "3832259b903530486c796777bd4905f42d65f18ddb2935c5d07a68f855a8b516",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "9169198fbb46589f98be15ec8791a97f82d758e62f3d578ddc3f098064bb6468",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504.docx",
+      "sha256": "f21d69530a1ca497c6ed1aab46ffe3b689db453413d3ad5ab12ab5a2fa29a39b",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "66578a49eaa640d613ae316ded2b11707e6c07acfe91acd6ccac06b7ea026b16",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504.xps",
+      "xps_sha256": "30b5857cfdd2dc604e6cdf91ca254982839e061c950e577f4f7e27dad19c785f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "9fc17a71fa6ebe45202499f8064964efd401ddc2c300330cdc43290c68217852",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504.docx",
+      "sha256": "de0fa6863a63f42360fbf2a453cfaac596e947702217bee01f232359ffd1d56a",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "a9f7e0cb8985a6ba0eeeed17533a4976a99cd1b0dca106a70dc019a5458ebec4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504.xps",
+      "xps_sha256": "b119355485e88bed4a35ad3a556876aa0b5261dfa9900ca0c16207976d492213",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "f7723ec981a8d850429097a8976b56d820d78ffb4ef58f98544beb05e0a8f756",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504.docx",
+      "sha256": "3df409839293e90bf4aba8fb2a5c6a9d3e05da8d2e05b2bde2754fa6cf00f850",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504.pdf",
+      "pdf_sha256": "fb96b4abf41b4699008246e9475065b4537f220d791dc4cac7b09758c2725690",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504.xps",
+      "xps_sha256": "20957320c0de885802eba1b49411b6543295abcf3fdaa6ed047871f99e5acd20",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504.page-001.emf",
+          "sha256": "8d7b94da7e9fe11c56656f482b292290dc05ebed57678f8ae259f22c02d859b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504.docx",
+      "sha256": "5b2e79b5b569ef42ebfd007617320242af749b9212340078b91f741cc43cc696",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504.pdf",
+      "pdf_sha256": "452c389495e4544472c6cca661e5a4dd8617237f8acd85a9f21b5c29a5ffa7c3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504.xps",
+      "xps_sha256": "edc0d3e44b934b04bc7170e9431d9005830abcd2b5d65ce4c99aa6e6bb4b8636",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504.page-001.emf",
+          "sha256": "0efd64a2e95829ea6bfcf9582acb071736f366d74a706aba0dfe93fbcc4a134b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504.docx",
+      "sha256": "c3aea3dcd163b5674c9e20f3fc9a34aea68a60d5deaf2bf55ca374938f1cc4dc",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504.pdf",
+      "pdf_sha256": "139043f26f057d2ad06ddedd007caac3de16cc26e1ed8345141bb21fc1c0f102",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504.xps",
+      "xps_sha256": "358ef70f393644a7c1a51215d9d1c408f070244ff61d27ff712660e5d85ed395",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504.page-001.emf",
+          "sha256": "4489b9718bfbaba880ce22d9f5a2f425f24b51b08afc7882a58867185ac832e5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504.docx",
+      "sha256": "05d13c548c82e12f67fdcadd7e913a743615dafcebe6550b29b38ea917adb3b2",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504.pdf",
+      "pdf_sha256": "149018a8acbea9d8be6abb4e426fd82568c72349f3010df2769eb08fbb664d4c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504.xps",
+      "xps_sha256": "91119f20ae0a527ce8aa70572e4afe46c7ca5cc6a43facf1457e5fd5fa0f3da2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504.page-001.emf",
+          "sha256": "040107cca6992825e9a8e2069d166e7f58f7e10641dbf6d94ab34ca130c141dd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504.docx",
+      "sha256": "294f076f5123f0092b4267903c2a72da8bee064d1ddb0b6fa357c68ae2a5b373",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504.pdf",
+      "pdf_sha256": "7f9137a43a6f076487bc5c12852cb8ac9b4966a7b48a0118156ea9693385254e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504.xps",
+      "xps_sha256": "bf0aa882bc76831b0a76d4c12c2377299058dcf8e44af517742a3c93f4fc3695",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504.page-001.emf",
+          "sha256": "b95aaba3b694aba0c589b42ea228efeaa0492d4bc4b9a930df58d9020b449562",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504.docx",
+      "sha256": "27465aae567815f134f1a3ddf7f013a858b1f782f4c712cb8ea543bc60c25482",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504.pdf",
+      "pdf_sha256": "7ce219eadb16248e385105274b453c6c1e16ea108dc61ebb67096f5361fec6a0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504.xps",
+      "xps_sha256": "0bd3c6763ba932af9e507879877b5852933628266fc0600b4c7a0177b53461a7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504.page-001.emf",
+          "sha256": "81435edb83e48f9c466ca40099fc58a98af98612ac1078e4042e0e79c95dcdd5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504.docx",
+      "sha256": "aec9a7852a3a7edbdb4b8ad2610ccd34570c5d87e6c7501b2303d8e9ec0f56bf",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "dd7c42d13cfb0572dbe08afeacb398ad46f551e09610148773a1799b254b1269",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504.xps",
+      "xps_sha256": "97c07e170c7af96df0309125ca0086dd6f9739353bf9862b2c7b2f1848857c55",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "c754e9199711385ce21c96763e92478bd45893c72b4c64cdbd467dfb27b4b335",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504.docx",
+      "sha256": "5ffe229f24a57c225ef45a84bd2acf9bd29c58a9949e0f6d2bf130c467b416d3",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "56549c36768d55be3dd2df546ce82a77da53b20a6e3c4687ba07934e496d18c9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504.xps",
+      "xps_sha256": "badd011f8c719ecdcc3b88e4a645c6db92479fd15b38f45a1df93d9a6eddee6f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "01f78d908494a3efce7faddcb2ed7464505650deaf33a955527bfe22d13246b7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504.docx",
+      "sha256": "54e086e769e2d49d45c7b9a8ed0475a42bf53575e14ad180b89ad1b01b8026ec",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "abb27b28f4c6ec628e66e70db7955460a8feebb253e9e50a832b7656150638e1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504.xps",
+      "xps_sha256": "25cc5368845f9de268885739b5217df9258080dc7bb39989c4f76e4ad54e0d99",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "963ac1c0e29ac58d5c96e9697a6a4d92d9dcfec3e8120cb9c5c2101ab0481d6d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504.docx",
+      "sha256": "4c2149b99a5c21568bacf47ac6a2e3cbff5bdb2fc63dd4807d64baca925b4c70",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "301178c0ffbdced9520b27008d5f55421a15869eeec0dd301c75f68eb6e369e5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504.xps",
+      "xps_sha256": "9d557de22e02ff48730b96145cb98a8e772afd5ffbadf4e6e1723f188172a3cf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "25cba4b0e16f5c0291d9639aa2862f3b65b6aac32fd66642fca2424232e5276b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504.docx",
+      "sha256": "0bdc19b23b7101574d882571c4ffd8f55f611e619d2ef7198a5ee63057c6175a",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "d432c07bae6780cce71d9b94cf3ad68d2cd870bc68adc2a0d4b39bb557f02922",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504.xps",
+      "xps_sha256": "d44f152c9cae43db26dd09262be942b60e935fb7385c178cf1034e2af4d9b6b5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "127a3d92498acdb664dd8e9db8fa683eb4320261f18e08b0fd63dca2260c1d0f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504.docx",
+      "sha256": "478ff1772e7b3a26cc2453d7af97500dc836908d6f83aa1936eca8c68ce0781d",
+      "pdf": "word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "76ad4e852ff71f400da7485b7089d6d2023916b0fc28686f41cd84432d26faaf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504.xps",
+      "xps_sha256": "810cce75d3765048c92ffccb8a7a9eff0f5db01e76f919e85cd73cc72286d7f3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "3927838b9b28ee72835d7b6f7a164a7fb84322f9d7e77d1c87706d85818da0bd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504.docx",
+      "sha256": "aab4e97cd4c98058e18129d3ad2b1fb2594087ed2b47b4c9de439328242660d7",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "ae90ed6ed46716b5cc547d06269bbc3f52ef47766d028e4e4fbc22d7c6f84988",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504.xps",
+      "xps_sha256": "b8222ffcaefa8e92cf2b37da2ceef60f497a9e76af43e992d69762dcfd123879",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "23174e2a7e40b974fd0ee4235494a0be89961a128f45fb5045ebcca6223b3628",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504.docx",
+      "sha256": "fe83be46e092d2266596c6fb43e12ed5ff031e9577ca88906f8cc993cc8b4436",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "22c751bb3e5cd6ff8d1f92e7810a225260e72d4bec42c24b55221a654c93072d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504.xps",
+      "xps_sha256": "7422d859e9342b06208225cc0d9d64aeda1b49ce0536f95998bf35921b5cd028",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "feaf9168a50b8ed08c51d44f59c13e962b61e42d5e76f6148bdc936452f662d1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504.docx",
+      "sha256": "46ad7d6d01e0cc5d24bb884b08f4fdbdcbe136bc02ab0ab0b1e5fdd65fdc8fc8",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "23e4db69605a155f6931e1955486cd813755512355f0dc0aa90e069db85d10a4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504.xps",
+      "xps_sha256": "d0b3d213a06ea6c07ba60db2e262f41d328ca2cc9466133c89088b82454e1c79",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "e121c77bff325e0c7e3e21d17a6955b63dfa4bf14224d92eb7e599289af103cb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504.docx",
+      "sha256": "513d67ff9ee071609b164f4a36977fb7645255540bf1a8a6b6e0e34ccf1dc1ea",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "75fa24c8e1d9e29f7dd7cdd25c9350e0d13f6ae10642e30a2cf0f2eb29f6c324",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504.xps",
+      "xps_sha256": "1c232b2cd2624e72870700c7f4a1fd0f8e315d02fb4b200b9ba768b3451f26a6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "7d0daf8748506853dd261a4735b6e542d8038fb68b337ef502516518534a0f64",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504.docx",
+      "sha256": "55b9a35caba0f79f1ee5129ee9dc81eef560b7ae41a682853b413d0e6f3a6598",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "e7a1b737b16fa67fc6b2b546a6a4660b0ea0bd2be843c4ad92a2b55a23d322b5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504.xps",
+      "xps_sha256": "ab5141d6ce02ea7579645ca5b4b6276c8996399ccbb654878d0adcd24b58a4a5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "66341a6acd9f9f064b65ebac1ce9c0dc84e9b988ed2180f9f3e6332548cd9e3e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504.docx",
+      "sha256": "4268413c9baeab552431122175f3c19144298fa61f02da98a70184189e43ce24",
+      "pdf": "word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "3eab7d3612b7b7b0db3a29d650078efb304c7b1cbed82e3afa74b82b9718f4c6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504.xps",
+      "xps_sha256": "077f03bb97b43e91f44a4fab37bb0c7ec82f5e7802493b75ac25c538fe4aedea",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "13b44e003394797bde771a548bfc093ad96e6ae5d9f7e1caec2668dca4d8a61e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504.docx",
+      "sha256": "e5f63d9a0af7099fd24cd153db2f45aff09b4cdfc0a1b986e60305a6eb0c4a24",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "e0b85ffd055ec86df1a48c28c0e205c0a1b135d057149472d44a6eb286fbc226",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504.xps",
+      "xps_sha256": "e985e99a18b79881f5f16fbf4cecec6f1a857782c490a07bc63365c34933eb1a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "688698b2fa61dc296b41cc59cf20feda3837749ed450cf1ccee2f1c436c1cd73",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504.docx",
+      "sha256": "4e66e3484e4f13e98bd5cfccdccf0f0fff1ddad7071ee78e7815e25b6d3e03c5",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "4c1e65d6b59f98a06c27c9859fb6abf71c195f706cb65f0532fa177b5f237860",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504.xps",
+      "xps_sha256": "1fbf9a4d915e1b51977718e762336b32a87a4a3fe78c574755e709e6b4e5e8da",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "a1d68791c3b81b90aec23b866688a27ca20756339bae1a1f24bf9bbb1b57f18e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504.docx",
+      "sha256": "bddaa1a1571fcda3636475da15c59a5962519e9b61184cc53a91716cc7bdd445",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "ed6863447800c8592d5795e9cdac9bc9b555c5ec27150a91b77e1431cc5df7c3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504.xps",
+      "xps_sha256": "47bfe1e060e490c0c170fa5b4362f6bbfd7d8b539d63037c5015936313f9e274",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "02dca0ec54f99c0fb0b06f11dedc18f2a0d30fcae15188605b7a5f81b1ab3a3d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504.docx",
+      "sha256": "25d9b718bd7abba3994a2d673a58a7768ac7d41d05e5cc33bf0d7a6f6cbc6f15",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "8e1abfe0e2b9f9f392879195c000d9cf7d31969b5f4dbd23b5c3cf4d3fd2cafb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504.xps",
+      "xps_sha256": "3b472eb2f46eae7e7ceefdd1d946feb11e2c06f3dc89ef36bc3c90bb9943505f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "5469e3a9664cb4dbe5fac32366f424ab13d77b691bd5e83a8a7df8ccd5b6027c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504.docx",
+      "sha256": "e49904bd72834445db76f27d1ef153bd46de57db406a972e3aefa8a96e29cbd5",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "7d4bd6f58799b7973ba87c2f2d793bcb686d7466f88221487cf59962c53c3371",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504.xps",
+      "xps_sha256": "c0059b522d127bcd53b9ca678c611615a0463317ae6eb6468b1268a913fe3a90",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "6a18d88e4b2ba0ed7bbd15001f881aa0878e7d9d2144481d0cbd9535eaeb1135",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504.docx",
+      "sha256": "33861c012ed50f7fa5eba7f525f660ddd0c3925f914fe5ae0e6e511804b01c8d",
+      "pdf": "word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "b914d54ab392247cec40aedbe43d5edc5c2d2f8fe34834af07db8892a86f4df5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504.xps",
+      "xps_sha256": "00226ba74c19bb1636aaefd34931a98674f31bb71b461a5b68b06c9b2e8e481b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "4ff47d43fe05d27bb52eb5d5a4e1622f3ca18a705d3370f49ca35a8ca73f346e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504.docx",
+      "sha256": "3e53bc5ee083e00c82530f06ddfafc8e6a0258698a4af11c6147ce6c75910bb5",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "4981758369374c794be61f4e36842c8cfca20ba454482b42aba6e65664ca1f18",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504.xps",
+      "xps_sha256": "5a1ac0493f7df4e392d6fd49559e05532915aa73d7a9a625ada0a9a07b9616b2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "3440d7cb710a624fa7ef535516c826cc369b24c450062b3dc01962fc1d6fc320",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504.docx",
+      "sha256": "735a3d105c33b20d36687ab3cba2549ad33aab8d0700cfd43415f436dc239ec3",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "aa69bb6d691864d15c8f573a4b1487ef7f4168414d544a0aaa17c063f0e05176",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504.xps",
+      "xps_sha256": "963e8cc8050bfedb86c040e817996a723693ee39ef277982489da9ef00131cc2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "d61761e4b2c354d6a9f2754410cd3038ab4cd29be95525486c5612d5a19234a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504.docx",
+      "sha256": "547850287d4e5e44c8be77802855d68757fe44b12cc06717873701abbd0e8131",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "10e5743c1b847b1615806abf7f89e18528e13f6adf1091250f9ce05bb05891f6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504.xps",
+      "xps_sha256": "61851097148710dd8f7c568f333e0efb835f0f763ff3ff2098b27d82d21f5452",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "d4f44e69890b51af05019a58653b387cd6d04477ba082bd53caf8798311fbb35",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504.docx",
+      "sha256": "fd42d3a11b700fc27491ec83c366c381c27d96318ab74a00062adc212ebed1ec",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "f803bde20ca952c4b844818e5e278fac0a52d1feda9f7632bc9124e544b3d783",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504.xps",
+      "xps_sha256": "5b6cb92b7d6159098668e1f85cfffb0edc749cf20b251f4168afb9b6edbcf932",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "13adef6b08b81128ee22649a266a8c1f7cc06161caecffc88b44d65486135737",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504.docx",
+      "sha256": "4d4387aa59e4e2782e00a7caa8d79361787cd1586af65b5716d6350b3add0ded",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "a1a196936a0667eac1a6641dc91b03730de98380a482f01c05da24ea0e75e851",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504.xps",
+      "xps_sha256": "dba9e284c5eb87e2327e22611742a9b47d112c9f63bb8f7dc4bd9eb513bf39c2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "76d71f22c76735783749d68fb2341d885d552d7f48a03aab6bfd250972a6db9d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504.docx",
+      "sha256": "37982d989017cc5c362cd162c49ecd00322685ac03e4a9eb376804e1ef9d1266",
+      "pdf": "word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "f3e35129ab1f3d740cade4a500ff8c3f38c03a843ad60dddc45ba826333503c4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504.xps",
+      "xps_sha256": "351ce7b6438ac1694633754f2992eaef27e300fa9cfa6b48e5d081f0488f3a66",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "15854687bc54e1dfb872672de094414e2f0d46b5d3c9d7a4d7df918eb81b58a9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504.docx",
+      "sha256": "7ec801c15b873bd383b0463e0887c216a7bd273277fbaa1740622d00527fd361",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "61d47410dfdf6605c27c8ac658cfc2302a0efce7d3f51110fcd6b9652a61fe62",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504.xps",
+      "xps_sha256": "1a69868d11a348e5e7aad42ac2ca51a2a8643be7dd0415191933ea8ecbc0bb3d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "88ab65c09f464204aac1bfe55d7d54b28fec31ca05a202793276aca08e9b9030",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504.docx",
+      "sha256": "ce23b1aedd6c407ce61bb67f1f1286428d578838beae554b607d1f039c5b58ff",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "62ce24d73f23a019282112288ea4f9808c0bd718e23ac9d9bbc47abbce10f9d3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504.xps",
+      "xps_sha256": "65079cd00600409b6178aa07b84aed34e91a8c9f1a05fc04d4443eeb62f2fbdf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "17c75bc275b98bb56205b4167ed749ef2313cf2fd21053a07f2a312eb910214e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504.docx",
+      "sha256": "cc1987c012ecd618309caf7f3d1505638a8e431a124ac6b5a516ed49bc8a4d8c",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "ce097b1d05181c458431c305f2c9cb9f212dd126d706b8203623d0317cf1193b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504.xps",
+      "xps_sha256": "609bccf2ec2dc44d79128fac12990462ab3c660d185141037b87e832721233ca",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "84bafe3bd415e07ee277d18b770393e18ffe103a7af27f682654a9e4b4e76438",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504.docx",
+      "sha256": "00d7a4d239817c398b1e3f298ac484827c7b5641ddfb80e78ff317a812fa3065",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "19502f5a89d320dd97ae94499eb77b31f9159986bdb9d9ccb2c836183fe23972",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504.xps",
+      "xps_sha256": "a4d52272bae38e9cee95cbb51d7ef7d2c987fd8c0cf0ad8e4e090bf2b51b917e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "41513ffff6092fb0b1d87946bd1f69c183f9860648bc7be729229a2fbc9e9bf6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504.docx",
+      "sha256": "1f97590047281da11955c2e0b991cbe640b743265e8a2d5021b9b113c133dd98",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "b69affab8214b15f4aea028b69275fe7f86cd5ce47574a2b8c6b1fe8520d6c19",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504.xps",
+      "xps_sha256": "2b45a280d8ae29300c58ddf3be979ca28b97982f6754179f7ee63a75f35c1b94",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "c2bb67db02e19e68e6c5743812e7ae3b1a5b15b7f58af493c8ef0a5d930bd528",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504.docx",
+      "sha256": "2c8c019b633ac18b38481445069c0a311f5eaab2dd56b86286fc8c5274b3c632",
+      "pdf": "word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "b8a46c05de6c36512fc218ebbc7dabe283e691264bbd6f9883c2cb4d832b8c60",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504.xps",
+      "xps_sha256": "8602a0e899a991c867be0e38678f6a557a63bafca4c5ce6700744dba1cc685c4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "bf293c620699565b88d43fddd32cb807d259785f02f08ee9b3e1edb1a2a235de",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504.docx",
+      "sha256": "ff6c183d1092920b370d6c62ab998b714bfd6f376eadde445dbce8e125aa2a72",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504.pdf",
+      "pdf_sha256": "73f543e9053970dd71baac17ecf1a5eff4f9bed77ceb00099fff6f0025fb55bf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504.xps",
+      "xps_sha256": "9c4ccb96b9a3e0d0c452c0f42c42be232e321b4eb6fe24853953d474fab80bd0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504.page-001.emf",
+          "sha256": "c9f36df362acb3dc78baecbf04922ec38aa5047550688ec44717548f976ae7df",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504.docx",
+      "sha256": "095a0023201141a0873ee838a5eaf31c72eb0f895c74667e886e4f0693cb597c",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504.pdf",
+      "pdf_sha256": "a163aba4c88f5a7c9e50070773fc3670195aa6bb1d35f6858550a3399f1de5c1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504.xps",
+      "xps_sha256": "a53c2c108acdecc760562660a7a4849615962d8f32337cb7c35f7e9f00a16582",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504.page-001.emf",
+          "sha256": "f007d676392a3a65d756ce95b5e068bd5b6a77a5f2034f3aa2b1f1ad4a7e7bba",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504.docx",
+      "sha256": "83f399d5e64c2f534c2956ac4f35a43b46aac45e40176a9eb5e82908f9842bb5",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504.pdf",
+      "pdf_sha256": "479875b9f24f11e37dc01b7bf1c76489309e6431380ba22a38725f9592cd490a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504.xps",
+      "xps_sha256": "ffc3c7070147e01249b3785e8ace84c13ddeb838a91ac60fedbc6b1da472c5b8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504.page-001.emf",
+          "sha256": "c5e2bc09f28786e62ec175e90c19e191a5a69bfc3abd880465610361f0fdb375",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504.docx",
+      "sha256": "0ab7980d466ebed7c71143c0cf4ca7c916f1a5980d0d951fd7949c80e6376c2d",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504.pdf",
+      "pdf_sha256": "8a9908a12a3e1660561791eba4b792527080ef7e205731a4e5370ca414411162",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504.xps",
+      "xps_sha256": "d72ecc29943c3178955b8340816d8202f0f475948c3ed4bf8746c2153d6c3834",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504.page-001.emf",
+          "sha256": "73e95c0f0d8d819a9cb2394200a4d0d27c69079197793dd3e762e23ea2ddc7d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504.docx",
+      "sha256": "8a8a072980d73146012fb380329e87ca449b61b0bf40861b02ed5aa5389010d5",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504.pdf",
+      "pdf_sha256": "07872c67cefe5eb9c29030b6acc9eb9ddc8327308fa05476cdaac3eb5ce8ded7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504.xps",
+      "xps_sha256": "7dbd1e497fc13842f25f4c3b86575fe6d1852426bab4b012f457b38f3792393d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504.page-001.emf",
+          "sha256": "3c1542a5601c50bd3e4a88dd5e04cfe284feb590afdcda01e55ab671d91c95fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-mincho-manual-size96-inputs\\word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504.docx",
+      "sha256": "150e7e60f2b9c9a9cc6a747c9a7fa046a3665214ede26bb9177be7a9a94a15e8",
+      "pdf": "word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504.pdf",
+      "pdf_sha256": "fd6bdfd1c30b414c53934797ae10a429b695e558f2fc7d23acf610088c36f642",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504.xps",
+      "xps_sha256": "13b1d8cb7d502501dd1fcfc05c49c7dc9a9e808dfb35fdd00378e28e88161ca0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504.page-001.emf",
+          "sha256": "6ec94b2b1f7b5f66462f282e42f4427530ed0daae8125a53d07481799574d43d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

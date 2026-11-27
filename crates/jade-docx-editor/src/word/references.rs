@@ -132,25 +132,30 @@ pub trait WordReferences: WordSession {
 
     /// 目次: a table of contents from headings 1–3, after the caret's
     /// paragraph.
+    ///
+    /// The entries get the number their heading's page displays, as
+    /// [`toc::WordToc::build_toc`] writes them.
     fn insert_table_of_contents(&mut self) -> Result<(), String> {
+        use toc::WordToc;
         let after_paragraph = self
             .selection_range()
             .map(|range| range.normalized().0.paragraph)
             .unwrap_or(0);
-        self.apply_command(
-            HeadlessCommand::InsertTableOfContents {
-                after_paragraph,
-                outline_min: 1,
-                outline_max: 3,
-            },
-            true,
+        self.build_toc(
+            "insert_table_of_contents",
+            None,
+            after_paragraph,
+            crate::document::TocOptions::headings(1, 3),
+            "dot".to_string(),
         )
     }
 
-    /// 目次の更新: the document's table of contents made again from its
-    /// headings as they now are.
+    /// 目次の更新: the document's (first) table of contents made again from
+    /// its headings as they now are, with the number each heading's page
+    /// displays ([`toc::WordToc::update_toc_at`]).
     fn update_table_of_contents(&mut self) -> Result<(), String> {
-        self.apply_command(HeadlessCommand::UpdateTableOfContents, true)
+        use toc::WordToc;
+        self.update_toc_at(0, false).map(|_| ())
     }
 }
 

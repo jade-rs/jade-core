@@ -119,6 +119,7 @@ pub struct InsertFootnoteCommand {
     previous_document: Option<WordDocument>,
     previous_selection: Option<SelectionRange>,
     inserted_id: Option<String>,
+    custom_mark: Option<String>,
 }
 
 impl InsertFootnoteCommand {
@@ -129,7 +130,14 @@ impl InsertFootnoteCommand {
             previous_document: None,
             previous_selection: None,
             inserted_id: None,
+            custom_mark: None,
         }
+    }
+
+    /// The note's reference is `mark` (Word's 任意の記号), not a number.
+    pub fn with_custom_mark(mut self, mark: String) -> Self {
+        self.custom_mark = Some(mark);
+        self
     }
 }
 
@@ -190,11 +198,21 @@ impl Command for InsertFootnoteCommand {
             )));
         }
 
-        let id = match ctx.document.insert_footnote_at(
-            model_position.paragraph,
-            model_position.offset,
-            &self.initial_text,
-        ) {
+        let inserted = match self.custom_mark.as_deref() {
+            Some(mark) => ctx.document.insert_note_with_mark_at(
+                true,
+                model_position.paragraph,
+                model_position.offset,
+                &self.initial_text,
+                mark,
+            ),
+            None => ctx.document.insert_footnote_at(
+                model_position.paragraph,
+                model_position.offset,
+                &self.initial_text,
+            ),
+        };
+        let id = match inserted {
             Ok(id) => id,
             Err(error) => {
                 *ctx.document = previous_document;
@@ -1208,7 +1226,7 @@ mod tests {
             .iter()
             .map(|run| run.text.as_str())
             .collect();
-        assert_eq!(footnote_text, "\tA");
+        assert_eq!(footnote_text, " A");
         assert_eq!(
             selection,
             Some(SelectionRange::collapsed(TextPosition::new(
@@ -1364,7 +1382,7 @@ mod tests {
         );
         assert_eq!(
             word_doc.paragraph(footnote_index).map(paragraph_text),
-            Some("\tnote".to_string())
+            Some(" note".to_string())
         );
         assert_eq!(
             selection,

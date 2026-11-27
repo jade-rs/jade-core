@@ -14,15 +14,6 @@ fn clamp_to_char_boundary(text: &str, idx: usize) -> usize {
     i
 }
 
-fn slice_by_byte_range(text: &str, start: usize, end: usize) -> String {
-    let start = clamp_to_char_boundary(text, start);
-    let end = clamp_to_char_boundary(text, end);
-    if start >= end {
-        return String::new();
-    }
-    text.get(start..end).unwrap_or("").to_string()
-}
-
 pub(crate) fn range_contains_deleted_revision(runs: &[Run], start: usize, end: usize) -> bool {
     let mut position = 0;
     for run in runs {
@@ -110,6 +101,7 @@ pub(crate) fn create_run_from_template(template: Option<&Run>, text: &str) -> Ru
     if let Some(source) = template {
         let mut run = source.clone();
         run.text = text.to_string();
+        run.text_controls = None;
         // New text takes its neighbour's formatting, not its phonetic guide:
         // it is not part of that ruby base.
         if let Some(props) = run.properties.as_mut() {
@@ -139,6 +131,7 @@ pub(crate) fn create_run_from_template(template: Option<&Run>, text: &str) -> Ru
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -199,9 +192,9 @@ fn remove_range_from_runs(
         let local_start = start.saturating_sub(run_start).min(len);
         let local_end = end.saturating_sub(run_start).min(len);
 
-        let left = slice_by_byte_range(&run.text, 0, local_start);
-        let right = slice_by_byte_range(&run.text, local_end, len);
-        run.text = left + &right;
+        let local_start = clamp_to_char_boundary(&run.text, local_start);
+        let local_end = clamp_to_char_boundary(&run.text, local_end);
+        run.replace_text_range(local_start..local_end, "");
     }
 
     promote_emptied_ruby_starts(runs);
@@ -559,6 +552,32 @@ fn insert_into_runs(
                 return;
             }
         };
+        // Right after a field whose result is worked out again (PAGE, DATE),
+        // typing goes after the field, as in Word: written into the result,
+        // it was lost the next time the field was updated or saved.
+        let at_computed_end = runs[index]
+            .field
+            .as_ref()
+            .is_some_and(|field| !field.kind.keeps_result_in_run_text())
+            && !runs[index].text.is_empty()
+            && position == run_start + runs[index].text.len();
+        if at_computed_end {
+            let mut after = index + 1;
+            if runs
+                .get(after)
+                .is_some_and(|run| zero_width.closes_field(run))
+            {
+                after += 1;
+            }
+            let template = runs[..=index]
+                .iter()
+                .rev()
+                .find(|run| run.field.is_none() && !run.text.is_empty())
+                .or(template)
+                .cloned();
+            runs.insert(after, create_run_from_template(template.as_ref(), insert));
+            return;
+        }
         let run = &mut runs[index];
         if run.text.is_empty() {
             if let Some(result) = editable_field_result(run).map(str::to_string) {
@@ -567,7 +586,7 @@ fn insert_into_runs(
             }
         }
         let local = clamp_to_char_boundary(&run.text, position.saturating_sub(run_start));
-        run.text.insert_str(local, insert);
+        run.replace_text_range(local..local, insert);
         return;
     }
 
@@ -591,6 +610,109 @@ fn insert_into_runs(
         let run = create_run_from_template(runs.last(), insert);
         runs.push(run);
     }
+}
+
+/// Types `insert` at model offset `position` behind the note references
+/// and the fields with no text of their own that sit there: the caret Word
+/// shows after a reference mark ("abc¹|def") or a page number ("Page 1|") is
+/// at the same model offset as the one in front of it, and text typed there
+/// belongs after them. After a reference the new run is formatted like it,
+/// as Word continues the mark's formatting; after a field like the text
+/// before it. Returns whether something was found to type behind.
+pub(crate) fn insert_after_note_references(
+    runs: &mut Vec<Run>,
+    position: usize,
+    insert: &str,
+    zero_width: &ZeroWidthRuns,
+) -> bool {
+    if insert.is_empty() {
+        return false;
+    }
+    let head_template = runs.iter().rev().find(|run| !run.text.is_empty()).cloned();
+    let mut tail = split_runs_at_preserving_source(runs, position, zero_width);
+    let leading = tail
+        .iter()
+        .take_while(|run| {
+            run.text.is_empty()
+                && (places_a_story(run) || run.field.is_some() || zero_width.keeps(run))
+        })
+        .count();
+    let reference = tail.iter().take(leading).rev().find(|run| {
+        !run.footnote_reference_ids.is_empty() || !run.endnote_reference_ids.is_empty()
+    });
+    let template = match reference {
+        Some(reference) => Some(reference.clone()),
+        None => head_template.or_else(|| tail.iter().find(|run| !run.text.is_empty()).cloned()),
+    };
+    runs.extend(tail.drain(..leading));
+    if leading == 0 {
+        runs.extend(tail);
+        return false;
+    }
+    let mut run = create_run_from_template(template.as_ref(), insert);
+    run.revision = None;
+    runs.push(run);
+    runs.extend(tail);
+    normalize_break_runs(runs);
+    true
+}
+
+/// Types `insert` at model offset `position` behind the first `objects`
+/// inline pictures and text boxes that sit there: the caret Word shows after
+/// a picture ("AB🖼|CD") is at the same model offset as the one in front of
+/// it, and text typed there belongs after it. The new run is formatted like
+/// the text before the caret. Returns whether that many objects were found.
+pub(crate) fn insert_after_inline_objects(
+    runs: &mut Vec<Run>,
+    position: usize,
+    objects: usize,
+    equations_are_objects: bool,
+    insert: &str,
+    zero_width: &ZeroWidthRuns,
+) -> bool {
+    if insert.is_empty() || objects == 0 {
+        return false;
+    }
+    let original = runs.clone();
+    let template = runs
+        .iter()
+        .rev()
+        .find(|run| !run.text.is_empty() && !run_holds_object(run))
+        .cloned();
+    let mut tail = split_runs_at_preserving_source(runs, position, zero_width);
+    let mut seen = 0;
+    let mut behind = None;
+    for (index, run) in tail.iter().enumerate() {
+        if !run.text.is_empty() {
+            break;
+        }
+        if crate::word_document::WordDocument::is_inline_object_run(run)
+            || (equations_are_objects
+                && crate::word_document::WordDocument::is_inline_math_run(run))
+        {
+            seen += 1;
+            if seen == objects {
+                behind = Some(index + 1);
+                break;
+            }
+        }
+    }
+    let Some(behind) = behind else {
+        *runs = original;
+        return false;
+    };
+    let template = template.or_else(|| {
+        tail.iter()
+            .find(|run| !run.text.is_empty() && !run_holds_object(run))
+            .cloned()
+    });
+    runs.extend(tail.drain(..behind));
+    let mut run = create_run_from_template(template.as_ref(), insert);
+    run.revision = None;
+    runs.push(run);
+    runs.extend(tail);
+    normalize_break_runs(runs);
+    true
 }
 
 /// Whether `run` holds an object that is not text: a text box, an image,
@@ -926,6 +1048,9 @@ fn run_carries_content_besides_field(run: &Run) -> bool {
 pub(crate) struct ZeroWidthRuns {
     field_chars: HashMap<XmlNodeId, FieldChars>,
     field_code: HashSet<XmlNodeId>,
+    /// A split at a note reference keeps the reference before it: the caret
+    /// Word shows after a mark ("Hello¹|") is at the mark's model offset.
+    references_before_split: bool,
 }
 
 /// The complex fields a zero-width run ends and then begins with its
@@ -972,6 +1097,24 @@ impl ZeroWidthRuns {
     fn closes_field(&self, run: &Run) -> bool {
         self.field_chars(run).is_some_and(|chars| chars.closes > 0)
     }
+
+    /// The same runs, a split keeping the note references at its offset on
+    /// the side before it.
+    pub(crate) fn keeping_references_before_split(mut self) -> Self {
+        self.references_before_split = true;
+        self
+    }
+
+    /// Whether `run` is a note reference, or a part of a field with no text
+    /// of its own, that a split at it leaves before it.
+    fn stays_before_split(&self, run: &Run) -> bool {
+        self.references_before_split
+            && run.text.is_empty()
+            && (!run.footnote_reference_ids.is_empty()
+                || !run.endnote_reference_ids.is_empty()
+                || run.field.is_some()
+                || self.keeps(run))
+    }
 }
 
 /// Splits a run sequence at the specified byte offset, returning the tail
@@ -1006,10 +1149,9 @@ pub(crate) fn split_runs_at_preserving_source(
             // field's begin does, except the end of a field whose result ends
             // here: it stays with that result, so that a range ending here (a
             // comment, a link) holds the whole field or none of it.
-            while runs
-                .get(index)
-                .is_some_and(|run| zero_width.closes_field(run))
-            {
+            while runs.get(index).is_some_and(|run| {
+                zero_width.closes_field(run) || zero_width.stays_before_split(run)
+            }) {
                 index += 1;
             }
             break;
@@ -1018,15 +1160,8 @@ pub(crate) fn split_runs_at_preserving_source(
         if offset > run_start && offset < run_end {
             let split_point = offset - run_start;
             let split_point = clamp_to_char_boundary(&runs[index].text, split_point);
-            let right_text = runs[index]
-                .text
-                .get(split_point..)
-                .unwrap_or("")
-                .to_string();
-            runs[index].text.truncate(split_point);
-
-            let mut new_run = runs[index].clone();
-            new_run.text = right_text;
+            let mut new_run = runs[index].with_text_range(split_point..len);
+            runs[index].replace_text_range(split_point..len, "");
             new_run.node_id = None;
             new_run.text_node_id = None;
             new_run.revision_node_id = None;
@@ -1307,27 +1442,19 @@ fn split_run_into_break_segments(run: Run) -> Vec<Run> {
     template.node_id = None;
     template.text_node_id = None;
 
-    let mut buffer = String::new();
-
-    for ch in run.text.chars() {
+    let mut start = 0;
+    for (offset, ch) in run.text.char_indices() {
         if ch == '\n' || ch == PAGE_BREAK_CHAR || ch == crate::document::COLUMN_BREAK_CHAR {
-            if !buffer.is_empty() {
-                let mut text_run = template.clone();
-                text_run.text = std::mem::take(&mut buffer);
-                segments.push(text_run);
+            if start < offset {
+                segments.push(template.with_text_range(start..offset));
             }
-            let mut break_run = template.clone();
-            break_run.text = ch.to_string();
-            segments.push(break_run);
-        } else {
-            buffer.push(ch);
+            let end = offset + ch.len_utf8();
+            segments.push(template.with_text_range(offset..end));
+            start = end;
         }
     }
-
-    if !buffer.is_empty() {
-        let mut trailing = template;
-        trailing.text = buffer;
-        segments.push(trailing);
+    if start < run.text.len() {
+        segments.push(template.with_text_range(start..run.text.len()));
     }
 
     if segments.is_empty() {
@@ -1371,6 +1498,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -1395,6 +1523,57 @@ mod tests {
                 ..RunProperties::default()
             }),
             ..text_run(text)
+        }
+    }
+
+    #[test]
+    fn source_hyphen_identity_survives_utf8_edit_split_and_break_histories() {
+        let mut run = text_run("日\u{ad}a\u{ad}b\u{ad}c");
+        run.text_controls = Some(Box::new(crate::document::RunTextControls {
+            literal_soft_hyphens: vec![3, 9],
+        }));
+        let mut expected: Vec<(char, bool)> = run
+            .text
+            .char_indices()
+            .map(|(offset, character)| (character, run.is_literal_soft_hyphen(offset)))
+            .collect();
+        let mut runs = vec![run];
+        let zero_width = ZeroWidthRuns::default();
+        for step in 0..120 {
+            let start = (step * 7 + 1) % (expected.len() + 1);
+            let end = (start + step % 3).min(expected.len());
+            let byte = |index: usize| {
+                expected[..index]
+                    .iter()
+                    .map(|(c, _)| c.len_utf8())
+                    .sum::<usize>()
+            };
+            let insert = ["🦀", "x", "\u{ad}", "\n", "日", ""][step % 6];
+            apply_text_edit(&mut runs, byte(start), byte(end), insert, &zero_width);
+            expected.splice(start..end, insert.chars().map(|c| (c, false)));
+            if step % 5 == 0 {
+                let middle = expected[..expected.len() / 2]
+                    .iter()
+                    .map(|(c, _)| c.len_utf8())
+                    .sum();
+                let tail = split_runs_at_preserving_source(&mut runs, middle, &zero_width);
+                append_runs(&mut runs, tail);
+            }
+            if step % 3 == 0 {
+                normalize_break_runs(&mut runs);
+            }
+            let actual: Vec<_> = runs
+                .iter()
+                .flat_map(|run| {
+                    run.text
+                        .char_indices()
+                        .map(|(offset, character)| (character, run.is_literal_soft_hyphen(offset)))
+                })
+                .collect();
+            assert_eq!(
+                actual, expected,
+                "source control identity after edit {step}"
+            );
         }
     }
 

@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 pub mod canvas_renderer;
+pub(crate) use canvas_renderer::windows_nested_resize_grid;
 pub mod canvas_view;
 pub(crate) mod chart;
 pub mod commands;
@@ -16,6 +17,7 @@ pub mod headless_api;
 pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 pub mod plugins;
+pub mod revision_clock;
 pub mod revision_view;
 pub mod text_edit;
 /// Word's ribbon and dialogs as UI-free models over a [`word::WordSession`]:

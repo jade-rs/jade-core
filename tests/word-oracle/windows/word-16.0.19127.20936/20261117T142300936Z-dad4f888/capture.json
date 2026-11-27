@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T142300936Z-dad4f888",
+  "captured_at_utc": "2026-11-17T14:23:00.9392540Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-hints-arial-size14-eastasia-compat14",
+      "source": "w17-q-numeric-hints-input-snapshots\\word-windows-numeric-hints-arial-size14-eastasia-compat14.docx",
+      "sha256": "4a2658ee9de42438ecd0a023089c9ef4296c6dc43ceb6e4ca3ec768a299e42a3",
+      "pdf": "word-windows-numeric-hints-arial-size14-eastasia-compat14.pdf",
+      "pdf_sha256": "75a59b1f770ec80ee048f480bdc0dc58665bc0da7bfc2e60b1aa89cef2ee990c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-hints-arial-size14-eastasia-compat14.page-001.emf",
+          "sha256": "350573a5f951ea1421c30565e1633f9b8e81a427938b963e6828ce17232ee7eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

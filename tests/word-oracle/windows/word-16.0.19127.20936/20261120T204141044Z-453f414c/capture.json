@@ -1,0 +1,1878 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T204141044Z-453f414c",
+  "captured_at_utc": "2026-11-20T20:41:41.0737523Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000.docx",
+      "sha256": "65e9926e4faefcb5e37245fb8dae44ef43065a504e90473b1b0e47aa30d511d2",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "5244ad456a6a890e55483fb678531b044cf7fe659ed1f57bc72c33bbe6ff05c0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000.xps",
+      "xps_sha256": "c00029614f9042a515641828227b4cb9317e5187d13d24e566b668f958dc1751",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "c8267e42694b4b727ea41fe2ce145dba0fba692f975b438f2929eff1d0c4172e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000.docx",
+      "sha256": "182829c43a56ce8fe380fab7ae62b5c7a6fdd25090773b4310e7480c0cd63199",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "258f6a2e2cef5d21e3b29aecfe7d3aa4de21de16700c15446e6a392f6f130ae4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000.xps",
+      "xps_sha256": "4424b29e6eb53ed45a9e30f08d258acc048b91612920430c92f06d55d8536075",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "03abbfa655c7a4ddcbdb24945c4ac57bd5c425b6b8403abcbe3f47b32d2087bc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504.docx",
+      "sha256": "b3dbff89d9b43648374a5f72858ff4074e4f97fed35cfeb463e2fdd3e9862b73",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "48034f7a14e8c7efee6e54826530534afd31ad1f28ba29341b6d29b25028826f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504.xps",
+      "xps_sha256": "e2f9674dc9893593a36eec6469207b26af04fc3d3078094ee6f05f85b2185f9e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "5f09de9d95936eee63a9d88156a0a0fe94db2c12087a29c4858221fead6c8fc6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504.docx",
+      "sha256": "07447f36b304f7e1c4372fe9697000383f45bbc6db680d06811a1753c6a0dd00",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "3e0ff2f418b3e64ab7d4c3146c79fd43be761c5b75b84dcf38d3b08a13825efc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504.xps",
+      "xps_sha256": "5aad7bccc450320b6d387f7750c5df24e0956ee712c4185d7545ec9db2f13111",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "3aacdbd171250fb4cc8f4a34f8c29ba264ca4ab2c18acf160f696b2033099b3a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000.docx",
+      "sha256": "0336e6c8ac1e553d2009e42ca7c8f2d9213c64c35093922c233adcf89b39b32a",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "ca84aaedbf90268bcb06e4680be586f28052e0ac4f82b222a764a388b3b60c20",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "466ff1886f5178bcce8ccabf8aa8fa894795a75c924f44c722c969c7f27104d7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "fa0f6ca089253800094e9b65921ad1bb687ab2b4634d73516c8a87ce549f2687",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000.docx",
+      "sha256": "ced44e069933b2b7e19d2d8bccffb0f257c51f7c25b78397b2149381d3bec85f",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "35d44c1874646e4d34483d49f670c23f5219b8e91cc497cc47a4a116ac8a84f9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "7f1eeb0104911d422fa5e4c995ca92fd8caccbc6cdc026df538974836b7ac88b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "568683de978f22053af696f36770d51c474679cb833717d0b043a4cbad84860c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504.docx",
+      "sha256": "d92f10d48b2f78502c26265184e9229e1696e6c2209e34c995300556141e57c5",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "9f7f3781dea37a24c4e0d063027e1a699561dd75ecf8dcb2fc2656fb9037798f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "98bbf3d7a76957ac0067317816852414b1e2b04926ca813458d29922449f831b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b34d015a21e623fc3bc281fd08c1a3fee0d5626b199d87a0832af0dfbfbba9df",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504.docx",
+      "sha256": "7bc50947b6d9af6230e5ab46196edd6ac1addfe91da8de83e4a6d18aaa4ee175",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "02e60e3e81a68d84281dffb284943d628c91fdcdece609889d45d6fcf92458b2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "20f27e212e5ce4d6ce59315624e333f9321df45045d25bb66056449440fc6434",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "bcc11f453d9fef5050a12f16aa0da400c57f73897c8e989446ceb32247b928b8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000.docx",
+      "sha256": "9a74d5068df7d1cf62cbfc361fed8cde983290d74d951714c59a8794f20039dd",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "2d8e19ae49d176c60bbb8b4ff81376c8760e199b86082616c1ee64a1da6ffdb4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000.xps",
+      "xps_sha256": "66e680d22a92694e32096e40f1f38504f9111109c93f289e21fde5073dd4ce54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "7a0d2af9e2a32c20b686cc9019ce302ad4dc52fabe1a3bcb117582001b1b65d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000.docx",
+      "sha256": "1a9ba26dce8b1687e70c3e9ee235d957fce7028a3dae0b465cde8753ea3fa0cf",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "4ea7a2b6128c6fc520b0b33302f787565bf79515cc41a0f620ccacc334656882",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000.xps",
+      "xps_sha256": "a4d069308e814b81d334fbc4e7106a3c2dc4cbdbc5cc5f3b484408b4a03b977b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "ec1ff4ddc28931f21b0357a862995864e7f944e94790f52fae04db26ccb8f6b6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504.docx",
+      "sha256": "192580fa4e4467f664bc0b9e56fefd889e5071f70a95ad5f98b1b207da9502e6",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "6edb8866f3c9833157a00c68b91441dbf0b31c90e31a5d24e04c350d28702e6f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504.xps",
+      "xps_sha256": "bdeb387cae2c2ff4f4f47409a133869121f4c79b3aec3c3e58557bef19575e71",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "7e885b5ec3c76423240d3f0497008213eec9ba644d8b5949d8b165a7c8369e6f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504.docx",
+      "sha256": "684850c20ca8cdb6a5620924167ffdac79af92799a8310bc8b5f6a2c86c92cfe",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "92f37d55030b5a37cea014868db331379bbe4ee282980809c191c6b30403fcc8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504.xps",
+      "xps_sha256": "da07ba45dd5da621fad9f73bc1751f95b81745474998149541d9ddf63200b09d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "efaa07cb620cf72f1fe96778befde901877942025a9dc78effffdd40f81803b0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000.docx",
+      "sha256": "c6878c81228f22036676a32d5f59f51a2543faa92f8dc4128538c678a0976761",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "2771f9ff62b8032c7d9f08f08434e4f3f68e8d5e600ecbb3a22b85228690124b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "00c1356d8ae5271f2be5cd20a98f97bd40b6120b5550e08ddb10e3189c873bdb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "b8fba1c90341872b907533bdb55fb2f32b5c7000b19962ee63e9c255f7fa9796",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000.docx",
+      "sha256": "b9aec8b0dc9b981606c10aaed6a2bef1bc7cbcd6282d213ce423cf001cd72c33",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "fcac6ce8a53c72e419ee0688c58e934c646a9f0972a332079a1e384745393d50",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "e1c3c7939ea8cd4b7f5122f0328e193b8c16cb53d56415e425a273111bbad9c4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "568683de978f22053af696f36770d51c474679cb833717d0b043a4cbad84860c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504.docx",
+      "sha256": "65628055fd22df7d7cac849ae2f541de7da9bea5586c894eb10318325a63ba67",
+      "pdf": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "90d8ca5e0f6710d404b77e5388a4635ff903d984480cb18a4f472b4df1225d46",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "cfe6a487c779675b3323cf300516b0389e4cad7b105cb57c65258689f332621c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "851b0f394ca819ec9d4f7abca7a8dc5e47eea4d85e88cc9e41a1dcf6c92cc10b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504.docx",
+      "sha256": "749596bf0549e3cffb8ec6e1d49ded0a6137672bb03dd11e5fb1ba97f7244983",
+      "pdf": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "837ca7e2cca9ed4f8a4a32ea6601b55a8f960c23427359206d8796861c551306",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "70fe4aa3c998e8eeaed8980c378a058e12a687c9f20ac7a78f57fc4063a47ffe",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b0316697a8114b7d031ad79660016c8ae888d609c8040d9494d88f4483dcdb3e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000.docx",
+      "sha256": "b4101db385c0eb46be41d99811ddd5d81913f6bc1bb7ee67ed5cc341ea7476a8",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "d632f8e2edcd9602462e5f0aaf0b51243b5c9f5092411a0f56ef58dd43a38263",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000.xps",
+      "xps_sha256": "c932cde9045dc270a0552d3ac8e112102e85cb7f31c70df917d585b24b83cddb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "7c78c3129d462597064e261e619bf85467c9b4b846e619e7ddea7415470f94f5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000.docx",
+      "sha256": "ae00ad34b3a956a9a5797bdb111c22ad84de97f71fe247018f6489088606f18c",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "a6af6083f2f87e5db63d54df7ef54e51909e7acd22e5aec7231d692c32404116",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000.xps",
+      "xps_sha256": "9e5173a130a11b3a73772fd638df7027ec3c8e7a05276ee958f159ac9bad5586",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "44e10c1dbb87bd37749cd4d00a0b49aa32700ea91954ffd2268aa5495800851a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000.docx",
+      "sha256": "cd3ef752ea7b07f4f2cd072ae40ebb7259eb1c1afa00bcaef0e10c0de9d93c14",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "e5e4cf29c84f815e4c87b318c96b1743a024fedc5aa2b808b11c68eaf793c2a4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000.xps",
+      "xps_sha256": "daa203695a98bb5e349d6e9cea767a04418b79bc495232a4062b2e2a55fb078e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "a90a7bb1b3b8c48dec12fa8f63b7b4f8633a0706b3521973fac4c5a2d9a9f636",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000.docx",
+      "sha256": "520041d63f0c4bc48032f9130bcc253128370627bac5ecf5d70624fb67dbffac",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "2fe6699c3ae62948163fb7714ef714ef835206036f6a532158daf2cafc8f8965",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000.xps",
+      "xps_sha256": "135fc80b0f296d1ee913d8912f11efcda2f13e5840ea12f8434860c2c6d7b40f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "8b92739abce34de42ecd41a2357da13adf707a55858bd342967467e61aa9d463",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000.docx",
+      "sha256": "31b5dac82508bf2e12cf1957b9df092dc86bdeee9cc820480bef6e88002e89d1",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "a0a0659294c3b45a03e613789b98063c27cef1ed627be54a68b54c20e35d4f3f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000.xps",
+      "xps_sha256": "0ffb37146d4fb0dd59c24a2d187405b16487cb474aeb800b7695e21d8315f6e7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "f6d483adc9c3659b39ef25c7f1d32dabd812b382e74d3beb24aca5b903de4b50",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000.docx",
+      "sha256": "7c4718ee4084ad47df1280d5e58b9636fc64c553c2e0c1daad45d901a8659acb",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "71547703d2b43c3ee174d3383cba76039e46a57d48ea513dfb1c4a0d67fdf3ba",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000.xps",
+      "xps_sha256": "3ff0e0ea29011e652b42e9539602a5b2788d966123f3ef9cdd8ddf3a16d74fd9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "1041671abd8aae549cc906d91ae6b5dcadaa81c0f4d308744669b9461776eacd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504.docx",
+      "sha256": "65bf71aeab2f660fb492052f4885ca8a79db1c76556b98359c3eea45f1c8f1d7",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "d7036f604cc1bc525adc864bbcd6cc5454f7c0517970327baa467f4de1380824",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504.xps",
+      "xps_sha256": "bc870a19ab2fad80847af8e0d356d4be1e3562e9b7d9e66ba168c8aa44a589fd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "a0b0e26fd6853ebe6f259ab06db8f0476cb434d3bb3e735a08abf3f3c3c8a94e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504.docx",
+      "sha256": "ae5a061b3e9b3e7d9fa4c467db5af07347fe549b58534f5a99e21dec143e2e7f",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "bed54ac8360713d526bc2fa6480b150142f04f9c801b181caf8b4c26742899b0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504.xps",
+      "xps_sha256": "192306910152a334b154fa56fae1dbfd171562079782378f66e51040e803300c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "b0dbf44cfe56db751a61908af2751f85013ec95f91b8da9206661cba74129b3c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504.docx",
+      "sha256": "e014f5d0c5fc3007a83302f2e96028461929e33691b7c1a98ffd6fe6a5e6f694",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "44a85e1bfe3b4a474aaf1c107503980defe59ff223d23ab4580e50ecddfa088c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504.xps",
+      "xps_sha256": "5dbb6f3b3b63b9827daf252184ce8bac663f0f429f2cf634dfa93c9e72888ce6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "f95f17beb328671502ed503fe4129802a331aad5dbfbf21977b7f4f91e693e10",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504.docx",
+      "sha256": "64f7e7d599dce14308a884b334160d246bef7894aceef70f66a7e65d1b4c2516",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "ef7920d328f826d5c4cee6c4df63df53ad4468539c6416f6ecc6b92861280a78",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504.xps",
+      "xps_sha256": "6b38b5de8039db5673244ff264211e34064d7eb89110828379430e42c59d28ff",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "8e27babbf8d47b69a3d2d8c546a2a79b43da2d9336c4203d940f7614b4ff2c6d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504.docx",
+      "sha256": "04a3246436e1aacbd8bb40358f98a7d938e568fd4e6570b5e60997945ab961bb",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "a26cadb0283f5af0b19edd202e069ad69e013a42811754508269b8e3a154480e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504.xps",
+      "xps_sha256": "738e6e887f3424f33a0fa0947e8d0610ccae40a582eba25e39ef8142739cf10b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "103020b3d08fbed49c79f06d1812fd8070083cec31f97a61ab50fee7acf88530",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504.docx",
+      "sha256": "03e2112696887e4f3b9cea9205dfced83be2a6d2af1d08d4f5408df29f494b10",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "7adcfe9f64b010e306941474082fcd9f98b1f9c8b5eb34a92ec52d3bfec4e69f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504.xps",
+      "xps_sha256": "d195bdecb74f6690b4068251424dec990953b335c9a97c5cdc214b44d7e7549b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "8ce9860f3564833ea4cf697092a0240277e14f4c367da2529afa04dfbd5df3ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000.docx",
+      "sha256": "6a4d20bbd5849e3746cc0cde9115377cdfd3e02e4fc15639feef10e210f8df54",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "b3b36a20cccbb9fa85e5f6b8b216ecb46e859b726a5aee1612568fcdb990f605",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "3d657714dcd5a5c6f5865bb95d68f537ea92ced532d8456fe3f616c7da4a8062",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "a3e8812fc7d8481c64e529cccd214d7e694ee013e200047a09d32a4a4b351261",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000.docx",
+      "sha256": "0cb786dae2ed20b8ac9b3db53fa0ac7e98ffe85e7b5cfca3021c85716c5f42d8",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "90b5e389d312807d19d78b16b8902984e55649256bf5fc5c44a151182fa71466",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "62680e5b6cc3e0ba2da6f8847338921e8099eab5e042bb83aff8ea0787c66fe8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "f748dfea58d78aa12074d05dd6a1e9c40f487793ec463c29d606d17d87ee8c6c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000.docx",
+      "sha256": "ff24dd2f4ec4461ddd20099144cec75e188b29c7004d5e181f6a399ac8ce4340",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "1d3d381e6df3e5441de29a62eb6bfb60380dbdc1339689d5611d0b6cff3919a7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "74b49b433f147b6b3563beb9d06c5f585594a7819887684f8716d42ba39d06c2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "f87ed9772bdd1845839756038be6436869ab2ac2c194cf5d7755cc506111293f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000.docx",
+      "sha256": "66f6567fae3bcee5b7a46a340ad9e288060ed7687a38e80be406f2afcbd172f6",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "e480c14f071bc6ae613615bdf7cbe7a2f1e6b3b15be7d3ee033cd8963864bd32",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "cde0415bb459e8b05dadbd93d36cbc4e5dfea8912a6c867bc2cd45d4c9b6db6d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "f9d765e50ffeb682e36478459fa19c92db989238f9ea5ee4543dc6c1ba7f1cbe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000.docx",
+      "sha256": "fde12740be0744fc3f19441f074cc190c336bc0c8c1b8459a6577481e27027a7",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "1e4e9e8107e9b1584506a72458a73d9cce708df4aec2361f501f43d0fe95b29e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "64adbd997d67885ba80a4734f5821ab28da219b13a0f3b2895fbdb279a80941c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "935c8a241e24e836a24403cbdd3a2f88694e18088fec31e971bd6c973d9e20b0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000.docx",
+      "sha256": "ae779ac0d20f08eb090292921234e9dafdec01133d1fd4cec13c11a61bd17b35",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "f68f482f84ae888582e31a22e07e0646b5c965354d48331fe5af1f365e7701b9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "611414e3ba04a917f7e805b336a1c2903a4114b7c851c74a13eac33c409daaba",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "c692d6f2c15878b122ff588020d211c6820077f73f0f8e0c2288465b2b671cd0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504.docx",
+      "sha256": "c54f198c7c795cc50f708b1ee437d926897d3751be0f4ff43226e00c497aeb4c",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "499852fd3b9ea291b169dbc46465f05c3fb2af3b9d63b2d58d52ad59929f4a81",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "26294124503def2468e7f6832e0f74edaf7cedbe172ab2ac47be82ccb97e99fc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "e6c8d5bc4b246c4e667bf9caf01a7696c63df75305ee1e57a88bbd25ad1b8763",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504.docx",
+      "sha256": "85c5fc9c69c30298a382ffc8d2e55f5ea14d35d1748ee8c62a45cbbfd7acb6ff",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "627518f51c0aa28d7bd4c6d2224b3d301b1d8e3f787f24d3bb11379d33f3c000",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "5ab1d5066d451a037f1c623afac8690e01dfeb972a844918c8bcf05ac7892fa1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "49412d98f88281b5ff961b2c72e5bb89b89a86d929a8b340b92e9391b6cfa192",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504.docx",
+      "sha256": "4e8149921480c28f83246f216f4f2d017f0dd06a1771f3ea1a4f9670953505d4",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "ae8a1bd4c2343d8a7ae9fdb16d5e9ff9ce181e6164725e92ce55341a43470b8b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "a16d29aea8b5b26d3dca21854e2eefe83a717c48340e9edf2a37ca7373fc8b25",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "66cf6f8f69c62f489f5dbdebd148343df234f522e848bf211e0052a3e64316d0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504.docx",
+      "sha256": "912874379552c1d2814cb5ecddf5b8e6b9051bedef42a7a1cad0a0e48df8518f",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "370ccfc1de57c266640e528552a462c116ce12c95f4f28d9527223a0d91b507a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "5e837c8fe79374980832d18c98ba660741fe41e0c20f9a0cbf120d5bc7900d94",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "0797911bc538103e8f3a245dd4628333874c89de37f177a9f9677555604334d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504.docx",
+      "sha256": "056bb3423e445235808991035730bcc965240c7bce1a2e114ea0266fcefcce11",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "b834b9539cf962060f8b4636f175bbcd56cbfa658737bba8ab2d8aa1017e168f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "c25a24f7fc7a73d57e459602b2d6c5c9f4217ca39373a95ce7a3f34f949bab20",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "6baeda7a2e7f6687d1e23278c0a3eeeda60ee56dd8954798e5b9be38ddab0d86",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504.docx",
+      "sha256": "48b3a169f681875f28fd64a738d0b90aed4c6aef2471097486dd28bae9e0c312",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "037be4ff3fc46e132b513813751c661a24253352667c04a718cf5fb78ba9a90e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "42977186b8d0819b91a242d3c393da32eb8b8bbd656a93ef79af20ce786cbbfb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "ec699a8e0525f654eb28ab9e9fb3e9dfacc96e4d6fe16bd668afb507eba69035",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000.docx",
+      "sha256": "667345919852a00bf614eb198900a625feb3af7e01f7d9b2453b92dea5b6ef07",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "12e183a45faceee6702883bffff82e8ceb7fa36ea863ad9f9ea7798318446b31",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000.xps",
+      "xps_sha256": "b1c523e2a4fa5edc33b326bfadef0bdcea1aaeab94a71c84fb026369ae64cd67",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "cb9226fa1e144e8b6e6c7fc91c6ca21e225c148b4ba41646d04d5a6f5d4fae4a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000.docx",
+      "sha256": "35138ea8dcd0c265d729b242c913d8657e9c4b417328e20c697fe2557da7a693",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "be41a0a688ab0a7fb839f7d00e27afeee2b619d49bef84c9c3b9118422f872e8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000.xps",
+      "xps_sha256": "36deaa75b110ffcaa0b105711f670fb4b1785d771a5eb633846b4d77ff2dd903",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "a46d519355298cf9e32cef95275b1ada7369c8dcb37ecb0394d3efe2a6dbc1cd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000.docx",
+      "sha256": "1bc66b8d5fbb94161cde23898824cd75d1e4ef2aed4a6b342ad653422569bba5",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "0062144dcca7056120463890ee419f313f004706a68e9c09d58d85e969f43712",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000.xps",
+      "xps_sha256": "e6377e8559dfb371733332778b83e36855196c729bc5cd6f43cee6e942cce4b6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "e1da6699472d961b18dcd6a4ca2d37648366640df26436e622d0a0be7f53562c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000.docx",
+      "sha256": "61dea2c753d365800cdcfc1057d26a8cca12ac3bce9eeb1fa1c5dd64160ec5f3",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "aee365ac70c6e9c2690beb6025f8bf377b009e487c303d971c7c56e7a955a2ce",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000.xps",
+      "xps_sha256": "55da2fead43ffd993b3d5f71c69ecea3df4e462484264d7e8c7a07148f07a01e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "ae50abc792f68d654718346a743126b181cd27fcbf6ca6d8f5ff9fec99474afd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000.docx",
+      "sha256": "86298afd431227810d4f50ff56bc394def671e4460a3c2a120c04021567c0d9a",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "32fc99c9f2fcc36f94cf2c0c355759b59256e292f7e9a61b0ac57b242550f8f7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000.xps",
+      "xps_sha256": "df0c0a49f945b695845e63fde485c82828a8b4a716be545ba7e2ad8e756b5873",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "db6cbf2edab9e809c52b156c804a86da62a22d9fdb262ba70a615cf0862803b8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000.docx",
+      "sha256": "03873b478f7a648a3b848991b59407f9815396e518d91c680376e20d570c3ff4",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "15215b3efa8ddcc385a8f229c79db488c828671e2a4da4b84b0aa54707fe3d68",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000.xps",
+      "xps_sha256": "1892753729c53fdf45d1d6dd231dc812481581742198e1e29fa9a62a20555d88",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "8710c74fa4bd61aacaffab7d27f6dc43f649c61f11d199d18690f8879c1865af",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504.docx",
+      "sha256": "1e898c72701c3fa3cb1e16c8fb06bbdd258833161edab032647aab624358cc15",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "cc658ce39420f677d24edd3a86065c04e09fca418d9facfc2a56372f4c100e60",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504.xps",
+      "xps_sha256": "3e41e336d93e63cce588dbfc1a1c04f94ad9a253a99b5037cbe5a6f795219901",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "ffbfdebd16e60e071ed11645c0587303cf2959f808ea3be23c026a66ea635624",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504.docx",
+      "sha256": "226baa637628e23d756d704a4c10eb6a70e8ca746c72b234c146983325991b80",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "5567dff6d16e223cc21d9ab68b83a675cbe8ac389e61806d6265b593d727de86",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504.xps",
+      "xps_sha256": "d26992c148f25ae9f7d441c57414bc3cb97b1c4678af08f9eae9cd9b2754cf0d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "699d00c72b4d2843c2b8f602bc58197d77a4053d6110757a392dc0787081442b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504.docx",
+      "sha256": "413a306471447c99a641ba94eea2a8a0c629ec645556380a412be665ed87dfe4",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "522c9f4870c4d613119db6e9b5ddcbb0c0fbe256b2e10c52481a8cc2f1fccf58",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504.xps",
+      "xps_sha256": "13bfdb0a612623ecdd34331b7e16652392f5169b304cdd890de2212411be4a15",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "83899edd4d2e9e7267de63cc5176cb5e23f7ddc3d0bcffa15ea72c3e98d3d4a0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504.docx",
+      "sha256": "29c6ffafa5329871f8d3095b33a1ea1dcf04a9816e47ee0224673431e5e19769",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "a233320bc1610716b25f19a44eae89d414223be4d1e5b6ca798231fc25dc9a77",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504.xps",
+      "xps_sha256": "9d2e523edfd8bad90956c644c6d0f36144757f01bf2ca20358cb08f675b21772",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "363e5a3fdd4c74c1441e5d98fdab2cf56367245203eb33a982b5b47630aad3eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504.docx",
+      "sha256": "1bdeb45f5b8ab6a337d7fdaca2cbacbefc2aaaaa11b6e595e582bae1d791c988",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "867e997a9c2f85e92dc304d9f18458289db4371a953220fdf1a46e8eb941e1d4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504.xps",
+      "xps_sha256": "a1b3bb9f2b89c8f9f1ce19d3189927c8632f887f8eea85bb4a82812808fcd891",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "b920c19a388dc45dc14dcfacb949463b858a5bb9a01d97ade5b4f1066f7396f8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504.docx",
+      "sha256": "0ef26fec392e7360ce0a3a30f105e968a76d50eb25ed6013b2b1b4c0363ef05b",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "19a36850463aad1f2aa72931cbccf070f3a7d31f290514cc9b0e3a0334e0e295",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504.xps",
+      "xps_sha256": "395afcf857bb3c8da27344ccc139897efe5b08d900f899680311f2ffcede5a75",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "41beefe7787fd15dcae7bff074881e2b2bb388afffcc04e0531faa7e7c16ad33",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000.docx",
+      "sha256": "4e2c134d72d495a3f46f8ef3535d07159771dd52ea1b466f8090a5ca941c9aeb",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "ec5384d058faadfd008b8713e570edc55d01623707323f183e885eafaef820a3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "772f767145fca1986413e46421fe47b910ab58af32d58fe31495e8074fdd4192",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "cd122ea82bc00d895e6bfd21ff135e42334c833860efa4b51b81facb3c6e6279",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000.docx",
+      "sha256": "ff4e3fb560cca09a1dd7df7227949619ca442d37fa370e35673bafff63ba3d31",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "81eaa2c3984751b46fedef32544b85e3b3fd053d56da406b8fc60e208711ddc3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "3b64e84dd6aeb9191855adaba8b09717e33e82e5dd9dc53dd66270d0fcd1477a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "f748dfea58d78aa12074d05dd6a1e9c40f487793ec463c29d606d17d87ee8c6c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000.docx",
+      "sha256": "be53a93bdc11105157d14cf6409393a099530e5fb37a1b650a32bf30f78fb121",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "e0c33cf5134bf19c36549a853edb67bb0d190400571e9fac117114a7ffb4b46c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "2e08bd01c9c0afa7ecaa2dde0e5be541884e5cdcc67461cd30f20e687ba658af",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "f87ed9772bdd1845839756038be6436869ab2ac2c194cf5d7755cc506111293f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000.docx",
+      "sha256": "4dc2ef2e4d1ea88eff29ad41d2cd2069ae760b2b0f5f704b60019dfc2ea9e093",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "f79cde20a159c921fea9aa5b5ee75a9665d1e9a061db5217dbba0a67ec8ebc1f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "e884a75e280e260b32301b0975eaeda65f261082754539c6e5b832a2144efeb6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "66d77bd2cdacf5f81f5ca1a92f0d8639c5f94b560e4f34ae504a2704479e1947",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000.docx",
+      "sha256": "72c5c7bfbcc70021834ab851e0062dd5d617b9fa750e44dd3331f87ef8ab464c",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "13cb7fbd7540f6e6472cea2badb5a6cb3ab1aa36ccde817fa54fb24ae442359b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "e83507e0a92c623c0cf6076f01cb8db6de382aa982054b49f1de6a46e2f2d729",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "935c8a241e24e836a24403cbdd3a2f88694e18088fec31e971bd6c973d9e20b0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000.docx",
+      "sha256": "f1f1faa9fe0f4849d29953cddad6272b849ee708c680cb059cccd30faf6a6fdd",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "bfb99ecddd861ce83e1913e2c74dbc4ca7066785e31e8ce87e3be8e847417d6b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "df1109f2f70f301405066dd9666c356d267e3e57aab5417388af7651e2036d4e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "445dd8d697a142885f95a710bdf97ba25c5490e52f698cbac6f49315ce30dd00",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504.docx",
+      "sha256": "089233d7bd74327305d6651cd640dcdf4f36b19829a6c669f66fe9f5bf77570d",
+      "pdf": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "95889cca13506699f57745ce808c102ded35574fc8f1b21b08d4a4eada32dd64",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "2266787428c636945071eb6114be14788e19ea874ee0778f323077f39b21fcc8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "6bf4d0bc001317a2adc51bebc38f8d74765947dd777edf014acb485b1042546e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504.docx",
+      "sha256": "697bd58a5e9f781aa8470f63ef68eab8b009ee5a42c904e89140f58879b5bd9a",
+      "pdf": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "15856bcde9a5a5e6d5e828d971ecb2a0b640227c9c8c83d70de5ee0d60b55a98",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "5fe090322a215614aa08cbd79e9653382d70100d23ba766c830c3f4034368cc8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "cc3c3da0e5c5c92d0b669d0ef186bf38afc91ca7825c820f4896f8cb1288b51c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504.docx",
+      "sha256": "9a8f77bede01414a4b7cf49f9b0ca897ff61e0848659433da86bb32788b0748e",
+      "pdf": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "7ad5d0738b7064241574d08010d2b1c7388ff13fe75ccef95f2b2f03cb2ee877",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "8caddf72773e0636da0cb5386a9732742197c1be37d66069d8947f4c0d1fbde7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "1cea9029cfef8fe484009a3b2948eba31a0dd7fa4e71cf680f4db34ad4d7f449",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504.docx",
+      "sha256": "d02a9c75b7022ea86434debb3533f0a2e5e26ac9795c0e7ed16da0ce2086c552",
+      "pdf": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "92ad5ef1fd242796f976fd8256dbbcc9914c022f7641ff401aa98053ad79dd15",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "91f5f711f919fee7ff8daaa10722b0b6f6b61ead9e5d7a62ca10a6f81b46c07f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "461c3b144ba805964908a16bd735072d602f63b0caac4ed8d075608f043f3661",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504.docx",
+      "sha256": "e9d7a54e43fd8657d63d1c7d204c6dac68d68e66992d8be8bd9896d534f69b12",
+      "pdf": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "d6816f3d324d1cd6378df83926ffdb8f6cab1f3e529e78fbc2a84fbbbdfaba12",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "a0de19ac3157724ab779376abf620548f0b26e87d4192b77cf2a4f278df621c6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "07568ce733709e103062b7a633f885da6188171eda89401a3edf8bdfa89822f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w21-other-latin-balanced64-inputs\\word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504.docx",
+      "sha256": "61995ab7c3a315026b82a58baebc6dfb3e7d40bc8dcfa186937541ce81b1b604",
+      "pdf": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "a34812654512fca35a463a39b3e06e23aa73a37f768e90b6b9e6d63c34db86de",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "15ee9b536657c56290be12fd7a1eba3bb31223a6c4fb0eb0c95a235f140049b5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "ec699a8e0525f654eb28ab9e9fb3e9dfacc96e4d6fe16bd668afb507eba69035",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

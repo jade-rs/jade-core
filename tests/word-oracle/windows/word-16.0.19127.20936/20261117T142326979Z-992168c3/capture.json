@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T142326979Z-992168c3",
+  "captured_at_utc": "2026-11-17T14:23:26.9828403Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-hints-calibri-size14-eastasia-compat15",
+      "source": "w17-q-numeric-hints-input-snapshots\\word-windows-numeric-hints-calibri-size14-eastasia-compat15.docx",
+      "sha256": "1c62211041eebf31fc286eca56e78777c7ab7e3eae9d66b08b61a9373f29e3c2",
+      "pdf": "word-windows-numeric-hints-calibri-size14-eastasia-compat15.pdf",
+      "pdf_sha256": "23e9fc8e4c2105cd5f6237ed9d4da741eb261bd25f1fb3ecae0caa85fcba0410",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-hints-calibri-size14-eastasia-compat15.page-001.emf",
+          "sha256": "d8a28ea704e2e82a64676a77d4da7c387a819c694f86c4f4eeff28f77f5bdb66",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -452,7 +452,7 @@ mod tests {
         }];
 
         let package = OpenXmlPackage {
-            files: parts.iter().cloned().collect::<HashMap<_, _>>(),
+            files: std::sync::Arc::new(parts.iter().cloned().collect::<HashMap<_, _>>()),
             relationships: Vec::new(),
             original_size_bytes: None,
         };

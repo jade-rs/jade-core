@@ -3,11 +3,37 @@ use crate::document::{ImagePosition, Run, RunImageLayout};
 use crate::word_document::{FloatingObjectKind, FloatingObjectTarget, FloatingObjectTransform};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
+/// Where the margins of the anchor's section start on the page, in CSS px:
+/// the origin of an object positioned from the margin.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct MarginOrigin {
+    left: f64,
+    top: f64,
+}
+
+impl MarginOrigin {
+    fn of(ctx: &CommandContext<'_>, paragraph: usize) -> Option<Self> {
+        let section = ctx.document.section_index_for_paragraph(paragraph);
+        let layout = ctx.document.section_layout(section);
+        let px = |points: f32| f64::from(points) * 96.0 / 72.0;
+        let (gutter_left, gutter_top) = if layout.gutter_at_top {
+            (0.0, layout.gutter)
+        } else {
+            (layout.gutter, 0.0)
+        };
+        Some(Self {
+            left: px(layout.margin_left + gutter_left),
+            top: px(layout.margin_top + gutter_top),
+        })
+    }
+}
+
 pub struct TransformObjectCommand {
     target: FloatingObjectTarget,
     transform: FloatingObjectTransform,
     anchor_paragraph_index: Option<usize>,
     anchor_paragraph_top_px: Option<f64>,
+    frame_origin: Option<(f64, f64)>,
     previous_source_runs: Option<Vec<Run>>,
     previous_destination_runs: Option<Vec<Run>>,
     source_body_index: Option<usize>,
@@ -22,6 +48,7 @@ impl TransformObjectCommand {
             transform,
             anchor_paragraph_index: None,
             anchor_paragraph_top_px: None,
+            frame_origin: None,
             previous_source_runs: None,
             previous_destination_runs: None,
             source_body_index: None,
@@ -43,34 +70,93 @@ impl TransformObjectCommand {
         self
     }
 
+    /// The page point the object's stored offsets count from as it is laid
+    /// out now (`CanvasRenderer::cell_float_frame_origin` for an object in a
+    /// table cell). The object keeps its frames, its offsets taken again from
+    /// there, so it stays where it was dropped. Used only while it keeps its
+    /// anchor paragraph.
+    pub fn with_frame_origin(mut self, origin: (f64, f64)) -> Self {
+        self.frame_origin = Some(origin);
+        self
+    }
+
     fn collapse_selection(paragraph_index: usize) -> SelectionRange {
         SelectionRange::collapsed(TextPosition::new(paragraph_index, 0))
     }
 
-    fn apply_layout_transform(
+    pub(crate) fn apply_layout_transform(
         layout: &mut RunImageLayout,
         transform: FloatingObjectTransform,
         anchor_paragraph_top_px: Option<f64>,
+        margins: Option<MarginOrigin>,
+        frame_origin: Option<(f64, f64)>,
     ) {
+        if let Some((origin_x, origin_y)) = frame_origin {
+            // The renderer resolved the frames to `origin`: keep them, with
+            // the offsets of the dropped box from there. Simple positioning
+            // counts from the cell's corner, which `page` names in a cell.
+            let simple = layout.simple_position.take().is_some();
+            let frame = |position: &Option<ImagePosition>, default: &str| {
+                position
+                    .as_ref()
+                    .and_then(|position| position.relative_from.clone())
+                    .filter(|_| !simple)
+                    .unwrap_or_else(|| default.to_string())
+            };
+            let relative_h = frame(&layout.position_h, if simple { "page" } else { "column" });
+            let relative_v = frame(
+                &layout.position_v,
+                if simple { "page" } else { "paragraph" },
+            );
+            layout.position_h = Some(ImagePosition {
+                relative_from: Some(relative_h),
+                offset_px: Some(transform.x - origin_x),
+                align: None,
+            });
+            layout.position_v = Some(ImagePosition {
+                relative_from: Some(relative_v),
+                offset_px: Some(transform.y - origin_y),
+                align: None,
+            });
+            layout.rotation_deg = Some(transform.rotation_deg);
+            return;
+        }
+        // Word keeps the frame an object is placed from when it is dragged:
+        // one positioned from the margin stays positioned from the margin,
+        // its offset taken again from there. Frames that cannot be worked
+        // out here (a column, a character, an inside margin) become the
+        // page's: only the renderer knows which column the anchor is in, and
+        // keeping `column` with a margin-relative offset would make an
+        // object in column 2 or later jump left by the columns before it.
+        let from = |position: &Option<ImagePosition>| {
+            position
+                .as_ref()
+                .and_then(|position| position.relative_from.as_deref())
+                .map(str::to_ascii_lowercase)
+        };
+        let (relative_h, offset_h) = match (from(&layout.position_h).as_deref(), margins) {
+            (Some("margin"), Some(margins)) => ("margin".to_string(), transform.x - margins.left),
+            _ => ("page".to_string(), transform.x),
+        };
+        let (relative_v, offset_v) = match (
+            anchor_paragraph_top_px,
+            from(&layout.position_v).as_deref(),
+            margins,
+        ) {
+            (Some(top), _, _) => ("paragraph".to_string(), transform.y - top),
+            (None, Some("margin"), Some(margins)) => {
+                ("margin".to_string(), transform.y - margins.top)
+            }
+            _ => ("page".to_string(), transform.y),
+        };
         layout.position_h = Some(ImagePosition {
-            relative_from: Some("page".to_string()),
-            offset_px: Some(transform.x),
+            relative_from: Some(relative_h),
+            offset_px: Some(offset_h),
             align: None,
         });
         layout.position_v = Some(ImagePosition {
-            relative_from: Some(
-                if anchor_paragraph_top_px.is_some() {
-                    "paragraph"
-                } else {
-                    "page"
-                }
-                .to_string(),
-            ),
-            offset_px: Some(
-                anchor_paragraph_top_px
-                    .map(|top| transform.y - top)
-                    .unwrap_or(transform.y),
-            ),
+            relative_from: Some(relative_v),
+            offset_px: Some(offset_v),
             align: None,
         });
         layout.rotation_deg = Some(transform.rotation_deg);
@@ -81,15 +167,25 @@ impl TransformObjectCommand {
         kind: FloatingObjectKind,
         transform: FloatingObjectTransform,
         anchor_paragraph_top_px: Option<f64>,
+        margins: Option<MarginOrigin>,
+        frame_origin: Option<(f64, f64)>,
     ) -> CommandResult<()> {
         match kind {
             FloatingObjectKind::Image => {
                 let image = run.image.as_mut().ok_or_else(|| {
                     CommandError::Custom("target run does not contain image".into())
                 })?;
+                let previous = (image.width_px, image.height_px, image.layout.rotation_deg);
                 image.width_px = Some(transform.width.max(1.0));
                 image.height_px = Some(transform.height.max(1.0));
-                Self::apply_layout_transform(&mut image.layout, transform, anchor_paragraph_top_px);
+                Self::apply_layout_transform(
+                    &mut image.layout,
+                    transform,
+                    anchor_paragraph_top_px,
+                    margins,
+                    frame_origin,
+                );
+                image.refit_effect_extent(previous);
             }
             FloatingObjectKind::TextBox => {
                 let text_box = run.text_box.as_mut().ok_or_else(|| {
@@ -101,6 +197,8 @@ impl TransformObjectCommand {
                     &mut text_box.layout,
                     transform,
                     anchor_paragraph_top_px,
+                    margins,
+                    frame_origin,
                 );
             }
         }
@@ -118,6 +216,7 @@ impl Command for TransformObjectCommand {
         let destination = self
             .anchor_paragraph_index
             .unwrap_or(self.target.paragraph_index);
+        let margins = MarginOrigin::of(ctx, destination);
 
         if destination == self.target.paragraph_index {
             let paragraph = ctx
@@ -143,6 +242,8 @@ impl Command for TransformObjectCommand {
                 self.target.kind,
                 self.transform,
                 self.anchor_paragraph_top_px,
+                margins,
+                self.frame_origin,
             )?;
             ctx.document
                 .sync_paragraph_text(self.target.paragraph_index);
@@ -178,11 +279,14 @@ impl Command for TransformObjectCommand {
             self.previous_source_runs = Some(source.runs.clone());
             source.runs[self.target.run_index].clone()
         };
+        // A new anchor paragraph lays the object out afresh.
         Self::apply_run_transform(
             &mut moved_run,
             self.target.kind,
             self.transform,
             self.anchor_paragraph_top_px,
+            margins,
+            None,
         )?;
         ctx.document
             .paragraph_mut(self.target.paragraph_index)
@@ -318,6 +422,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -353,6 +458,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -383,6 +489,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -505,6 +612,53 @@ mod tests {
         assert_eq!(image.width_px, Some(164.0));
         assert_eq!(image.height_px, Some(118.0));
         assert_eq!(image.layout.rotation_deg, Some(24.0));
+    }
+
+    /// A dragged column-relative object keeps where it was dropped: its frame
+    /// becomes the page and its offset the dropped page x, not an offset from
+    /// the left margin left labelled `column` (which would put an object
+    /// dropped in column 2 back in column 1).
+    #[test]
+    fn dragging_a_column_relative_image_positions_it_from_the_page() {
+        let mut run = image_run();
+        run.image.as_mut().expect("image").layout.position_h = Some(ImagePosition {
+            relative_from: Some("column".to_string()),
+            offset_px: Some(10.0),
+            align: None,
+        });
+        let mut word_doc = sample_document(run);
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let transform = FloatingObjectTransform {
+            x: 442.0,
+            y: 56.0,
+            width: 120.0,
+            height: 80.0,
+            rotation_deg: 0.0,
+        };
+        let mut executor = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+            executor
+                .execute(
+                    Box::new(TransformObjectCommand::new(
+                        FloatingObjectTarget {
+                            paragraph_index: 0,
+                            run_index: 0,
+                            kind: FloatingObjectKind::Image,
+                        },
+                        transform,
+                    )),
+                    &mut ctx,
+                )
+                .expect("transform image");
+        }
+        let position = word_doc
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs[0].image.as_ref())
+            .and_then(|image| image.layout.position_h.clone())
+            .expect("horizontal position");
+        assert_eq!(position.relative_from.as_deref(), Some("page"));
+        assert_eq!(position.offset_px, Some(442.0));
     }
 
     #[test]

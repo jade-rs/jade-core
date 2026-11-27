@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T021513905Z-57e9813e",
+  "captured_at_utc": "2026-11-16T02:15:13.9090239Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15",
+      "source": "..\\w16-v-styled-arial-pair-matrix-plain-input-snapshots\\word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.docx",
+      "sha256": "da911c7451206df5737d550665b17a4ea32652f9962bec328d2186f9f3720482",
+      "pdf": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.pdf",
+      "pdf_sha256": "c42b88bd1a8ca05348e1f408a2f94f47df5dc8341bac437b25f965f5cd346ef8",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.page-001.emf",
+          "sha256": "b4f96b5ef37cf53fde0a65ad569e616579ce8a08a4d277131f1b6ac42665921e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.page-002.emf",
+          "sha256": "fcf6b7154fe0555d31f6421050f058417bd0522005e5027997bce439a6cc0d4b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.page-003.emf",
+          "sha256": "a3a5011b959c762bd40a4cf580499ebf2366b56b87251e6df77587f88420e516",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

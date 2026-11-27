@@ -1,0 +1,74 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261116T153525387Z-017d34fa",
+  "captured_at_utc": "2026-11-16T15:35:25.3905795Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-cjk-cell-yu-ideographic-gap-size8p5-regular-compat15",
+      "docx_sha256": "01f5edbbd697924b101228b5a4add73e5e0378a52048185b16342bc8313c8ac4",
+      "pdf_sha256": "44092f39a81d6d76e4e5a7759efe80b1ddedf4899273e8a1f1c190aaa0c88739",
+      "pdf_file": "word-windows-cjk-cell-yu-ideographic-gap-size8p5-regular-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-yu-ideographic-gap-size8p5-regular-compat15.page-001.emf",
+          "sha256": "b298b2b6a39f3fb4735fcdcc1d02637c0de2e15458acee6f3b0469c708c6d14b",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.08214393710311,
+          111.2373574686431
+        ],
+        [
+          1,
+          "本",
+          391.3298609011188,
+          111.2373574686431
+        ],
+        [
+          1,
+          "日",
+          399.73007257332927,
+          111.2373574686431
+        ],
+        [
+          1,
+          "本",
+          705.8577865134563,
+          111.2373574686431
+        ],
+        [
+          1,
+          "日",
+          714.3780012095555,
+          111.2373574686431
+        ],
+        [
+          1,
+          "本",
+          1020.5057151496825,
+          111.2373574686431
+        ]
+      ]
+    }
+  ]
+}

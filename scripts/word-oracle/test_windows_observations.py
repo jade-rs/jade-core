@@ -1,13 +1,86 @@
 import copy
+import hashlib
+import json
 from pathlib import Path
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 
 import check_windows_observations as check
 
 
 class WindowsObservationsTests(unittest.TestCase):
+    def test_optional_xps_requires_both_original_file_and_hash(self):
+        document = dict(pdf='source.pdf', pdf_sha256='1' * 64,
+                        metafiles=[dict(file='source.page-001.emf', sha256='2' * 64)])
+        original = check.original_evidence_files(document)
+        self.assertEqual(original, [('source.pdf', '1' * 64), ('source.page-001.emf', '2' * 64)])
+        for extra in (dict(xps='source.xps'), dict(xps_sha256='3' * 64),
+                      dict(xps='source.pdf', xps_sha256='3' * 64),
+                      dict(xps='source.xps', xps_sha256='invalid')):
+            with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, 'Incomplete original Word XPS'):
+                check.original_evidence_files(dict(document, **extra))
+        self.assertEqual(check.original_evidence_files(dict(document, xps='source.xps', xps_sha256='3' * 64)),
+                         original + [('source.xps', '3' * 64)])
+
+    def test_rejected_word_attempt_cannot_be_relabelled_as_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'word-16.0.1.2/capture-failed.zip'
+            path.parent.mkdir()
+            source, error = b'original input', b'original Word open failure'
+            word = {'product_version': '16.0.1.2', 'executable_sha256': '0' * 64}
+            digest = hashlib.sha256(source).hexdigest()
+            for status, extra in [('failed', False), ('complete', False), ('failed', True)]:
+                raw = json.dumps({'schema': 2, 'platform': 'windows', 'status': status,
+                                  'capture_id': 'capture', 'word': word, 'documents': []}).encode()
+                with zipfile.ZipFile(path, 'w') as bundle:
+                    bundle.writestr('capture.json', raw)
+                    bundle.writestr('inputs/source.docx', source)
+                    bundle.writestr('capture-error.log', error)
+                    if extra:
+                        bundle.writestr('invented-coordinates.json', b'{}')
+                attempt = dict(archive=path.relative_to(root).as_posix(),
+                               archive_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                               capture_sha256=hashlib.sha256(raw).hexdigest(),
+                               error_sha256=hashlib.sha256(error).hexdigest(),
+                               source_sha256=digest, capture_id='capture', word=word,
+                               open_mode='normal-read-only')
+                if status == 'failed' and not extra:
+                    check.verify_rejected_attempt(root, {'source_sha256': digest}, attempt)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'drawing expectations|successful drawing'):
+                        check.verify_rejected_attempt(root, {'source_sha256': digest}, attempt)
+
+    def test_every_imported_mac_source_has_windows_evidence_or_explicit_refusal(self):
+        index = check.read_json(check.ROOT / check.INDEX)
+        self.assertEqual(check.verify_mac_input_coverage(index), (580, 1))
+        for rejection in index['rejected_sources']:
+            for attempt in rejection.get('attempts', []):
+                check.verify_rejected_attempt(check.ROOT, rejection, attempt)
+
+    def test_new_mac_input_cannot_silently_escape_windows_coverage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            case = root / 'tests/word-oracle/mac-elsa-synthetic/new-case'
+            case.mkdir(parents=True)
+            data = b'unchanged source bytes'
+            digest = hashlib.sha256(data).hexdigest()
+            (case / 'source.docx').write_bytes(data)
+            (case / 'manifest.json').write_text(json.dumps({'sourceSha256': digest}))
+            index = {'captures': [], 'rejected_sources': []}
+            with self.assertRaisesRegex(ValueError, 'Mac original missing Windows observation'):
+                check.verify_mac_input_coverage(index, root)
+            index['captures'] = [{'documents': [{'source_sha256': digest}]}]
+            self.assertEqual(check.verify_mac_input_coverage(index, root), (1, 0))
+            index['captures'] = []
+            index['rejected_sources'] = [{'source_sha256': digest}]
+            self.assertEqual(check.verify_mac_input_coverage(index, root), (0, 1))
+            (case / 'source.docx').write_bytes(b'changed source')
+            with self.assertRaisesRegex(ValueError, 'Imported Mac source identity changed'):
+                check.verify_mac_input_coverage(index, root)
+
     def test_removed_capture_rejected_before_reading_archives(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -19,8 +19,16 @@ impl DeleteObjectCommand {
         }
     }
 
-    fn collapse_selection(&self) -> SelectionRange {
-        SelectionRange::collapsed(TextPosition::new(self.target.paragraph_index, 0))
+    /// Where the caret goes once the object is gone: where an inline one
+    /// was, as Word leaves it; a floating one's paragraph start.
+    fn caret_after(&self, ctx: &CommandContext<'_>) -> SelectionRange {
+        let offset = ctx
+            .document
+            .inline_object_rendered_starts(self.target.paragraph_index)
+            .into_iter()
+            .find(|(object, _, _)| *object == self.target)
+            .map_or(0, |(_, _, start)| start);
+        SelectionRange::collapsed(TextPosition::new(self.target.paragraph_index, offset))
     }
 
     fn run_is_empty(run: &Run) -> bool {
@@ -62,6 +70,7 @@ impl Command for DeleteObjectCommand {
                 "the selected run has no matching object".into(),
             ));
         }
+        let caret = self.caret_after(ctx);
         let mut undo = ParagraphRangeUndo::begin(
             ctx,
             Some((self.target.paragraph_index, self.target.paragraph_index)),
@@ -90,7 +99,7 @@ impl Command for DeleteObjectCommand {
         ctx.document
             .sync_paragraph_text(self.target.paragraph_index);
         ctx.document.rebuild_paragraph_surfaces();
-        *ctx.selection = Some(self.collapse_selection());
+        *ctx.selection = Some(caret);
         undo.finish(ctx);
         self.undo = Some(undo);
         Ok(())
@@ -158,6 +167,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -193,6 +203,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -223,6 +234,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -249,6 +261,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -279,6 +292,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),

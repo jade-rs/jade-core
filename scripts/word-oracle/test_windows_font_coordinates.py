@@ -10,6 +10,419 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_archived_floating_order_keeps_actual_windows_and_historical_mac_inputs(self):
+        import hashlib
+        from zipfile import ZipFile
+        from check_platform_coordinates import checked_file, read_json
+        case, source, archive, document, drawing = next(
+            row for row in verify() if row[0]['name'] ==
+            'word-windows-floating-order-compat14-word16.0.19127.20936')
+        self.assertEqual(archive.suffix, '.zip')
+        self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+        self.assertEqual(case['word_executable_sha256'],
+                         '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        self.assertEqual(case['capture_id'], '20261114T004214564Z-4ebc9049')
+        self.assertEqual(case['source']['sha256'],
+                         '32e7c583bddf915d4a036bc87222064b835993347fc52b0f9eabc8c912c6db96')
+        self.assertEqual(len(drawing['glyphs']), case['glyph_count'])
+        with ZipFile(archive) as bundle:
+            self.assertEqual(bundle.read('inputs/' + document['name'] + '.docx'),
+                             source.read_bytes())
+        manifest = read_json(source.parent / 'manifest.json')
+        self.assertEqual(manifest['reference']['version'], '16.114')
+        self.assertEqual(manifest['reference']['build'], '16.114.26101123')
+        original_hash = 'eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7'
+        self.assertEqual(manifest['reference']['capturedDocxSha256'], original_hash)
+        original = checked_file(ROOT, dict(file=(
+            'crates/jade-docx-native-render/tests/fixtures/'
+            'word-mac-probe-floating-order-malformed.docx'), sha256=original_hash))
+        self.assertNotEqual(hashlib.sha256(original.read_bytes()).hexdigest(),
+                            case['source']['sha256'])
+        shared = read_json(ROOT / 'tests/word-oracle/platform-coordinates.json')
+        self.assertNotIn('word-mac-probe-floating-order',
+                         {row['mac_case'] for row in shared['fixtures']})
+
+    def test_archived_floating_order_cannot_be_relabelled_as_another_word(self):
+        from check_platform_coordinates import archive_reference
+        case, *_ = next(row for row in verify() if row[0]['name'] ==
+                        'word-windows-floating-order-compat14-word16.0.19127.20936')
+        for field, value in [('word_product_version', '16.0.0.0'),
+                             ('word_executable_sha256', '0' * 64)]:
+            changed = dict(case, archive=case['capture'])
+            changed[field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                archive_reference(ROOT, {'source': case['source']}, changed)
+
+    def test_archived_floating_order_cannot_mix_documents_from_one_capture(self):
+        import copy
+        from unittest.mock import patch
+        import check_windows_font_coordinates as check
+        index = copy.deepcopy(check.read_json(ROOT / INDEX))
+        case = next(case for case in index['fixtures'] if case['name'] ==
+                    'word-windows-floating-order-compat14-word16.0.19127.20936')
+        case['capture_document_name'] = 'another-document'
+        original = check.read_json
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == ROOT / INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, 'Archived font document identity changed'):
+                check.verify()
+
+    def test_yu_latin_use_fe_layout_controls_preserve_identical_word_origins(self):
+        from zipfile import ZipFile
+        from generate_windows_yu_latin_advance_probes import generate_fe_layout
+        from extract_windows_emf import emf_glyphs
+        from check_platform_coordinates import ordered, pdf_origins, checked_file
+        facts = json.loads((ROOT / 'tests/word-oracle/windows/yu-latin-fe-layout-observations.json')
+                           .read_text())
+        self.assertEqual(len(facts['cases']), 10)
+        planes = {}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(generate_fe_layout(output), 10)
+            for case in facts['cases']:
+                with self.subTest(name=case['name']):
+                    source = checked_file(ROOT, case['source'])
+                    self.assertEqual((output / source.name).read_bytes(), source.read_bytes())
+                    parent = checked_file(ROOT, dict(
+                        file='tests/word-oracle/windows/observations/sources/' + case['parent_name'] + '.docx',
+                        sha256=case['parent_sha256']))
+                    with ZipFile(source) as after, ZipFile(parent) as before:
+                        self.assertEqual(after.namelist(), before.namelist())
+                        for name in before.namelist():
+                            expected = before.read(name)
+                            if name == 'word/settings.xml':
+                                expected = expected.replace(b'<w:useFELayout/>',
+                                    ('<w:useFELayout w:val="' + case['use_fe_layout'] + '"/>').encode())
+                            self.assertEqual(after.read(name), expected)
+                    with ZipFile(checked_file(ROOT, case['archive'])) as archive:
+                        capture = json.loads(archive.read('capture.json').decode('utf-8-sig'))
+                        self.assertEqual(capture['capture_id'], case['capture_id'])
+                        self.assertEqual(capture['word']['product_version'], facts['word_product_version'])
+                        self.assertEqual(capture['word']['executable_sha256'], facts['word_executable_sha256'])
+                        document, = capture['documents']
+                        self.assertEqual(archive.read('inputs/' + source.name), source.read_bytes())
+                        drawing = []
+                        for page in document['metafiles']:
+                            drawing.extend(emf_glyphs(archive.read(page['file']), page['page'],
+                                                      page['width_pt'], page['height_pt'], set()))
+                        pdf_path = Path(directory) / 'original.pdf'
+                        pdf_path.write_bytes(archive.read(document['pdf']))
+                        planes[case['parent_name'], case['use_fe_layout']] = (
+                            ordered(drawing), ordered(pdf_origins(pdf_path, True)['glyphs']))
+        parents = {case['parent_name'] for case in facts['cases']}
+        self.assertEqual(len(parents), 5)
+        for parent in parents:
+            self.assertEqual(planes[parent, '0'], planes[parent, '1'])
+        self.assertEqual(len(facts['isolation']), 5)
+        self.assertTrue(all(row['word_max_on_off_axis_difference_pt'] == {'EMF': 0.0, 'PDF': 0.0}
+                            for row in facts['isolation']))
+
+    def test_yu_latin_controls_reproduce_all_original_sources(self):
+        from generate_windows_yu_latin_advance_probes import generate as latin_controls
+        facts = json.loads((ROOT / 'tests/word-oracle/windows/yu-latin-advance-observations.json')
+                           .read_text())
+        accepted = {case[0]['name'] for case in verify()}
+        self.assertEqual(len(facts['cases']), 24)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(latin_controls(output), 24)
+            for case in facts['cases']:
+                with self.subTest(name=case['name']):
+                    generated = (output / (case['name'] + '.docx')).read_bytes()
+                    self.assertEqual(generated, (ROOT / case['source']['file']).read_bytes())
+                    self.assertEqual(case['coordinate_ci_fixture'], case['name'] in accepted)
+                    if case['coordinate_ci_fixture']:
+                        self.assertEqual(generated, (ROOT / 'public/fixtures'
+                                                     / (case['name'] + '.docx')).read_bytes())
+        self.assertEqual(sum(case['coordinate_ci_fixture'] for case in facts['cases']), 14)
+
+    def test_yu_latin_original_plane_conflicts_are_preserved_without_relaxing_tolerance(self):
+        from zipfile import ZipFile
+        from extract_windows_emf import emf_glyphs
+        from check_platform_coordinates import ordered, pdf_origins, checked_file
+        facts = json.loads((ROOT / 'tests/word-oracle/windows/yu-latin-advance-observations.json')
+                           .read_text())
+        self.assertEqual(facts['axis_tolerance_pt'], 0.375)
+        conflicts = []
+        with tempfile.TemporaryDirectory() as directory:
+            pdf_path = Path(directory) / 'original.pdf'
+            for case in facts['cases']:
+                with self.subTest(name=case['name']), ZipFile(checked_file(ROOT, case['archive'])) as archive:
+                    capture = json.loads(archive.read('capture.json').decode('utf-8-sig'))
+                    document, = capture['documents']
+                    self.assertEqual(capture['capture_id'], case['capture_id'])
+                    self.assertEqual(capture['word']['product_version'], facts['word_product_version'])
+                    self.assertEqual(capture['word']['executable_sha256'], facts['word_executable_sha256'])
+                    self.assertEqual(document['open_mode'], facts['capture_open_mode'])
+                    self.assertEqual(document['sha256'], case['source']['sha256'])
+                    self.assertEqual(archive.read('inputs/' + case['name'] + '.docx'),
+                                     checked_file(ROOT, case['source']).read_bytes())
+                    drawing = []
+                    for page in document['metafiles']:
+                        drawing.extend(emf_glyphs(archive.read(page['file']), page['page'],
+                                                  page['width_pt'], page['height_pt'], set()))
+                    pdf_path.write_bytes(archive.read(document['pdf']))
+                    screen, printed = ordered(drawing), ordered(pdf_origins(pdf_path, True)['glyphs'])
+                    self.assertEqual([g[:2] for g in screen], [g[:2] for g in printed])
+                    self.assertEqual(len(screen), case['glyph_count'])
+                    deviation = max(abs(a[axis] - b[axis]) for a, b in zip(screen, printed)
+                                    for axis in (2, 3))
+                    self.assertAlmostEqual(deviation, case['maximum_word_emf_pdf_axis_difference_pt'], places=6)
+                    compatible = deviation <= 2 * facts['axis_tolerance_pt']
+                    self.assertEqual(compatible, case['single_geometry_can_satisfy_original_planes'])
+                    if not compatible:
+                        self.assertFalse(case['coordinate_ci_fixture'])
+                        conflicts.append(case['name'])
+        self.assertEqual(sorted(conflicts), [
+            'word-windows-yu-advance-z-inherit-size9p5-compat15',
+            'word-windows-yu-advance-z-zero-size9p5-compat15'])
+
+    def test_explicit_kerning_wrap_controls_reproduce_word_originals(self):
+        from generate_windows_explicit_kerning_wrap_probes import generate as explicit_wrap
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(explicit_wrap(output), 6)
+            widths = []
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                self.assertEqual(source.read_bytes(), (ROOT / 'public/fixtures' / source.name).read_bytes())
+                with ZipFile(source) as archive:
+                    root = ET.fromstring(archive.read('word/document.xml'))
+                attr = '{' + ns['w'] + '}'
+                threshold = '32767' if '-disabled-' in source.name else '0'
+                self.assertEqual([node.get(attr + 'val') for node in root.findall('.//w:rPr/w:kern', ns)],
+                                 [threshold] * 3)
+                self.assertEqual(''.join(t.text for t in root.findall('.//w:t', ns)), '日' * 128)
+                section = root.find('w:body/w:sectPr', ns)
+                page, margins = section.find('w:pgSz', ns), section.find('w:pgMar', ns)
+                widths.append((int(page.get(attr + 'w')) - int(margins.get(attr + 'left'))
+                               - int(margins.get(attr + 'right'))) / 20)
+            self.assertEqual(sorted(widths), [319.95] * 4 + [320.0] * 2)
+
+    def test_yu_halfpoint_and_integer_controls_reproduce_word_originals(self):
+        from generate_windows_yu_wide_halfpoint_probes import generate as wide_yu
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(wide_yu(output), 8)
+            sizes = []
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                self.assertEqual(source.read_bytes(), (ROOT / 'public/fixtures' / source.name).read_bytes())
+                with ZipFile(source) as archive:
+                    root = ET.fromstring(archive.read('word/document.xml'))
+                attr = '{' + ns['w'] + '}'
+                run_sizes = {s.get(attr + 'val') for s in root.findall('.//w:rPr/w:sz', ns)}
+                self.assertEqual(len(run_sizes), 1)
+                sizes.append(int(next(iter(run_sizes))) / 2)
+                for font in root.findall('.//w:rPr/w:rFonts', ns):
+                    self.assertEqual(font.get(attr + 'eastAsia'), 'Yu Mincho')
+            self.assertEqual(sorted(sizes), [8.5, 11.5, 12.5, 14.5, 15.5, 17.5, 20, 22])
+
+    def test_yu_nominal_wrap_boundaries_reproduce_word_originals(self):
+        from generate_windows_yu_nominal_wrap_probes import generate as nominal_wrap
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(nominal_wrap(output), 5)
+            widths = []
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                self.assertEqual(source.read_bytes(), (ROOT / 'public/fixtures' / source.name).read_bytes())
+                with ZipFile(source) as archive:
+                    root = ET.fromstring(archive.read('word/document.xml'))
+                attr = '{' + ns['w'] + '}'
+                section = root.find('w:body/w:sectPr', ns)
+                page, margins = section.find('w:pgSz', ns), section.find('w:pgMar', ns)
+                widths.append((int(page.get(attr + 'w')) - int(margins.get(attr + 'left'))
+                               - int(margins.get(attr + 'right'))) / 20)
+                self.assertEqual(''.join(t.text for t in root.findall('.//w:t', ns)), '日' * 128)
+                self.assertEqual({s.get(attr + 'val') for s in root.findall('.//w:rPr/w:sz', ns)}, {'40'})
+            self.assertEqual(sorted(widths), [319.9, 319.95, 320.0, 320.05, 320.1])
+
+    def test_independent_nonhalf_and_halfwrap_sources_reproduce_word_originals(self):
+        from generate_windows_nonhalf_cell_probes import generate as nonhalf
+        from generate_windows_printer_halfwrap_probes import generate as halfwrap
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        for generator, count in [(nonhalf, 24), (halfwrap, 6)]:
+            with self.subTest(generator=generator.__module__):
+                with tempfile.TemporaryDirectory() as directory:
+                    output = Path(directory) / 'controls'
+                    self.assertEqual(generator(output), count)
+                    self.assertEqual(len(list(output.glob('*.docx'))), count)
+                    for source in output.glob('*.docx'):
+                        self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(),
+                                         source.name)
+
+    def test_printer_context_and_wrap_controls_reproduce_original_captured_sources(self):
+        from generate_windows_printer_context_probes import generate as generate_context
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        for group, count in [('context', 8), ('wrap', 5)]:
+            with self.subTest(group=group), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'controls'
+                self.assertEqual(generate_context(output, group), count)
+                self.assertEqual(len(list(output.glob('*.docx'))), count)
+                for source in output.glob('*.docx'):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_ms_font_alias_controls_reproduce_original_captured_sources(self):
+        from generate_windows_ms_font_alias_probes import generate as generate_aliases
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'aliases'
+            self.assertEqual(generate_aliases(output), 6)
+            self.assertEqual(len(list(output.glob('*.docx'))), 6)
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_wide_cjk_controls_reproduce_original_captured_sources(self):
+        from generate_windows_wide_cjk_size_probes import generate as generate_wide
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        for group, count in [('sizes', 16), ('half-device', 12), ('large-half-device', 15)]:
+            with self.subTest(group=group), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'controls'
+                self.assertEqual(generate_wide(output, group), count)
+                for source in output.glob('*.docx'):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_cjk_half_cells_and_spaces_reproduce_original_captured_sources(self):
+        from generate_windows_cjk_cell_probes import generate as generate_cells
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'cells'
+            self.assertEqual(generate_cells(output), 16)
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_long_printer_metric_controls_reproduce_archived_sources(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_printer_metric_probes import generate as generate_printer
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'printer'
+            self.assertEqual(generate_printer(output), 22)
+            self.assertEqual(len(list(output.glob('*.docx'))), 22)
+            for source in output.glob('*.docx'):
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                    match = re.fullmatch(r'word-windows-printer-metric-(arial|mincho)-size([0-9]+(?:p5)?)-(regular|bold|italic|bolditalic)-compat15', source.stem)
+                    self.assertIsNotNone(match)
+                    expected = 'AgABCXYZ ' if match[1] == 'arial' else '日本語' * 4
+                    with ZipFile(source) as archive:
+                        root = ET.fromstring(archive.read('word/document.xml'))
+                        runs = root.findall('w:body/w:p/w:r', ns)
+                        self.assertEqual([run.find('w:t', ns).text for run in runs], [expected] * 3)
+                        for run in runs:
+                            props = run.find('w:rPr', ns)
+                            self.assertEqual(props.find('w:sz', ns).get('{'+ns['w']+'}val'),
+                                             str(int(float(match[2].replace('p', '.')) * 2)))
+                            self.assertEqual(props.find('w:b', ns) is not None, 'bold' in match[3])
+                            self.assertEqual(props.find('w:i', ns) is not None, 'italic' in match[3])
+
+    def test_mixed_script_fallback_controls_reproduce_original_word_inputs(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_mixed_script_fallback_probes import generate as generate_mixed
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        texts = {'jpan-hang': '税한', 'hang-jpan': '한税', 'hans-hang': '汉한'}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'mixed'
+            self.assertEqual(generate_mixed(output), 18)
+            self.assertEqual(len(list(output.glob('*.docx'))), 18)
+            for source in output.glob('*.docx'):
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                    match = re.fullmatch(r'word-windows-edge-mixed-script-fallback-(arial|calibri)-(jpan-hang|hang-jpan|hans-hang)-(ja|zh|ko)-compat15', source.stem)
+                    self.assertIsNotNone(match)
+                    with ZipFile(source) as archive:
+                        root = ET.fromstring(archive.read('word/document.xml'))
+                        self.assertEqual([node.text for node in root.findall('w:body/w:p/w:r/w:t', ns)],
+                                         [f'A{texts[match[2]]}B '] * 3)
+
+    def test_supplied_fallback_font_programs_must_be_registered(self):
+        from check_windows_font_coordinates import require_original_font_programs_registered
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fonts = root / 'fonts'
+            fonts.mkdir()
+            first, second, unrelated = fonts / 'first.ttf', fonts / 'second.ttf', root / 'other.ttf'
+            first.write_bytes(b'original requested face')
+            second.write_bytes(b'original implicit fallback face')
+            unrelated.write_bytes(b'unrelated fallback')
+            for paths in ([first], [first, unrelated]):
+                with self.assertRaisesRegex(ValueError, 'omitted supplied original Word font'):
+                    require_original_font_programs_registered(fonts, {'fonts': [{'path': str(p)} for p in paths]})
+            require_original_font_programs_registered(fonts, {'fonts': [{'path': str(p)} for p in [first, second, unrelated]]})
+
+    def test_script_fallback_controls_reproduce_originals_and_japanese_recaptures(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_script_fallback_probes import generate as generate_scripts
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        texts = dict(jpan='税あ', hans='汉语', hant='漢語', hang='한글')
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'scripts'
+            self.assertEqual(generate_scripts(output), 24)
+            self.assertEqual(len(list(output.glob('*.docx'))), 24)
+            for source in output.glob('*.docx'):
+                face, script, language = source.stem.split('-')[-4:-1]
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                    with ZipFile(source) as archive:
+                        root = ET.fromstring(archive.read('word/document.xml'))
+                        self.assertEqual([node.text for node in root.findall('w:body/w:p/w:r/w:t', ns)],
+                                         [f'A{texts[script]}B '] * 3)
+                    if script == 'jpan':
+                        parent = sources / (f'word-windows-edge-language-{face}-eastasia-'
+                                            f'{language}-{language}-{language}-compat15.docx')
+                        self.assertEqual(source.read_bytes(), parent.read_bytes())
+
+    def test_language_controls_match_captured_inputs_without_inherited_language(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_language_cache_probes import generate as generate_languages
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        w = '{' + ns['w'] + '}'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'languages'
+            self.assertEqual(generate_languages(output), 20)
+            for source in output.glob('*.docx'):
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (ROOT /
+                        'tests/word-oracle/windows/observations/sources' / source.name).read_bytes())
+                    with ZipFile(source) as archive:
+                        document = ET.fromstring(archive.read('word/document.xml'))
+                        runs = document.findall('w:body/w:p/w:r', ns)
+                        self.assertEqual(len(runs), 3)
+                        tags = document.findall('.//w:lang', ns)
+                        self.assertEqual(len(tags), 3)
+                        for run in runs:
+                            self.assertEqual(run.find('w:t', ns).text, 'A税あB ')
+                            lang = run.find('w:rPr/w:lang', ns)
+                            self.assertIn(lang, tags)
+                            if '-val-' in source.name:
+                                self.assertEqual(set(lang.attrib), {w + 'val'})
+                            else:
+                                self.assertEqual(set(lang.attrib), {w + 'val', w + 'eastAsia'})
+                                self.assertEqual(lang.get(w + 'val'), 'en-US')
+                        for name in archive.namelist():
+                            if name.endswith('.xml') and name != 'word/document.xml':
+                                self.assertEqual(ET.fromstring(archive.read(name)).findall('.//w:lang', ns), [])
+
     def test_fractional_white_paper_is_invisible_but_later_white_erasure_is_rejected(self):
         import pymupdf
         with tempfile.TemporaryDirectory() as directory:
@@ -79,7 +492,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 427)
+        self.assertEqual(len(verify()), 1972)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 1263)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf
@@ -151,6 +565,21 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         for case, _, manifest, document, _ in cases:
             with self.subTest(name=case['name']):
                 self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+                self.assertEqual(document['open_mode'], 'normal-read-only')
+                self.assertTrue(case['no_visible_vector_ink'])
+                self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
+
+    def test_column_and_typography_controls_keep_original_no_ink_expectations(self):
+        names = {'2col', 'align-center', 'char-spacing', 'character-styles'}
+        cases = [row for row in verify() if row[0]['name'] in names]
+        self.assertEqual({row[0]['name'] for row in cases}, names)
+        self.assertEqual(sum(row[0]['glyph_count'] for row in cases), 2623)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                capture = json.loads(manifest.read_text(encoding='utf-8'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
                 self.assertEqual(document['open_mode'], 'normal-read-only')
                 self.assertTrue(case['no_visible_vector_ink'])
                 self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))

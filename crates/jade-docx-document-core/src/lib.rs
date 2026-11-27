@@ -14,6 +14,12 @@
 // builds resolve those imports without linking the layout engine.
 extern crate self as jade_docx_layout;
 
+/// Cache-key hashing shared with the layout engine (64-bit on wasm32). It
+/// depends only on `rustc-hash`, so compiling the file here keeps production
+/// builds free of the layout engine.
+#[path = "../../jade-docx-layout/src/key_hasher.rs"]
+pub mod key_hasher;
+
 /// Native ChartML parsing, authoring, embedded data, and portable previews.
 #[path = "../../jade-docx-editor/src/chart.rs"]
 pub(crate) mod chart;
@@ -62,6 +68,9 @@ pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 
 /// Helpers that serialize the in-memory document model.
+#[path = "../../jade-docx-editor/src/revision_clock.rs"]
+pub mod revision_clock;
+
 #[path = "../../jade-docx-editor/src/serializer/mod.rs"]
 pub mod serializer;
 
@@ -79,6 +88,15 @@ pub mod selection {
 #[path = "../../jade-docx-layout/src/section_transition.rs"]
 pub mod section_transition;
 
+// The renderer-free editor uses the widths stored in the document.
+pub(crate) fn windows_nested_resize_grid(
+    _elements: &[document::BodyElement],
+    _table: &document::Table,
+    _text_width: f32,
+) -> Option<(Vec<f32>, f32)> {
+    None
+}
+
 // The document core stays layout-free: fontTable substitutes are parsed into
 // `WordDocument::font_table_part` here, and the editor installs them into the
 // font resolver at its own boundary.
@@ -94,6 +112,11 @@ pub mod font_measurer {
 #[cfg(test)]
 pub mod font_resolver {
     pub use jade_docx_layout_engine::font_resolver::*;
+}
+
+#[cfg(test)]
+pub mod line_metrics {
+    pub use jade_docx_layout_engine::line_metrics::*;
 }
 
 #[cfg(test)]

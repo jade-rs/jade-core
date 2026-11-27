@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T193908220Z-b18b1483",
+  "captured_at_utc": "2026-11-15T19:39:08.2244517Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-language-arial-val-ko-ko-ko-compat15",
+      "docx_sha256": "c119cfaf1ed5102bf20e25cc64ce3cfbfa80cd099af8d961c6227bee43584649",
+      "pdf_sha256": "ae3cacb5d929222a464d670a897c6c8cf4c768af5813cb62f85fa78fe0e3e578",
+      "pdf_file": "word-windows-edge-language-arial-val-ko-ko-ko-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-language-arial-val-ko-ko-ko-compat15.page-001.emf",
+          "sha256": "1f5134f7b8a2edc263fe56e97b49dbc33dc64a1b7d9dd117fab009fdf8096643",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "税",
+          95.75678290667203,
+          112.55732611174459
+        ],
+        [
+          1,
+          "あ",
+          107.75637976214472,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          122.75587583148557,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          133.43551703285627,
+          112.55732611174459
+        ],
+        [
+          1,
+          "税",
+          144.11515823422695,
+          112.55732611174459
+        ],
+        [
+          1,
+          "あ",
+          156.11475508969963,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          171.1142511590405,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          181.79389236041118,
+          112.55732611174459
+        ],
+        [
+          1,
+          "税",
+          192.47353356178186,
+          112.55732611174459
+        ],
+        [
+          1,
+          "あ",
+          204.35313444869985,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          219.35263051804068,
+          112.55732611174459
+        ]
+      ]
+    }
+  ]
+}

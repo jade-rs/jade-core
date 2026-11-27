@@ -40,6 +40,9 @@ use std::path::Path;
 use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[path = "aptos_short_shaping.rs"]
+mod aptos_short_shaping;
+
 /// Full-width punctuation whose *left* half is blank (opening brackets).
 /// Chromium trims that half whenever another full-width punctuation precedes it.
 const FULLWIDTH_OPEN: &[char] = &[
@@ -104,6 +107,7 @@ struct RegisteredFace {
     family: String,
     weight: u16,
     style: RegisteredFontStyle,
+    aptos_subset_metrics: Option<usize>,
     // SAFETY INVARIANT: `face` borrows `bytes`. Declared first so it is dropped
     // before the buffer it points into, and `bytes` is never mutated or
     // reallocated after construction, so the `'static` lifetime is never
@@ -225,6 +229,7 @@ impl ShapePlanCache {
 /// in priority order, plus the face to use for characters none of them cover.
 #[derive(Debug)]
 struct ResolvedStack {
+    platform: crate::line_metrics::WordLayoutPlatform,
     /// Face indices for the descriptor's families, in stack order. Family names
     /// with no registered face are skipped, matching Chromium.
     faces: Vec<usize>,
@@ -321,10 +326,13 @@ impl ShapingMeasurer {
         let face = Face::from_slice(borrowed, collection_index).ok_or_else(|| {
             format!("failed to parse font face (collection index {collection_index})")
         })?;
+        let family = family.into();
+        let aptos_subset_metrics = aptos_short_shaping::subset_face(&face, &family, weight, style);
         self.faces.push(RegisteredFace {
-            family: family.into(),
+            family,
             weight,
             style,
+            aptos_subset_metrics,
             face,
             _bytes: owned,
             shape_plans: RefCell::new(ShapePlanCache::default()),
@@ -436,6 +444,23 @@ impl ShapingMeasurer {
         }
     }
 
+    fn advance_font_size_px(&self, size_pt: f32, face: &RegisteredFace) -> f64 {
+        if crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows
+            && (face.family.eq_ignore_ascii_case("Aptos")
+                || face.family.eq_ignore_ascii_case("Aptos Display")
+                || face.family.eq_ignore_ascii_case("Arial"))
+        {
+            // The original Windows Word compatibility/style/number-spacing
+            // controls and long Arial text use the requested size for these actual faces. The
+            // 18.66px truncation at 14pt accumulates false narrowing. Base
+            // this on the selected face, not a missing requested family.
+            points_to_px(size_pt)
+        } else {
+            self.font_size_px(size_pt)
+        }
+    }
+
     /// Primary face for descriptor-level queries that are not per-character
     /// (vertical metrics). This is the first family in the stack that resolves.
     fn resolve_face(&self, descriptor: &str) -> Option<(&Face<'static>, f32)> {
@@ -450,16 +475,44 @@ impl ShapingMeasurer {
         if self.faces.is_empty() {
             return None;
         }
-        if let Some(cached) = self.descriptor_cache.borrow().get(descriptor) {
+        let platform = crate::line_metrics::word_layout_platform();
+        if let Some(cached) = self
+            .descriptor_cache
+            .borrow()
+            .get(descriptor)
+            .filter(|stack| stack.platform == platform)
+        {
             return Some(Rc::clone(cached));
         }
         let spec = parse_font_descriptor(descriptor, self.default_font_size_pt);
-        let faces = spec
-            .families
-            .iter()
-            .filter_map(|family| self.best_face_for_family(family, &spec))
-            .collect();
+        let mut faces = Vec::new();
+        for family in &spec.families {
+            let Some(primary) = self.best_face_for_family(family, &spec) else {
+                continue;
+            };
+            faces.push(primary);
+            if platform == crate::line_metrics::WordLayoutPlatform::Windows {
+                // Word can embed disjoint subsets of the same face: one has
+                // U+0020, another has A/g. Try those siblings before a different
+                // CSS family or global fallback supplies the missing character.
+                let selected = &self.faces[primary];
+                faces.extend(
+                    self.faces
+                        .iter()
+                        .enumerate()
+                        .rev()
+                        .filter_map(|(index, face)| {
+                            (index != primary
+                                && face.family.eq_ignore_ascii_case(family)
+                                && face.weight == selected.weight
+                                && face.style == selected.style)
+                                .then_some(index)
+                        }),
+                );
+            }
+        }
         let stack = Rc::new(ResolvedStack {
+            platform,
             faces,
             fallback: self.pick_index(&spec).unwrap_or(0),
             size_pt: spec.size_pt,
@@ -486,7 +539,14 @@ impl ShapingMeasurer {
             if spec.style == face.style {
                 score += 100;
             }
-            if best.is_none_or(|(_, best_score)| score > best_score) {
+            if best.is_none_or(|(_, best_score)| {
+                score > best_score
+                    || (score == best_score
+                        && crate::line_metrics::word_layout_platform()
+                            == crate::line_metrics::WordLayoutPlatform::Windows)
+            }) {
+                // Windows matches Skia's last-registered real face over a
+                // same-style stand-in/reference subset. Mac keeps its first.
                 best = Some((index, score));
             }
         }
@@ -627,13 +687,20 @@ impl ShapingMeasurer {
         text: &str,
         face_index: usize,
         cjk: bool,
-        size_px: f64,
+        size_pt: f32,
         features: &[Feature],
     ) -> f64 {
         let Some(entry) = self.faces.get(face_index) else {
             return 0.0;
         };
+        let size_px = self.advance_font_size_px(size_pt, entry);
         let kern_enabled = !(cjk && self.options.disable_kern_for_cjk);
+        if let Some(units) = entry
+            .aptos_subset_metrics
+            .and_then(|face| aptos_short_shaping::advance_units(face, text, kern_enabled, features))
+        {
+            return f64::from(units) / f64::from(entry.face.units_per_em()) * size_px;
+        }
         let shaped = shape_run(entry, text, kern_enabled, features);
         let units: i32 = shaped
             .glyph_positions()
@@ -704,7 +771,7 @@ impl TextMeasurer for ShapingMeasurer {
                         &text[run_start..offset],
                         face_index,
                         cjk,
-                        size_px,
+                        stack.size_pt,
                         &stack.features,
                     );
                     run_start = offset;
@@ -718,7 +785,7 @@ impl TextMeasurer for ShapingMeasurer {
                 &text[run_start..],
                 face_index,
                 cjk,
-                size_px,
+                stack.size_pt,
                 &stack.features,
             );
         }
@@ -832,6 +899,89 @@ mod tests {
     }
 
     #[test]
+    fn reused_measurer_reselects_fonts_when_switching_windows_and_mac() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let regular = bundled_font_path("NotoSansJP-Regular.ttf");
+        let bold = bundled_font_path("NotoSansJP-Bold.ttf");
+        let create = |paths: &[&std::path::Path]| {
+            let mut measurer = ShapingMeasurer::new(12.0);
+            for path in paths {
+                measurer
+                    .register_font_path("Priority Probe", 400, RegisteredFontStyle::Normal, path)
+                    .unwrap();
+            }
+            measurer
+        };
+        for order in [
+            [regular.as_path(), bold.as_path()],
+            [bold.as_path(), regular.as_path()],
+        ] {
+            let shared = create(&order);
+            for platform in [
+                WordLayoutPlatform::Windows,
+                WordLayoutPlatform::Mac,
+                WordLayoutPlatform::Windows,
+                WordLayoutPlatform::Mac,
+            ] {
+                set_word_layout_platform(platform);
+                let fresh = create(&order);
+                for descriptor in ["12pt 'Priority Probe'", "12pt 'PRIORITY PROBE'"] {
+                    let expected = fresh.measure_text("MiAgBCAV", descriptor).unwrap();
+                    let actual = shared.measure_text("MiAgBCAV", descriptor).unwrap();
+                    assert!((actual-expected).abs()<1e-9,"{platform:?}/{descriptor}: prior-platform stack leaked: {actual} vs {expected}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_primary_registered_face_matches_painter_and_mac_keeps_first() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let regular = bundled_font_path("NotoSansJP-Regular.ttf");
+        let bold = bundled_font_path("NotoSansJP-Bold.ttf");
+        let create = |paths: &[&std::path::Path]| {
+            let mut measurer = ShapingMeasurer::new(12.0);
+            for path in paths {
+                measurer
+                    .register_font_path("Priority Probe", 400, RegisteredFontStyle::Normal, path)
+                    .unwrap();
+            }
+            measurer
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for paths in [
+                [regular.as_path(), bold.as_path()],
+                [bold.as_path(), regular.as_path()],
+            ] {
+                let combined = create(&paths);
+                let first = create(&[paths[0]]);
+                let last = create(&[paths[1]]);
+                for descriptor in ["12pt 'Priority Probe'", "12pt 'PRIORITY PROBE'"] {
+                    let first_width = first.measure_text("MiAgBCAV", descriptor).unwrap();
+                    let last_width = last.measure_text("MiAgBCAV", descriptor).unwrap();
+                    assert!((first_width - last_width).abs() > 1e-6);
+                    let expected = if platform == WordLayoutPlatform::Windows {
+                        last_width
+                    } else {
+                        first_width
+                    };
+                    assert!((combined.measure_text("MiAgBCAV", descriptor).unwrap() - expected).abs() < 1e-9,
+                        "{platform:?}: same-style aliases must preserve the platform's registration priority");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn native_shape_plan_reuses_face_script_and_features_across_text_and_sizes() {
         let measurer = measurer(ShapingOptions::CHROMIUM_PARITY);
         SHAPE_PLAN_BUILDS.with(|count| count.set(0));
@@ -845,6 +995,63 @@ mod tests {
             1,
             "only one plan is needed for the same face/script/direction/features"
         );
+    }
+
+    #[test]
+    fn windows_captured_faces_use_requested_size_only_for_the_selected_face() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut measurer = measurer(ShapingOptions::CHROMIUM_PARITY);
+        let normal12 = measurer.measure_text("AV", "12pt 'Noto Sans JP'").unwrap();
+        let fallback14 = measurer.measure_text("AV", "14pt Aptos").unwrap();
+        assert!((fallback14 / normal12 - 18.66 / 16.0).abs() < 1e-12);
+        for family in ["Aptos", "Aptos Display", "Arial"] {
+            measurer
+                .register_font_path(
+                    family,
+                    400,
+                    RegisteredFontStyle::Normal,
+                    bundled_font_path("NotoSansJP-Regular.ttf"),
+                )
+                .unwrap();
+            let exact14 = measurer
+                .measure_text("AV", &format!("14pt '{family}'"))
+                .unwrap();
+            assert!((exact14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+            let exact11 = measurer
+                .measure_text("AV", &format!("11pt '{family}'"))
+                .unwrap();
+            assert!((exact11 / normal12 - 11.0 / 12.0).abs() < 1e-12);
+        }
+        let normal14 = measurer.measure_text("AV", "14pt 'Noto Sans JP'").unwrap();
+        assert!((normal14 - fallback14).abs() < 1e-12);
+        for family in ["aptos", "APTOS DISPLAY", "ARIAL"] {
+            let mut registered =
+                ShapingMeasurer::with_options(12.0, ShapingOptions::CHROMIUM_PARITY);
+            registered
+                .register_font_path(
+                    family,
+                    400,
+                    RegisteredFontStyle::Normal,
+                    bundled_font_path("NotoSansJP-Regular.ttf"),
+                )
+                .unwrap();
+            let exact14 = registered
+                .measure_text("AV", &format!("14pt '{family}'"))
+                .unwrap();
+            assert!((exact14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for family in ["Aptos", "Aptos Display", "Arial", "Noto Sans JP"] {
+            let mac14 = measurer
+                .measure_text("AV", &format!("14pt '{family}'"))
+                .unwrap();
+            assert!((mac14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

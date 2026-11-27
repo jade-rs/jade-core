@@ -96,5 +96,33 @@ class RegressionGateTests(unittest.TestCase):
         self.assertEqual((case["baseIr"], case["headIr"]), (664_740, 668_263))
 
 
+class MeasurementBoundaryTests(unittest.TestCase):
+    @staticmethod
+    def check_symbols(symbols=None, error=None):
+        from unittest.mock import patch
+        shell = Path(__file__).with_name("run-callgrind.sh").read_text(encoding="utf8")
+        code = shell.split("<<'PY_SYMBOL'\n", 1)[1].split("\nPY_SYMBOL\n", 1)[0]
+        with patch("subprocess.check_output", return_value=symbols, side_effect=error), \
+                patch.object(sys, "argv", ["boundary-check", "perf-binary"]):
+            exec(compile(code, "run-callgrind.sh:boundary", "exec"), {})
+
+    def test_accepts_one_defined_measurement_function(self):
+        self.check_symbols("00000010 T jade_docx_perf_measured_region\n")
+
+    def test_rejects_missing_duplicate_or_non_function_boundaries(self):
+        for symbols in ("", "00000010 T other_function\n",
+                        "00000010 D jade_docx_perf_measured_region\n",
+                        "         U jade_docx_perf_measured_region\n",
+                        "00000010 T jade_docx_perf_measured_region\n"
+                        "00000020 t jade_docx_perf_measured_region\n"):
+            with self.subTest(symbols=symbols), self.assertRaisesRegex(
+                    SystemExit, "Missing unique Callgrind measurement boundary"):
+                self.check_symbols(symbols)
+
+    def test_symbol_tool_failure_stays_a_failure(self):
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.check_symbols(error=subprocess.CalledProcessError(1, ["nm"]))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -27,9 +27,20 @@ mod write;
 
 pub use properties::{CustomProperty, CustomValue, DocumentProperties};
 
+/// What a PAGE field shows on one laid-out page: its section's `w:start`
+/// applied (`value`, which a field's own numeric switches format), and
+/// that section's numeral format and chapter prefix applied too (`text`),
+/// which PAGEREF and a table of contents show.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PageLabel {
+    pub value: usize,
+    pub text: String,
+}
+
 use crate::commands::{Command, CommandContext, CommandError, CommandResult};
 use crate::docx_xml::{DocxXmlDocument, XmlElement, XmlNode, XmlNodeId};
 use crate::word::references::citations::{self, BibliographyStyle};
+use crate::word::references::toc;
 use crate::word_document::{FieldBlockLine, WordDocument, WordDocumentSnapshot};
 use eval::{DocumentData, Evaluation, Outcome, StoryKind};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
@@ -63,6 +74,15 @@ pub struct FieldEnvironment {
     pub page_count: Option<usize>,
     /// The page (1-based) each paragraph starts on, by paragraph index.
     pub paragraph_pages: HashMap<usize, usize>,
+    /// What a PAGE field on each physical page shows at the last layout,
+    /// page 1 first. Empty without a layout: PAGE and PAGEREF then number
+    /// from the physical page and the story's section starts.
+    pub page_labels: Vec<PageLabel>,
+    /// Whether `page_labels` comes from a layout. A page past its end is
+    /// then one the layout did not finish (a layout that stopped partway,
+    /// possibly before any page), and a PAGE, PAGEREF, INDEX or TOA that
+    /// needs it keeps its result.
+    pub page_labels_from_layout: bool,
     /// Answers to ASK and FILLIN prompts, by [`FieldPrompt::key`].
     pub prompt_answers: HashMap<String, String>,
     /// Reads a local file a field names (INCLUDETEXT), relative to the
@@ -98,6 +118,8 @@ impl Default for FieldEnvironment {
             file_size: None,
             page_count: None,
             paragraph_pages: HashMap::new(),
+            page_labels: Vec::new(),
+            page_labels_from_layout: false,
             prompt_answers: HashMap::new(),
             read_file: None,
             japanese: true,
@@ -900,21 +922,97 @@ fn update_fields_in_scope(
     }
     // Regenerate the last block first; paragraph growth then leaves the
     // earlier blocks, including interleaved TOCs and bibliographies, stable.
+    //
+    // Each regenerated block, as (start, end after, paragraphs before), the
+    // latest (earliest in the document) last: what maps a paragraph back to
+    // the layout's numbering, for a table's page numbers.
+    let mut regenerated: Vec<(usize, usize, usize)> = Vec::new();
     for (name, index) in block_targets.into_iter().rev() {
-        if name == "TOC" {
-            doc.update_table_of_contents_at(index)?;
-        } else {
-            let block = doc
-                .field_blocks()
+        let blocks_named = |doc: &WordDocument| {
+            doc.field_blocks()
                 .into_iter()
-                .filter(|block| block.name() == "BIBLIOGRAPHY")
+                .filter(|block| block.name() == name)
                 .nth(index)
-                .ok_or("the bibliography is unavailable")?;
+        };
+        let before = blocks_named(doc);
+        if name == "TOC" {
+            // An entry whose page the layout did not reach keeps the number
+            // it had, as a PAGEREF does.
+            let previous = if env.page_labels_from_layout {
+                toc::toc_page_results_at(doc, index)
+            } else {
+                HashMap::new()
+            };
+            doc.update_table_of_contents_at(index)?;
+            if env.page_labels_from_layout {
+                let removed = before
+                    .as_ref()
+                    .map_or(0, |block| block.end + 1 - block.start);
+                let rebuilt = &regenerated;
+                // The rebuilt entries' PAGEREFs get the number their
+                // heading's page displays at the last layout, as 目次の更新
+                // writes them, rather than the generated placeholders.
+                toc::label_rebuilt_toc(doc, index, removed, &previous, |paragraph| {
+                    let paragraph = paragraph_in_layout(paragraph, rebuilt)?;
+                    let page = env.paragraph_pages.get(&paragraph)?;
+                    env.page_labels
+                        .get(page.checked_sub(1)?)
+                        .map(|label| label.text.clone())
+                })?;
+            }
+        } else {
+            let block = before.clone().ok_or("the bibliography is unavailable")?;
             citations::replace_bibliography(doc, &block, &bibliography_lines)?;
+        }
+        if let (Some(before), Some(after)) = (before, blocks_named(doc)) {
+            regenerated.push((after.start, after.end, before.end + 1 - before.start));
         }
         written += 1;
     }
     Ok(written)
+}
+
+/// Whether a field code (its nested fields too) reads what only a layout
+/// knows — a page's number, the page count, a table's or an index's page
+/// numbers — so that inserting or editing it lays the document out
+/// through its end first. Matches words of the code, so a false positive
+/// (a `DOCPROPERTY` named "Page") only costs that layout.
+pub fn code_reads_pages(code: &str) -> bool {
+    code.split(|character: char| !character.is_ascii_alphanumeric())
+        .any(|word| {
+            [
+                "PAGE",
+                "PAGEREF",
+                "NUMPAGES",
+                "SECTIONPAGES",
+                // DOCPROPERTY Pages, INFO NumPages.
+                "PAGES",
+                "TOC",
+                "INDEX",
+                "TOA",
+            ]
+            .iter()
+            .any(|name| word.eq_ignore_ascii_case(name))
+        })
+}
+
+/// Where `paragraph` was at the last layout, after the blocks in
+/// `regenerated` (see [`update_fields_in_scope`]) were made again: `None`
+/// for a paragraph of a regenerated block.
+fn paragraph_in_layout(
+    mut paragraph: usize,
+    regenerated: &[(usize, usize, usize)],
+) -> Option<usize> {
+    for &(start, end, removed) in regenerated.iter().rev() {
+        if paragraph < start {
+            return Some(paragraph);
+        }
+        if paragraph <= end {
+            return None;
+        }
+        paragraph = paragraph - (end + 1 - start) + removed;
+    }
+    Some(paragraph)
 }
 
 /// The prompts ASK and FILLIN fields in scope will show, in order.

@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "source_sha256": "f85f726496ea2f379b4f212c310774e5ee586c258ca7269e76c6f54edbc87de9",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+  "word_pdf_sha256": "3349d7ff1668f6f52e6ebf006f615a2593fc2d48435362635fdea9c3e33f95c6",
+  "selection": "Rects inset from prior faulty native control bounds identify control-only table line slots; each must be entirely white in the immutable original Word PDF and actual native PDF. They are ink-absence regions, not expected glyph coordinates. All visible coordinates come directly from original Word EMF/PDF.",
+  "regions": [
+    {
+      "page": 1,
+      "rect": [
+        178.10000610351562,
+        178.33432006835938,
+        184.97500610351562,
+        187.83432006835938
+      ]
+    },
+    {
+      "page": 2,
+      "rect": [
+        178.10000610351562,
+        202.8542022705078,
+        187.60000610351562,
+        215.8542022705078
+      ]
+    },
+    {
+      "page": 3,
+      "rect": [
+        178.10000610351562,
+        230.86947631835938,
+        190.60000610351562,
+        247.86947631835938
+      ]
+    },
+    {
+      "page": 4,
+      "rect": [
+        178.10000610351562,
+        251.88352966308594,
+        192.85000610351562,
+        271.883544921875
+      ]
+    },
+    {
+      "page": 5,
+      "rect": [
+        178.10000610351562,
+        189.20089721679688,
+        184.97500610351562,
+        198.70089721679688
+      ]
+    },
+    {
+      "page": 6,
+      "rect": [
+        178.10000610351562,
+        217.3429718017578,
+        187.60000610351562,
+        230.3429718017578
+      ]
+    },
+    {
+      "page": 7,
+      "rect": [
+        178.10000610351562,
+        249.49789428710938,
+        190.60000610351562,
+        266.4978942871094
+      ]
+    },
+    {
+      "page": 8,
+      "rect": [
+        178.10000610351562,
+        273.6166687011719,
+        192.85000610351562,
+        293.6166687011719
+      ]
+    }
+  ]
+}

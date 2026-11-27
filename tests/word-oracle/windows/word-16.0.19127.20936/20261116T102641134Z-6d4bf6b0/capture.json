@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T102641134Z-6d4bf6b0",
+  "captured_at_utc": "2026-11-16T10:26:41.1379169Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-large-half-device-independent-mincho-size43p5-regular-compat15",
+      "source": "w16-ay-large-half-device-independent-input-snapshots\\word-windows-large-half-device-independent-mincho-size43p5-regular-compat15.docx",
+      "sha256": "049d9bfee18d648eb6a74df5cdc26e01d2c3b05956837604569ddb4479e39941",
+      "pdf": "word-windows-large-half-device-independent-mincho-size43p5-regular-compat15.pdf",
+      "pdf_sha256": "2a56b52d8817211bf9de979eed31196072c0f4df55b6e5c7a323019cb5ded9b3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-large-half-device-independent-mincho-size43p5-regular-compat15.page-001.emf",
+          "sha256": "560c37a11d1e15b10f9315d722f599c21f001730ac03db3038d70b68af04987b",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

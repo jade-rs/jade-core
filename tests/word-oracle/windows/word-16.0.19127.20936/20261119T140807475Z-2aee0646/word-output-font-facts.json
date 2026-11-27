@@ -1,0 +1,4962 @@
+[
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w3000",
+    "source_sha256": "d47f25ef09ffc0163570b0f869c0f80718564e3d0cda8cc66cc55a9afb8deb54",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/34E47F4A-4339-087F-CE2E-AE4416677418.odttf",
+        "bytes": 328736,
+        "sha256": "bdb035ee6a57f061480cea9b00bbb1028a5f2f7bb888fe917b234cb8ad385589"
+      },
+      {
+        "file": "Resources/61D02C8E-6EC6-7D63-013E-F84F0E139041.odttf",
+        "bytes": 188388,
+        "sha256": "4dc791276cb387f0b1007a79a09eea8d7e6d0571c1ea05ef9055889a44040e66"
+      },
+      {
+        "file": "Resources/5DAC66AA-1D28-2ADB-3C30-E01B0C10EF4E.odttf",
+        "bytes": 324692,
+        "sha256": "965bac2374ddb795f25267ede4cbd67365cb470281582e028c5f670ebece1d69"
+      },
+      {
+        "file": "Resources/33C83E01-76EE-37BD-7C2F-EB4E087D292C.odttf",
+        "bytes": 533676,
+        "sha256": "648e3edfc268649f53971eaffcb41d6f72d9f96bdc64a07e3f8c060f6e2b5a1b"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance0-manual-w8504",
+    "source_sha256": "f2dc2cbba05c93493220f705a8f38466d07b7259dfeefec2c95f2f89bcaa94c5",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/575D1108-6DDF-46C4-031C-F01CE176D476.odttf",
+        "bytes": 328736,
+        "sha256": "71399fd387d00b6c8096b79e72850010900fe693afbdf40a2ff93884bc3922f0"
+      },
+      {
+        "file": "Resources/63B621D4-4B1D-6CB8-A923-FB01401AB441.odttf",
+        "bytes": 188388,
+        "sha256": "b3eb1d04d9e8d2e4b6b0bd6e2bcde3e80f04f8630c2913021b4f63d22fcdde33"
+      },
+      {
+        "file": "Resources/70DA1CBE-788B-7A5B-737B-013184406831.odttf",
+        "bytes": 324692,
+        "sha256": "e32326847ed75085e4250782fa1b508d3946404cb69ed22f41923246fbd3282c"
+      },
+      {
+        "file": "Resources/6CB430A2-3CEC-69EA-2F49-157BF22EA44C.odttf",
+        "bytes": 533676,
+        "sha256": "c682a5eee8a94a622bfc9b78d8a264f71c1b764b61c70680bcde3a030274827a"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w3000",
+    "source_sha256": "ffc00a315bf7791e92fbd8a4e477aa5dfbe90a5e3b85f35994639a50d52e94fe",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/188D1568-6D12-37D9-EE17-242A1441BD24.odttf",
+        "bytes": 328736,
+        "sha256": "8cd53c9cf2c0fcb7e341db906ae0590ffad16d73e9019725f18e7fcb37949461"
+      },
+      {
+        "file": "Resources/36430CC8-04F1-27BC-4C02-791B48400A00.odttf",
+        "bytes": 188388,
+        "sha256": "279227563e8e3db1128b92c936276602d812e082209c527396907be9ec79e80f"
+      },
+      {
+        "file": "Resources/5FC678AA-0D6C-19BD-723A-0A370A56DF67.odttf",
+        "bytes": 324692,
+        "sha256": "915acb4b9f3f456f44a62b4b4ca0d76c9ee73e35f8e12e869036b01a90a8df60"
+      },
+      {
+        "file": "Resources/4DBE1E56-430C-24C1-3216-E22BBE63936C.odttf",
+        "bytes": 533676,
+        "sha256": "4c569cb6c01535c1c415fb76f8172e4417340708f41991e3ba4ec8953babccaf"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m12-balance1-manual-w8504",
+    "source_sha256": "fce5371768334a257443c4f317fdd2b7004075c124613a15a8811194d6d59776",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/390F1A65-01CD-48CD-D421-9B17DC52C92D.odttf",
+        "bytes": 328736,
+        "sha256": "556186cf8adba91f21d8cb238d3252df00e0639542a23dd3fdc2c6aa99d0c4b0"
+      },
+      {
+        "file": "Resources/080C0FA8-2309-6B02-F817-665357274371.odttf",
+        "bytes": 188388,
+        "sha256": "2ec2fd619374140b12df794fd6ecb65c1669fc1171253cc02f06ee50f1c30621"
+      },
+      {
+        "file": "Resources/4D6C78F5-798F-73FF-D855-C113D76A9241.odttf",
+        "bytes": 324692,
+        "sha256": "e8f27cecff6c035e399ab06cab1de33c9752d1d0fad849d2abbf5980ccb2e165"
+      },
+      {
+        "file": "Resources/484D3E19-6486-70CA-E234-E24A374BA607.odttf",
+        "bytes": 533676,
+        "sha256": "0625dca9925ec22d8642a1417bc75aa36f54db207662c12272e3802e57a7788d"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w3000",
+    "source_sha256": "9c609caabbec7e44c8b844a08f9ed798d66ccdbbd549d345d86147e956645ae2",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/1A051EF9-5D83-19D6-6922-3B1A965FBD24.odttf",
+        "bytes": 328736,
+        "sha256": "f5510125739489977188ea31411024d06982fbb52231b26bfa4229136e91c5f5"
+      },
+      {
+        "file": "Resources/5A580295-539F-28C6-495E-097761383A6B.odttf",
+        "bytes": 188388,
+        "sha256": "1e9fa1235343d320925cfbc1be85a4252f83d8562cd03588e21076e82923075c"
+      },
+      {
+        "file": "Resources/3BEC6101-00DB-51AB-4F5E-5A61CA2A732E.odttf",
+        "bytes": 324692,
+        "sha256": "eccf6f7eaf5295c8dfb21839829e3c173463bf0458b9ec0ab8f9fe3002bc38c2"
+      },
+      {
+        "file": "Resources/5C843C7D-1E6F-315D-7372-C175923BA150.odttf",
+        "bytes": 533676,
+        "sha256": "896c90fc861fa584430557d117bdeb914293cab4a79ed46f70d9966fb38332dd"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance0-manual-w8504",
+    "source_sha256": "420a1e38315e14a71fa70d6af1a0068af3be09a6b7ea50aae8f9b6ebc1ed64da",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/656B2328-45FB-08F5-F541-5B416A732B7E.odttf",
+        "bytes": 328736,
+        "sha256": "e9070957bb32953576226dbc00c8e90bbda3fda01c6cdc93c400b1201dbd69cc"
+      },
+      {
+        "file": "Resources/1522260E-161E-6136-B82B-0447174AA831.odttf",
+        "bytes": 188388,
+        "sha256": "51a42c73d391a7cbb7e3fb4d2e2f182107687019b2b84f6ab21434383a52c830"
+      },
+      {
+        "file": "Resources/733D198E-2A77-0EA7-6C00-4D5C8950E649.odttf",
+        "bytes": 324692,
+        "sha256": "3cf31f7562c98140a747c7cc70ba15bf7ab97c8c065c9054c99c3b639fc8bc7c"
+      },
+      {
+        "file": "Resources/3594528C-4403-26D5-EF75-1E7C8840151A.odttf",
+        "bytes": 533676,
+        "sha256": "d02915680467a24f9a931899ee4dcd56e003928cdf9ac7f3166582cc4789c4f9"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w3000",
+    "source_sha256": "1e88d6447d42b4744207b088bef35751bd3652f7a087e10872d11635017d5b7c",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/5096278C-0AF6-5809-2B66-E65DC549A420.odttf",
+        "bytes": 328736,
+        "sha256": "f48845f6afe5068ce9515d60d8b4ad8c574e957d781345e0d6a58ab9266eb29b"
+      },
+      {
+        "file": "Resources/4FAA5181-4F5E-1C66-D560-2521CF46B733.odttf",
+        "bytes": 188388,
+        "sha256": "4145e8f6c72642ff69cd3826fa914828149922b698173fab0a3213f1471e4b8b"
+      },
+      {
+        "file": "Resources/2A225E3C-467F-09EE-026C-D01EB620C41B.odttf",
+        "bytes": 324692,
+        "sha256": "50a7c98810dc8a8a94079691b0d0b015943eb276130c02f8808e11e5e1f3c654"
+      },
+      {
+        "file": "Resources/41D0794B-1D5F-2208-FA69-8D7C0D01950C.odttf",
+        "bytes": 533676,
+        "sha256": "04503c156bfc8339e23a9cf9b59fdb8e3df802b5c092d8cd3077501486228804"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-s12-m14-balance1-manual-w8504",
+    "source_sha256": "971abfec1864970a18f4da6dac5ace784c74c5039d1e26c0f661b49c74d780cf",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cc791baac97813918d3d65212546efb257d5ab364239457c8f6a5041f2ef0ca0",
+        "bytes": 56680,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 4732,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/5B892C23-2C74-0712-090F-DD6FA762290C.odttf",
+        "bytes": 328736,
+        "sha256": "8f392b66dfbdc857a0b2b655a9825c392e951b09c64c23f764c02c785090145a"
+      },
+      {
+        "file": "Resources/09F204EE-7F60-5A57-A07D-6A05892E6771.odttf",
+        "bytes": 188388,
+        "sha256": "314b72100ffd48b6264b9b7af527cb29a5043769883be2d19b621e8747ead52c"
+      },
+      {
+        "file": "Resources/609B2F0A-54F1-437F-1021-E228501B0B24.odttf",
+        "bytes": 324692,
+        "sha256": "fd09e95fa0ac804e3ea4ec5da2d08c04b43a47a93177e5e2eb00812b5d99423a"
+      },
+      {
+        "file": "Resources/013930BA-2A85-22F7-954E-0C77217D2128.odttf",
+        "bytes": 533676,
+        "sha256": "9b8dda88bbd0d4bebfa28d193363a45ff8868d1c9a414e280523a0f2ab8ec97a"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w3000",
+    "source_sha256": "85412c79f5dcc44ecf6bf70407ac9b753c3a12b4da1e2c5315655e881f0f72d1",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/0728301E-3869-163C-ED29-9021F4338B1C.odttf",
+        "bytes": 243272,
+        "sha256": "9a60bec458a3b4c45c00b9e11776ad4f4faf38e522d3126fb4e42033cafd3948"
+      },
+      {
+        "file": "Resources/44FD206E-4B1D-1005-6163-404B3C55347C.odttf",
+        "bytes": 188388,
+        "sha256": "aad377807783fcad7b1e1ecd89ce42d74f09fa6d00bbcb20a83b95b8c644a4c1"
+      },
+      {
+        "file": "Resources/18585B77-0C22-4230-B579-465CA2161509.odttf",
+        "bytes": 237860,
+        "sha256": "ce01b585276804431093894f895d2926bb72e8f8b29828f06aa68d3c1038c9a9"
+      },
+      {
+        "file": "Resources/271D361A-1C50-12B4-8161-590388468948.odttf",
+        "bytes": 533676,
+        "sha256": "9ece06b398d4045b9b1c6a9faeb13b11721af2770f2a0eb3a64c7ff8bc793c98"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance0-manual-w8504",
+    "source_sha256": "30429c9580756b463cfcffd22cb4390a8d46ef81d6ab438faa5d51207600f07d",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/27AA351B-4D24-2730-D333-080FBC459725.odttf",
+        "bytes": 243272,
+        "sha256": "fba5a8d3d98f8241ea60d169476dfd8d15536b7bc3b3a045b34bae7d57758018"
+      },
+      {
+        "file": "Resources/16C6234E-6936-534B-0E79-2D034B3C6D6D.odttf",
+        "bytes": 188388,
+        "sha256": "de6112a25d6b9711765ae83be005ac4ae0b0629e6629e3306f2d0336601d4e3e"
+      },
+      {
+        "file": "Resources/05FF5BC3-7845-1C72-1C15-FD386F2BC962.odttf",
+        "bytes": 237860,
+        "sha256": "c926d4b34ecf9c33bf62b8671f7954d38f72bc61b6f1f49f91fa65ae4c08f91e"
+      },
+      {
+        "file": "Resources/21AC55DD-3DCA-5EBD-3200-5922012E9C63.odttf",
+        "bytes": 533676,
+        "sha256": "d61b074a0097c237a680214d2dc5477175300e5ad41cad544fc86049a4c602f3"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w3000",
+    "source_sha256": "5e16b45fd9b0fe27e6dd963e32ec57f118fa076b762f028c756b166c4cb42adc",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/08A039AF-28DA-7839-6734-A81176528B1C.odttf",
+        "bytes": 243272,
+        "sha256": "e32b12e2aaed26bf8de797abecf7824cb87073228465ba2d5f0796b2d4fae40e"
+      },
+      {
+        "file": "Resources/6912163B-19CC-1110-5E3F-D026554D6467.odttf",
+        "bytes": 188388,
+        "sha256": "202a0697902f779456e21f3202bd8c88c6fa046fd57e7ae4ddebb3d841ac89cd"
+      },
+      {
+        "file": "Resources/747E43CE-7F91-7A1F-921D-9606626BA94F.odttf",
+        "bytes": 237860,
+        "sha256": "a98d0cf706cfb966d1a799726aaa2bee039c34f123db4b217b639139470d061c"
+      },
+      {
+        "file": "Resources/35E35440-77B2-1F50-C33D-384D5C1E972C.odttf",
+        "bytes": 533676,
+        "sha256": "f7f52ca820ac7f9546001ab25a6b436cad942cf65e4cc79bd04004c654bc9e24"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m12-balance1-manual-w8504",
+    "source_sha256": "787037d067e022e721cf62e8cc94c72b6fb637030e00103b85c7bb76c9e2e5d8",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/54063DDF-1152-6758-F453-C7384A66F975.odttf",
+        "bytes": 243272,
+        "sha256": "cbe56c190cffaf7257f3a49db8b07884fab77b1fbc538c8d06f889e80c1bd542"
+      },
+      {
+        "file": "Resources/23DC39B4-5C4A-497F-CD0C-CB760B5FD22D.odttf",
+        "bytes": 188388,
+        "sha256": "b7ecec832cf18313ec229d40afd57323af7ed65fd28d8a744963d41148bcbb53"
+      },
+      {
+        "file": "Resources/2BD07C5C-292D-371B-B03F-890121111D6B.odttf",
+        "bytes": 237860,
+        "sha256": "dc30860307634d6c06437a8393bf215e58e2bc76f856a2c18da27b17706a1480"
+      },
+      {
+        "file": "Resources/0EF36A50-1D46-14C8-3F41-955352230B76.odttf",
+        "bytes": 533676,
+        "sha256": "9d76240088a85a54248217474c1ba1763adb3860deb1febe57302ec41d1f432c"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w3000",
+    "source_sha256": "f747d81a5fc4fcc5f33e412e791c1505afd819545107318af53572dbfa773cfa",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/3F314242-564D-366C-2978-5255A53C7318.odttf",
+        "bytes": 243272,
+        "sha256": "6d7afd94a2eabffb9661536ad5275df0434187c9222b4bd4017c12527da26db8"
+      },
+      {
+        "file": "Resources/5E646527-158B-04B0-EB41-EB50C35BE12F.odttf",
+        "bytes": 188388,
+        "sha256": "b81723bac937f0bcb51e8c13176ff05749c0579209f1c1b5ee45036a2cecae1c"
+      },
+      {
+        "file": "Resources/62B5410A-4535-3261-462B-0C444E61FA3C.odttf",
+        "bytes": 237860,
+        "sha256": "041e6f45591ef7c155ec119ffe107f76abe9838eb0f5236d59df892cccadd45e"
+      },
+      {
+        "file": "Resources/1B30110F-76A3-0FFB-4A35-0454D7638B68.odttf",
+        "bytes": 533676,
+        "sha256": "8c24a5b7bb62eb961f2a4ee1face1642b8fa66b05c7c279d8062e6942befab65"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance0-manual-w8504",
+    "source_sha256": "cecb8ede921ce6b7f8b891bf47961e0393552d07ba22e5936e1813f543511fdf",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/2A5D46A5-1B48-0580-5F1C-DD710113EC3A.odttf",
+        "bytes": 243272,
+        "sha256": "51c481ea3de238d8fa72534852df003bb91eacde6bf2f7fb078141a00bb31f55"
+      },
+      {
+        "file": "Resources/18ED109A-4ECB-3FE0-0877-0C2B7B58F031.odttf",
+        "bytes": 188388,
+        "sha256": "76246bd6cdda895de5c808ef6dcc079903e1f5f16669ac211cce6252b59b97eb"
+      },
+      {
+        "file": "Resources/199A05B7-613C-2DA8-DB16-8F067A31D80E.odttf",
+        "bytes": 237860,
+        "sha256": "5ffcde3928a70d0da623072782652b97e7365f434f9cdf8e54de81b61174d595"
+      },
+      {
+        "file": "Resources/276C37CE-4FFF-0B2F-5529-72545C240B5B.odttf",
+        "bytes": 533676,
+        "sha256": "5d4109d63a5a79969d83e4919c76f86c8bc883355082d5aa9b100c350cb1bcfc"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w3000",
+    "source_sha256": "cafc82d60ca6919c35c5c4a3d2cb8857cedb1e5cf53b863b7dcbc66b72e0b18d",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/0B534B3A-76FE-568A-F31C-7D74BA1FE031.odttf",
+        "bytes": 243272,
+        "sha256": "531a8e4289b44c545de85ec00f8c83699dcd866bf289f62e86922faf1df5c7d6"
+      },
+      {
+        "file": "Resources/6B390387-7F61-7DA4-583D-AF4E8569E72B.odttf",
+        "bytes": 188388,
+        "sha256": "acd4fcd53e464cec5d328c882fc3a6d4ab593e4b7fcc160f6ed92919eacf8258"
+      },
+      {
+        "file": "Resources/08196DC3-6888-0B54-521F-27546D71B87B.odttf",
+        "bytes": 237860,
+        "sha256": "c1d3f30123576099d2efb7c232487cf6895849a59765819d0d82b6cbbba57d02"
+      },
+      {
+        "file": "Resources/3BA23632-09E8-4BC2-E766-517FB7140724.odttf",
+        "bytes": 533676,
+        "sha256": "02bc00b24f453ad4658ea3b1636f586374f0479d1b274bf7f2a17ddae2c1b768"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-times-bold-italic-s12-m14-balance1-manual-w8504",
+    "source_sha256": "f5489b9c7664a167d259652f1ba5ddbff4e7bd2e2ed3a2cb32ab17b9cb179b99",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+TimesNewRomanPS-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "10fb83fcd3a0fc147c1ae2f283402b1fc5b89fe7b7f85fe2ee0d64bd0e243d59",
+        "bytes": 50480,
+        "family": "Times New Roman",
+        "version": "Version 7.13",
+        "glyphs": 3624,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/767F4F9D-3BF9-259E-2941-081116765A54.odttf",
+        "bytes": 243272,
+        "sha256": "9496b84051d2afcdab4488c2a631b01a30884013bc8445254db84598180c329e"
+      },
+      {
+        "file": "Resources/25C22EFA-38A1-38D4-7672-CF283D66F62D.odttf",
+        "bytes": 188388,
+        "sha256": "ecb9873ec166f6e080972064fa0c19b25be5955ab86445706b8e1c8f62513697"
+      },
+      {
+        "file": "Resources/3EFE3270-0490-069B-E70A-AA169941964D.odttf",
+        "bytes": 237860,
+        "sha256": "386ddc517885d1e11d6ed49568964ca02c4f9bc4fef00ac2fd4c157238579529"
+      },
+      {
+        "file": "Resources/47DF5CF1-6344-46F5-F25A-BF7F3C558716.odttf",
+        "bytes": 533676,
+        "sha256": "868c0f7864a8a6bf141034030f2840cc4433fa2a514c32efd09ff41b998f5404"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w3000",
+    "source_sha256": "e9d0585bd7e2e00e0eff5a2f2943b48e7140108feb12b3fc588cc5fbcaf4cd23",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/61AB5400-00F4-74B1-5E65-942D714CD376.odttf",
+        "bytes": 319584,
+        "sha256": "ed401af2cf1c10532c9499b27fa62283aa4fb3dcdc38ae6c8d6a5a50012140e2"
+      },
+      {
+        "file": "Resources/604A5A6D-71E1-7404-9327-EF02F5620530.odttf",
+        "bytes": 188388,
+        "sha256": "48f6e19a3b50ab03e9354353b74370c7974a2acac765c70e3e8aab16f96ee90c"
+      },
+      {
+        "file": "Resources/75E3771E-2097-01E1-7D76-2D59C611731F.odttf",
+        "bytes": 315880,
+        "sha256": "43c90ed569de316510ed938e6418105e61391fe3e5090bbd5d7931b93567d1d4"
+      },
+      {
+        "file": "Resources/541C03B0-3CA1-4228-FD4E-2D00C1150709.odttf",
+        "bytes": 533676,
+        "sha256": "c153afa8583da5228d99ffddf0230d7e5e4ad53ae5003ba1e6a62b46f423d9dd"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance0-manual-w8504",
+    "source_sha256": "f7b66afb55f055643edc2f82000db28704ee93498d3bdc1f57e6a8efddd7883d",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/42A15895-5CA9-45BB-F365-34302B59C76D.odttf",
+        "bytes": 319584,
+        "sha256": "9f65d4f0e993aadecb4285b1402be449d474c617b6a1df9177a3a650249d211a"
+      },
+      {
+        "file": "Resources/32964D5A-2277-31C9-E36D-9226FF73FC29.odttf",
+        "bytes": 188388,
+        "sha256": "cb973a9678abc77bb47b805ff95bf88f0f5dee921c1c6fdaa82deb4ccfd974bc"
+      },
+      {
+        "file": "Resources/64625F2A-27E4-5F8E-F37E-C526B951530C.odttf",
+        "bytes": 315880,
+        "sha256": "5346ff30f1013ba4e2cba38126bab80339ce0c7f87f2e5f1f7e323bcf9cff4d3"
+      },
+      {
+        "file": "Resources/68520214-768A-02BB-8F0C-0C2B1C060252.odttf",
+        "bytes": 533676,
+        "sha256": "da74ac2768cd564d847982f21b00ad0b34159d5d72e6d1e60a174c1c7394b7ba"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w3000",
+    "source_sha256": "f64691d9fbe44295a9f8c41a132d8fc900020c94e34a3c623c109d360e6eb8c3",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/2DCC5CF8-21A4-14CF-280A-BF4C862F4110.odttf",
+        "bytes": 319584,
+        "sha256": "a22aea49e5e106f0e150d6c0ab9e16d9eddc4bd9e99d0b3c81e6c7e2ced59362"
+      },
+      {
+        "file": "Resources/6D1F78CD-5BB7-6CF9-0023-B200B7700B2C.odttf",
+        "bytes": 188388,
+        "sha256": "82db9c572f628fc4c65a1e51fa5de6e6e6ec3c3ae966408cc6e89462ddf48d91"
+      },
+      {
+        "file": "Resources/1B4723D7-43EB-5AD4-896A-4869E521315E.odttf",
+        "bytes": 315880,
+        "sha256": "4572cec44b0c165572fd7c85363f32fc1848b8bf1054f704727b43ce4fe1e796"
+      },
+      {
+        "file": "Resources/748F28D3-4FE6-7DEE-9A00-7A2BA1468244.odttf",
+        "bytes": 533676,
+        "sha256": "11f3173abd398debf51e26149dc6c99abab274910c7251fa4f6983aae2795ca4"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m12-balance1-manual-w8504",
+    "source_sha256": "69720e8a106c8055379c7de90768ad7dddedc3ff37cd1ade41006d25696b9b17",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6EFC6158-20D7-05E4-1306-F359B9792A3E.odttf",
+        "bytes": 319584,
+        "sha256": "99cc93460755e75866ec7bf3d17ce3aa4de12ff3e50686b37e98ff08c6fb5ca9"
+      },
+      {
+        "file": "Resources/3FAB63C1-158B-27FD-A301-301ABE16606A.odttf",
+        "bytes": 188388,
+        "sha256": "8d7ffaa1a941c00ca3d7df893c338f719b4fb693c6a4b8199c4395f54db0f30f"
+      },
+      {
+        "file": "Resources/0A337FC3-58CC-7A36-8729-526F6B37A814.odttf",
+        "bytes": 315880,
+        "sha256": "1c14ea322a25eaa98951bd1cb5acacef347443aa1ebe20588143b9d0cbe34f1f"
+      },
+      {
+        "file": "Resources/55991687-5606-38C6-9C4D-485C6D7B7164.odttf",
+        "bytes": 533676,
+        "sha256": "610ff341db9b0630b4c7a8f5234534884f46d96ff53b0f77dcdae66b1d0a0c60"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w3000",
+    "source_sha256": "0bf383458d7ad1589aa400753beb1dad78f64ebb48ba09a8f4f28f894aa84ee3",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/645E658B-4F17-5302-EA4D-6910B519280C.odttf",
+        "bytes": 319584,
+        "sha256": "6655540cadbaaf03c001bb0c1082437a388c39de10fe998ee728a06c5bfe934f"
+      },
+      {
+        "file": "Resources/627147BA-5776-6099-8D25-CD2A247F8874.odttf",
+        "bytes": 188388,
+        "sha256": "0d160ec8378efb7cd94a3e0321dcb10d792490405dfd7906d883deac68f4813b"
+      },
+      {
+        "file": "Resources/097E2113-098E-1317-3D78-BE26D117824B.odttf",
+        "bytes": 315880,
+        "sha256": "d7f3d581c01c3914c77d461e9144f13305baf8a7529c866704c39ddb22b24a0f"
+      },
+      {
+        "file": "Resources/59DB65A1-4ED6-6E9A-2178-46321C0C7600.odttf",
+        "bytes": 533676,
+        "sha256": "085e93fea8e8d376e3d4dd4ae9f4bfaf09c24ecbb94a59f403430a943ada2fc5"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance0-manual-w8504",
+    "source_sha256": "e0cfc036caeda65373304b8f96b6aaa816c4d0cbaaec28236d5b5566f3b563b8",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/258D69EB-4E4A-4416-D549-9D1DE863113A.odttf",
+        "bytes": 319584,
+        "sha256": "2f79cae8fd53252868ff7d624981ccfd16664beefa6d5a0e8f8c0c1f275cb1d8"
+      },
+      {
+        "file": "Resources/34FE32AE-114A-1B9D-2F04-4B442C25DD32.odttf",
+        "bytes": 188388,
+        "sha256": "5aa07e8b3ecd562a262e69605e484f5cf9890581bd4cd5df9d46982c69b9c400"
+      },
+      {
+        "file": "Resources/78697CFE-1E6F-3279-3B37-C82C572DF901.odttf",
+        "bytes": 315880,
+        "sha256": "c0defea00a97bce970ff67d1064aceb58be361f097b33cb87dc6686f62d6f17d"
+      },
+      {
+        "file": "Resources/3AE55355-54F6-2972-2345-1463E8406520.odttf",
+        "bytes": 533676,
+        "sha256": "2be1f1b7cb5b597acb1238511e0fad42479996e1f3d4d35e16a6effcf49cf346"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w3000",
+    "source_sha256": "6843b1a70bca565a09e5e8cc750faa94e64eb3dfe34f3280dea7a8a72a1ec9d1",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/70F26E1A-36C2-3335-6269-BD44BC777F13.odttf",
+        "bytes": 319584,
+        "sha256": "e4eccd66f05a16470ad7ec777764b5adcdd50d2da46dc954e51e4332b0d91b8c"
+      },
+      {
+        "file": "Resources/6FC85627-53C9-540C-9E51-4614E1364B79.odttf",
+        "bytes": 188388,
+        "sha256": "84091f8e9b7d47d481688630fc24cd1646c07637616caf4ee7efa6ac154e369e"
+      },
+      {
+        "file": "Resources/2FBB358C-480B-6F75-5959-BB2716536D1D.odttf",
+        "bytes": 315880,
+        "sha256": "0e4f92f9dd41eb30b65a5d23bff597518c8b7bf67c26a49b2667b81b1117d4fe"
+      },
+      {
+        "file": "Resources/13F56965-7A8A-1EEB-9F48-7169DE45D969.odttf",
+        "bytes": 533676,
+        "sha256": "21c38251a05c6c339e6926cd15146d90d2e76d88dffdfef7d38c4df5a1f96277"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-s12-m14-balance1-manual-w8504",
+    "source_sha256": "4935f86690429637a42208ef8b6a8a8ba3f1838abc76c3b145d62d2665e298ae",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "f60d1cd44efe1577ae3c3aa38cbe321332e21631d2e7ac2571dd3498d587b6e0",
+        "bytes": 55628,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 4652,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6654724C-6503-0054-3931-337BB8177D61.odttf",
+        "bytes": 319584,
+        "sha256": "f19e5b8ff822fcb1039f4d12201b3042668d851066903cf04413ccf05f55def5"
+      },
+      {
+        "file": "Resources/128D3A20-15B4-0CA7-8975-E324461F7303.odttf",
+        "bytes": 188388,
+        "sha256": "c5ec86f1b2e62deb6cbb57c5c4a51065e60c884a80b4a189ac29f224153bfc85"
+      },
+      {
+        "file": "Resources/2F0556DC-78CE-0855-0E28-285F7C334754.odttf",
+        "bytes": 315880,
+        "sha256": "4114a9ef4dfcdabbf4abe548034a3a058a6b3208282d33661fa6bd80a280da19"
+      },
+      {
+        "file": "Resources/1838387F-735A-54BF-2373-703F8D56DE05.odttf",
+        "bytes": 533676,
+        "sha256": "2243adb2b9cd9fed35c842195e0a0061f7ce088bda83b95b4422d79b46b09f28"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w3000",
+    "source_sha256": "58f3627ea4471a5459600c7a6e03879b67a83a25de0b665a308f418444961b75",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/278376AC-6436-7168-242D-6708EB61660F.odttf",
+        "bytes": 214956,
+        "sha256": "5e50dbbfca2be48a52fe59925791e707f902b5d4abb4492b33abeb0f77302c61"
+      },
+      {
+        "file": "Resources/651A2514-4F88-47AB-2B54-613E4E45C841.odttf",
+        "bytes": 188388,
+        "sha256": "74f91526370e056e40016ca5ed96f6257224747da6c38174e9d001df402a22a5"
+      },
+      {
+        "file": "Resources/1DF132C7-0DAE-27B7-0C67-32650249BE0A.odttf",
+        "bytes": 210916,
+        "sha256": "40bfd26b1c2caba15d57ec4abfcdc7dc732ac14a00b41874b888a535d3dda781"
+      },
+      {
+        "file": "Resources/79422634-797A-0F96-2540-3D70590BCD25.odttf",
+        "bytes": 533676,
+        "sha256": "bffa725507e8dae827e18a0fcbe093950fe62902dcbb9d3decacf3de14f9e3c3"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance0-manual-w8504",
+    "source_sha256": "7f2998065a76a4b39e2a39d4f68aef3d44437eeb4145aae42c8e73ba8b96429c",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/12AF7B10-2931-407C-5951-F2244638DF31.odttf",
+        "bytes": 214956,
+        "sha256": "b39c5ce31cdb48116b9cbf49caabf3ceda3af3db9686a8d0e5312d8f2ab8c40d"
+      },
+      {
+        "file": "Resources/1FA35087-08C8-02DB-4809-81180642D743.odttf",
+        "bytes": 188388,
+        "sha256": "7d59376c8c7f8d270963916ea3f6b6b08dc3438e0e3ec028954bc4b6482a8ea9"
+      },
+      {
+        "file": "Resources/54D67775-29B6-22FD-A252-B4272E199C5C.odttf",
+        "bytes": 210916,
+        "sha256": "bda5b9d2936ddf53a9618edcaba59cceef559a837c4455c67297140dcd52d1a5"
+      },
+      {
+        "file": "Resources/057F4CF3-52D7-0ACA-3134-AB70DE4B4D18.odttf",
+        "bytes": 533676,
+        "sha256": "41b4f389b441c92fcfbba1c651a7ed1119aa0b132db05139a4a6e55c5b86916a"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w3000",
+    "source_sha256": "f29fc0c8eff414143fa97e9f38ca14fc78e8659937fefe894f853827d7b2df8d",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/5E147F3F-11A9-2F9B-E670-124C1A4C4D0B.odttf",
+        "bytes": 214956,
+        "sha256": "f31a7381520b8baaedd334f92e848c21e248db3529c0f72d9f73e07428a22a46"
+      },
+      {
+        "file": "Resources/5A6D7400-4B47-3B4B-B756-7C68BB53450A.odttf",
+        "bytes": 188388,
+        "sha256": "2419316db4a0254156b91b990b91b3fed0edab5bd7a4dbb605fbfbf97caa46be"
+      },
+      {
+        "file": "Resources/0C273003-5352-5FF9-BF74-A822ED3E1078.odttf",
+        "bytes": 210916,
+        "sha256": "0a3ae77237e28d7824a2892d6e1fe43864e9ac045b0ba08053abbcb7a18a12f6"
+      },
+      {
+        "file": "Resources/5E8F6302-786A-0042-AC37-0977D450C161.odttf",
+        "bytes": 533676,
+        "sha256": "e108791b2f04c41bc17cbb0f7a4a0f9824c5d6a3a75360bf62fb5a341e51e06a"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m12-balance1-manual-w8504",
+    "source_sha256": "cfed909b14d5d5bbff86acb870107159cf60c124e9aa0ad10853d8b474262d56",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/494003A2-56A4-7EAF-1B15-9D687522C72D.odttf",
+        "bytes": 214956,
+        "sha256": "eeea66c0aa8c503a32bc3b581c4917fbd01aa37367aecc6773efcef68ac0a430"
+      },
+      {
+        "file": "Resources/14F51F74-0487-767B-D50B-9C427350550C.odttf",
+        "bytes": 188388,
+        "sha256": "d578ef22cb2d75713d057c11209182e396a9207587d52b6cd0358b9cf1e7413c"
+      },
+      {
+        "file": "Resources/430C74B0-6F59-5B40-5560-2B651A0FED49.odttf",
+        "bytes": 210916,
+        "sha256": "d44a5611739a292e04308d66ac5b69ac39d52372bddf3410f257a50b2b7a5ded"
+      },
+      {
+        "file": "Resources/6ACC09C1-51C7-7B76-B72B-777759114154.odttf",
+        "bytes": 533676,
+        "sha256": "d76a1cb7cf13678006cc4081b0df59ec8792a86fe243e7dc0a1acb0797ccf627"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w3000",
+    "source_sha256": "7c5346bfb9a513651d59c8290865172eb082479019cf39c7bdc39eeabfef8def",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/14A507D1-3F1C-6DCE-A834-BC0F49363507.odttf",
+        "bytes": 214956,
+        "sha256": "d51f3b1e22055207b65ffbfe4078a79b3035c3e08365dbe87e485086c95af616"
+      },
+      {
+        "file": "Resources/4FBF42ED-4706-2EEA-4459-97122862C252.odttf",
+        "bytes": 188388,
+        "sha256": "68ddf8e9182265d0a0dde3dd31ecf84b10eefd6c64d02306f846101f02ce8b9f"
+      },
+      {
+        "file": "Resources/7A5E2D3E-18F5-183C-7302-1E60D9346165.odttf",
+        "bytes": 210916,
+        "sha256": "a3b0b35a9c52db7382808a0d481d6516bffd911437ef5bd247b97b8785a9cce1"
+      },
+      {
+        "file": "Resources/43DC1FD1-775B-70EE-332F-D57D4E16B51D.odttf",
+        "bytes": 533676,
+        "sha256": "b41926f3e3e5ee77b657a6a700e6712275a9b4377616b8302410d5bd46c2b0a8"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance0-manual-w8504",
+    "source_sha256": "19a35a9dc443f37f317a25c2856018bf421557a746690ce98b254c9a26d12a2a",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/7FD10C35-0417-3CE2-DD58-472CA40CAE29.odttf",
+        "bytes": 214956,
+        "sha256": "4f52d85eb46eea0af80fffb6d9811cebb0767ce951a9413db56f2a0f2a55445e"
+      },
+      {
+        "file": "Resources/0A486E60-0047-6A1A-610E-B86CE05ED254.odttf",
+        "bytes": 188388,
+        "sha256": "7e9740dae2872269e7b98b5e13b8fceeec199473d816a1c6a0952df403d637bb"
+      },
+      {
+        "file": "Resources/314371EC-34FD-1382-096E-A12206053E37.odttf",
+        "bytes": 210916,
+        "sha256": "64707573681fd787f6da94b9cc6ff43cf6042f96ab2250fe6fab965a6b0845ac"
+      },
+      {
+        "file": "Resources/50184690-50B7-6C22-3E23-437ED3563510.odttf",
+        "bytes": 533676,
+        "sha256": "80f0dffa320096aa99c2d0efef9a5d8262398b7ccfef8844f8595a966ed38275"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w3000",
+    "source_sha256": "b91300b47cc82e467589e447589f81dabec38a0cfedca62bea596c0fed8a5b77",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/2B70102F-100D-4C0C-C073-FB5DF15D103A.odttf",
+        "bytes": 214956,
+        "sha256": "59b7f379d4bf0375ea6d0c017ddb49b520a629447b77798d5e79a8a0c8678417"
+      },
+      {
+        "file": "Resources/455309E0-4C04-1FC8-2274-8D3293059E5F.odttf",
+        "bytes": 188388,
+        "sha256": "8f17c52a781f06534fe2d66fa0d16673328cfaf6346d0782d57c869c031877fe"
+      },
+      {
+        "file": "Resources/69011E5A-6C2D-1233-AE46-05565800491C.odttf",
+        "bytes": 210916,
+        "sha256": "ac110a3a5217b6e1f38c731aab83641ddf3938399494f8b37c1651bcc4785179"
+      },
+      {
+        "file": "Resources/75FC4BF0-4282-5BDF-2B36-900A3A209D30.odttf",
+        "bytes": 533676,
+        "sha256": "0d856412f99d8cfc813f1746e5023588443fac4edf991a7c8f26491fdcd299cf"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-gdi-bold-justify-arial-bold-italic-s12-m14-balance1-manual-w8504",
+    "source_sha256": "4dcd866069d1b2951a5e6fcc3b2b0dcfa033ed722ba5cf30dd1873917d0cca86",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Arial-BoldItalicMT",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "e2170b90573df8adb63ba464a7eb54cbd002f5d3d7ae80667fbd3576e58c285f",
+        "bytes": 48132,
+        "family": "Arial",
+        "version": "Version 7.07",
+        "glyphs": 3427,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/76D5145E-7885-3B2B-4D13-1A05C5717E13.odttf",
+        "bytes": 214956,
+        "sha256": "241500e82df9cdef327851a60af6a5dc17f52004987738bd5e3e25aa433d1388"
+      },
+      {
+        "file": "Resources/001C2D5A-0E83-5838-9141-880248170C26.odttf",
+        "bytes": 188388,
+        "sha256": "6c8ec09e90f9e867beef92d95214e0e9ee557c874c0d54204986247efea335df"
+      },
+      {
+        "file": "Resources/205256E7-15C9-4F2F-CC68-F9501726BC37.odttf",
+        "bytes": 210916,
+        "sha256": "e2b56322770446add89d0064e41ebf454e0f3f369f87fd93dac771d20f27bd54"
+      },
+      {
+        "file": "Resources/4F0C61FF-6816-5158-A639-ED103025127A.odttf",
+        "bytes": 533676,
+        "sha256": "921f67388b0b3abab75c0ed2e078d39f9dc50cdb04689a61cafae0132c2e84c0"
+      }
+    ]
+  }
+]

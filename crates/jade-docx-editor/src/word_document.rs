@@ -52,8 +52,9 @@ use jade_docx_headless_api::HeadlessChangeCaseMode;
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_writer::{self, DocxWriteError};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -102,6 +103,8 @@ const CUSTOM_XML_PROPS_RELATIONSHIP_TYPE: &str =
 const CUSTOM_XML_PROPS_CONTENT_TYPE: &str =
     "application/vnd.openxmlformats-officedocument.customXmlProperties+xml";
 pub(crate) const MIN_TABLE_COLUMN_WIDTH_PT: f32 = 9.0;
+/// The editor's horizontal fallback per side for unstyled generated cells.
+pub(crate) const DEFAULT_HORIZONTAL_CELL_MARGIN_PT: f32 = 6.0;
 
 /// A table width or row height rounded to whole twips, which is all a .docx
 /// can express: `w:gridCol w:w`, `w:tcW w:w` and `w:trHeight` are integers. Left unrounded, the
@@ -113,7 +116,7 @@ pub(crate) fn whole_twips(width: f32) -> f32 {
 pub(crate) const MAX_INLINE_IMAGE_BYTES: usize = 5 * 1024 * 1024;
 pub(crate) const MAX_AUTHORED_OMML_BYTES: usize = 256 * 1024;
 const INK_TITLE_PREFIX: &str = "aidocs-ink";
-/// `w:sz`/`w:szCs`/`w:kern` are half-points; Word's 1638pt ceiling is 3276.
+/// `w:sz`/`w:szCs` are half-points; Word's 1638pt font-size ceiling is 3276.
 const WORD_MAX_HALF_POINTS: f32 = 3276.0;
 const MAX_INK_PAYLOAD_BYTES: usize = 64 * 1024;
 const MAX_INK_DIMENSION_PX: f64 = 16_384.0;
@@ -893,6 +896,9 @@ pub use protection::{
 };
 #[path = "word_document/ole_objects.rs"]
 pub mod ole_objects;
+#[cfg(test)]
+#[path = "word_document/revision_dates.rs"]
+mod revision_dates;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
@@ -1402,6 +1408,12 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
     metrics
 }
 
+/// The bytes the last layout showed for each field run, by the XML node of
+/// the run: shared between a document and the renderer laying it out.
+/// The value each field run was last laid out showing, by run node: what
+/// caret offsets past a field count, and what the caret walks through.
+pub type RenderedFieldLengths = std::sync::Arc<std::sync::Mutex<HashMap<XmlNodeId, String>>>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WordDocument {
     #[serde(skip)]
@@ -1410,6 +1422,11 @@ pub struct WordDocument {
     /// callers can change `parts` directly as well as through editing commands.
     #[serde(skip)]
     settings_protection_mention_cache: RefCell<Option<(Vec<u8>, bool)>>,
+    /// One shared story per header/footer part path, handed out to every
+    /// section and every repaint instead of a deep copy of the part's body
+    /// (pictures' data URIs included). See [`HfStoryCacheEntry`].
+    #[serde(skip)]
+    hf_story_cache: RefCell<HashMap<String, HfStoryCacheEntry>>,
     /// Retain one compressed source archive to copy untouched members during
     /// export. Clones and undo snapshots share these bytes rather than copying
     /// large embedded media or recompressing it on every save.
@@ -1440,6 +1457,11 @@ pub struct WordDocument {
     /// body paragraph; structural edits rebuild the cache with the surfaces.
     #[serde(skip)]
     text_metrics_cache: RefCell<DocumentTextMetricsCache>,
+    /// How many bytes the last layout showed for each field run (by its XML
+    /// run), filled by the renderer it is shared with: a PAGE or NUMPAGES
+    /// field keeps no text of its own, yet the caret counts its digits.
+    #[serde(skip)]
+    rendered_field_lengths: RenderedFieldLengths,
     #[serde(skip)]
     revision_session: Option<RevisionSession>,
     /// 保護の中止 with the password: the restriction does not hold until
@@ -2070,6 +2092,31 @@ impl HeaderFooterVariant {
 /// `footer_reference` track the `default` variant; first/even variants live on
 /// the default section. Returns `None` when the requested variant isn't wired
 /// up in the source docx (caller must surface a user-facing error).
+/// A header/footer part's story as last handed out. Holding the parsed part
+/// keeps it shared, so any edit (every one goes through `Rc::make_mut` or
+/// installs a new parse) leaves the part with a different `Rc`, and the
+/// entry is rebuilt; an unchanged part keeps handing out the same story.
+#[derive(Debug, Clone)]
+struct HfStoryCacheEntry {
+    source: Rc<Document>,
+    body: Rc<Body>,
+    /// The story flattened to `HeaderLine`s, built on first use.
+    lines: Option<Vec<HeaderLine>>,
+    /// The text watermark the part's XML carries, read on first use. The
+    /// part's XML and its parse change together, so a fresh entry's answer
+    /// is the part's.
+    watermark: Option<Option<Rc<HeaderWatermark>>>,
+}
+
+/// A text watermark as one header part draws it: Word keeps it as a VML
+/// `v:textpath` shape inside that header, so it belongs to the pages showing
+/// that header and no others.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeaderWatermark {
+    pub text: String,
+    pub style: jade_docx_reader::document::WatermarkStyle,
+}
+
 /// Header/footer stories of one section after Word's "link to previous"
 /// inheritance: a section that declares no reference of a given type shows
 /// the previous section's story. `title_page` is that section's own
@@ -2082,12 +2129,20 @@ pub struct SectionHeaderFooters {
     pub footer_first: Option<Vec<HeaderLine>>,
     pub header_even: Option<Vec<HeaderLine>>,
     pub footer_even: Option<Vec<HeaderLine>>,
-    pub header_body: Option<Body>,
-    pub footer_body: Option<Body>,
-    pub header_body_first: Option<Body>,
-    pub footer_body_first: Option<Body>,
-    pub header_body_even: Option<Body>,
-    pub footer_body_even: Option<Body>,
+    /// Rich stories are shared, not copied: the renderer selects one per
+    /// page and must not deep-clone paragraphs, tables and pictures to do so.
+    pub header_body: Option<Rc<Body>>,
+    pub footer_body: Option<Rc<Body>>,
+    pub header_body_first: Option<Rc<Body>>,
+    pub footer_body_first: Option<Rc<Body>>,
+    pub header_body_even: Option<Rc<Body>>,
+    pub footer_body_even: Option<Rc<Body>>,
+    /// The text watermark each header variant carries, resolved through
+    /// "link to previous" like the stories: a section whose header has none
+    /// shows none, whatever another section's header holds.
+    pub header_watermark: Option<Rc<HeaderWatermark>>,
+    pub header_watermark_first: Option<Rc<HeaderWatermark>>,
+    pub header_watermark_even: Option<Rc<HeaderWatermark>>,
     pub title_page: bool,
 }
 
@@ -2139,6 +2194,41 @@ pub(crate) fn hf_reference_for_section(
             .as_ref()
             .and_then(|props| section_hf_reference(props, role, variant))
     })
+}
+
+/// The relationship id of the story the document shows outside a
+/// section-scoped edit: the last section's, with link-to-previous
+/// inheritance. A last section linked to the previous one declares no
+/// reference of its own (`pick_hf_reference` is `None`), yet shows, and
+/// Word edits, the story it inherits.
+pub(crate) fn document_wide_hf_reference(
+    document: &crate::document::Document,
+    role: HeaderFooterRole,
+    variant: HeaderFooterVariant,
+) -> Option<String> {
+    let last_section = document.sections.len().saturating_sub(1);
+    hf_reference_for_section(document, last_section, role, variant)
+}
+
+/// The story the document-wide `header_lines*` / `footer_lines*` fields
+/// mirror. The default story is the one the last section shows, inherited
+/// or not ([`document_wide_hf_reference`]). A first-page or even-page story
+/// is mirrored only when the last section declares it: an earlier
+/// section's variant stays that section's, and those fields stay absent.
+/// So headless snapshots (which read those fields) omit a first/even story
+/// the last section only inherits, although edits reach it through
+/// [`document_wide_hf_reference`].
+pub(crate) fn document_wide_lines_hf_reference(
+    document: &crate::document::Document,
+    role: HeaderFooterRole,
+    variant: HeaderFooterVariant,
+) -> Option<String> {
+    match variant {
+        HeaderFooterVariant::Default => document_wide_hf_reference(document, role, variant),
+        HeaderFooterVariant::First | HeaderFooterVariant::Even => {
+            pick_hf_reference(document, role, variant)
+        }
+    }
 }
 
 pub(crate) fn pick_hf_reference(
@@ -2255,15 +2345,16 @@ impl WordDocument {
         &self,
         role: HeaderFooterRole,
         variant: HeaderFooterVariant,
-    ) -> Option<Body> {
+    ) -> Option<Rc<Body>> {
         let document = self.document.as_deref()?;
-        let relationship_id = pick_hf_reference(document, role, variant)?;
+        let relationship_id = document_wide_hf_reference(document, role, variant)?;
         self.header_footer_body_for_reference(&relationship_id)
     }
 
     /// The reference an edit should target: the editing section's story
-    /// (with link-to-previous inheritance) when a header/footer edit session
-    /// is active, otherwise the document-wide reference.
+    /// when a header/footer edit session is active, otherwise the last
+    /// section's; both with link-to-previous inheritance, so an edit of a
+    /// linked story changes the shared part instead of unlinking a section.
     pub(crate) fn active_hf_reference(
         &self,
         role: HeaderFooterRole,
@@ -2272,18 +2363,98 @@ impl WordDocument {
         let document = self.document.as_deref()?;
         match self.hf_edit_section {
             Some(section) => hf_reference_for_section(document, section, role, variant),
-            None => pick_hf_reference(document, role, variant),
+            None => document_wide_hf_reference(document, role, variant),
         }
     }
 
-    fn header_footer_body_for_reference(&self, relationship_id: &str) -> Option<Body> {
+    fn header_footer_body_for_reference(&self, relationship_id: &str) -> Option<Rc<Body>> {
+        self.header_footer_story_for_reference(relationship_id, false)
+            .map(|(body, _)| body)
+    }
+
+    /// The shared story of the part `relationship_id` names, and with
+    /// `with_lines` its `HeaderLine`s. The story is copied out of the parsed
+    /// part once per version of that part.
+    fn header_footer_story_for_reference(
+        &self,
+        relationship_id: &str,
+        with_lines: bool,
+    ) -> Option<(Rc<Body>, Option<Vec<HeaderLine>>)> {
         let target_path = self.hf_part_path_for_reference(relationship_id)?;
-        self.parts
-            .get(&target_path)?
-            .parsed_document
-            .as_deref()?
-            .body
-            .clone()
+        let source = self.parts.get(&target_path)?.parsed_document.as_ref()?;
+        let mut cache = self.hf_story_cache.borrow_mut();
+        // A removed or renamed part must not keep its story (and the whole
+        // parsed part it holds) alive.
+        if cache.keys().any(|path| !self.parts.contains_key(path)) {
+            cache.retain(|path, _| self.parts.contains_key(path));
+        }
+        let current = cache
+            .get(&target_path)
+            .is_some_and(|entry| Rc::ptr_eq(&entry.source, source));
+        if !current {
+            let Some(body) = source.body.clone() else {
+                cache.remove(&target_path);
+                return None;
+            };
+            cache.insert(
+                target_path.clone(),
+                HfStoryCacheEntry {
+                    source: Rc::clone(source),
+                    body: Rc::new(body),
+                    lines: None,
+                    watermark: None,
+                },
+            );
+        }
+        let entry = cache.get_mut(&target_path)?;
+        let lines = with_lines.then(|| {
+            entry
+                .lines
+                .get_or_insert_with(|| Self::extract_text_lines_from_body(&entry.body, true))
+                .clone()
+        });
+        Some((Rc::clone(&entry.body), lines))
+    }
+
+    /// The text watermark the header part `relationship_id` points at
+    /// carries, if any. Answered from the story cache while the part is
+    /// unchanged, so the part's XML is read once per edit of it.
+    fn header_watermark_for_reference(&self, relationship_id: &str) -> Option<Rc<HeaderWatermark>> {
+        let path = self.hf_part_path_for_reference(relationship_id)?;
+        if let Some(part) = self.parts.get(&path) {
+            if let Some(source) = part.parsed_document.as_ref() {
+                if self
+                    .header_footer_story_for_reference(relationship_id, false)
+                    .is_some()
+                {
+                    let mut cache = self.hf_story_cache.borrow_mut();
+                    if let Some(entry) = cache
+                        .get_mut(&path)
+                        .filter(|entry| Rc::ptr_eq(&entry.source, source))
+                    {
+                        return entry
+                            .watermark
+                            .get_or_insert_with(|| Self::header_watermark_from_xml(&part.content))
+                            .clone();
+                    }
+                }
+            }
+            // Not memoised: a loaded header always has its parse, so this is
+            // a part just written and not yet reparsed, whose XML may change
+            // again; the `textpath` check keeps headers without a watermark
+            // from being parsed at all.
+            return Self::header_watermark_from_xml(&part.content);
+        }
+        let content = self.read_xml_part_content(&path)?;
+        Self::header_watermark_from_xml(&content)
+    }
+
+    fn header_watermark_from_xml(xml: &str) -> Option<Rc<HeaderWatermark>> {
+        // Most headers have no text path: skip parsing them.
+        if !xml.contains("textpath") {
+            return None;
+        }
+        Self::watermark_from_xml(xml).map(|(text, style)| Rc::new(HeaderWatermark { text, style }))
     }
 
     /// The package path of the header/footer part a main-document
@@ -2301,9 +2472,10 @@ impl WordDocument {
     }
 
     /// `true` when `part_path` is the part the document-wide `header_lines*`
-    /// / `footer_lines*` fields describe: the story the body-level `sectPr`
-    /// (or a part created while editing) references. Earlier sections may own
-    /// other parts, which those fields never mirror.
+    /// / `footer_lines*` fields describe (see
+    /// [`document_wide_lines_hf_reference`]), or a part created while
+    /// editing. Earlier sections may own other parts, which those fields
+    /// never mirror.
     fn hf_part_is_document_wide(
         &self,
         role: HeaderFooterRole,
@@ -2313,7 +2485,7 @@ impl WordDocument {
         let Some(document) = self.document.as_deref() else {
             return true;
         };
-        match pick_hf_reference(document, role, variant)
+        match document_wide_lines_hf_reference(document, role, variant)
             .and_then(|reference| self.hf_part_path_for_reference(&reference))
         {
             Some(path) => path == part_path,
@@ -2364,8 +2536,7 @@ impl WordDocument {
                 return Some(lines.clone());
             }
         }
-        let body = self.header_footer_body_for_reference(&reference)?;
-        Some(Self::extract_text_lines_from_body(&body, true))
+        self.header_footer_story_for_reference(&reference, true)?.1
     }
 
     /// Header/footer stories per section (see [`SectionHeaderFooters`]).
@@ -2379,15 +2550,15 @@ impl WordDocument {
         let section_count = document.sections.len().max(1);
         let mut resolved: Vec<SectionHeaderFooters> = Vec::with_capacity(section_count);
         for index in 0..section_count {
-            let story = |role, variant| -> (Option<Vec<HeaderLine>>, Option<Body>) {
+            let story = |role, variant| -> (Option<Vec<HeaderLine>>, Option<Rc<Body>>) {
                 let Some(reference) = hf_reference_for_section(document, index, role, variant)
                 else {
                     return (None, None);
                 };
-                let body = self.header_footer_body_for_reference(&reference);
-                let lines = body
-                    .as_ref()
-                    .map(|body| Self::extract_text_lines_from_body(body, true));
+                let (body, lines) = match self.header_footer_story_for_reference(&reference, true) {
+                    Some((body, lines)) => (Some(body), lines),
+                    None => (None, None),
+                };
                 if lines.is_some() {
                     return (lines, body);
                 }
@@ -2396,7 +2567,8 @@ impl WordDocument {
                 // section resolves to that same document-wide reference, use
                 // those lines so the fresh story renders (and pushes the body)
                 // immediately.
-                if pick_hf_reference(document, role, variant).as_deref() == Some(reference.as_str())
+                if document_wide_lines_hf_reference(document, role, variant).as_deref()
+                    == Some(reference.as_str())
                 {
                     let seeded = match (role, variant) {
                         (HeaderFooterRole::Header, HeaderFooterVariant::Default) => {
@@ -2434,6 +2606,13 @@ impl WordDocument {
                 story(HeaderFooterRole::Header, HeaderFooterVariant::Even);
             let (footer_even, footer_body_even) =
                 story(HeaderFooterRole::Footer, HeaderFooterVariant::Even);
+            let watermark = |variant| {
+                hf_reference_for_section(document, index, HeaderFooterRole::Header, variant)
+                    .and_then(|reference| self.header_watermark_for_reference(&reference))
+            };
+            let header_watermark = watermark(HeaderFooterVariant::Default);
+            let header_watermark_first = watermark(HeaderFooterVariant::First);
+            let header_watermark_even = watermark(HeaderFooterVariant::Even);
             let title_page = document
                 .sections
                 .get(index)
@@ -2453,6 +2632,9 @@ impl WordDocument {
                 footer_body_first,
                 header_body_even,
                 footer_body_even,
+                header_watermark,
+                header_watermark_first,
+                header_watermark_even,
                 title_page,
             });
         }
@@ -2468,6 +2650,16 @@ impl WordDocument {
 
     /// Loads the semantic model needed for initial rendering while deferring the
     /// preservation-oriented XML tree until the first edit or export.
+    ///
+    /// Until [`Self::ensure_roundtrip_xml`] runs, readers backed by the tree
+    /// see nothing of it: content controls, legacy form fields, fields,
+    /// tables of contents, cross-reference targets, paragraph-mark revisions,
+    /// headings collapsed by default, editable ranges, alt text, rendered
+    /// paragraph lengths, and the XML half of paragraph and table formats.
+    /// Edits through the headless API, the command executor and story
+    /// replacement build the tree first; [`Self::export_docx`] before it
+    /// writes the document as loaded. A document whose first paint depends
+    /// on the tree (a legacy check box, an HTML altChunk) gets it here.
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all, fields(data_len = data.len())))]
     pub async fn load_for_initial_render(
         data: &[u8],
@@ -2489,6 +2681,7 @@ impl WordDocument {
         let mut document = WordDocument {
             package: Some(package),
             settings_protection_mention_cache: RefCell::new(None),
+            hf_story_cache: RefCell::default(),
             source_archive: Some(Rc::from(data)),
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
@@ -2499,6 +2692,7 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             body_surface_indices: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
+            rendered_field_lengths: RenderedFieldLengths::default(),
             revision_session: None,
             protection_lifted: false,
             opened_read_only: false,
@@ -2570,6 +2764,13 @@ impl WordDocument {
             // When the raw tree is needed, one tokenization feeds both the
             // layout model and the lossless tree patched on save. Initial
             // rendering can defer building that tree until the first edit.
+            // Some parts of the first paint come from the tree, or are spliced
+            // into the body before node ids are attached by position, so a
+            // document with them builds the tree now: a legacy check box draws
+            // its box from a result only the tree supplies, and an HTML
+            // altChunk inserts paragraphs that a later attach would misalign.
+            let parse_roundtrip_xml =
+                parse_roundtrip_xml || Self::first_paint_needs_roundtrip_xml(&doc_part.content);
             let mut parsed_doc = if parse_roundtrip_xml {
                 let (parsed_doc, raw_document) =
                     parser.parse_document_xml_with_raw_tree(&doc_part.content)?;
@@ -2612,14 +2813,18 @@ impl WordDocument {
             let theme_part = reading_theme.clone();
             let mut font_table_part: Option<jade_docx_reader::FontTablePart> = None;
 
-            // `parsed_doc.header_reference` / `footer_reference` only track the
-            // default variant. First-page and even-page variants live on the
-            // document's default section; resolve them from there.
+            // The document-wide lines mirror the stories named by
+            // `document_wide_lines_hf_reference`: the default story the last
+            // section shows (a linked last section declares none of its
+            // own), and the first-page/even-page variants it declares.
             let default_section = parsed_doc.default_section.as_ref();
-            let header_first_ref = default_section.and_then(|s| s.header_reference_first.clone());
-            let footer_first_ref = default_section.and_then(|s| s.footer_reference_first.clone());
-            let header_even_ref = default_section.and_then(|s| s.header_reference_even.clone());
-            let footer_even_ref = default_section.and_then(|s| s.footer_reference_even.clone());
+            let wide = |role, variant| document_wide_lines_hf_reference(&parsed_doc, role, variant);
+            let header_ref = wide(HeaderFooterRole::Header, HeaderFooterVariant::Default);
+            let footer_ref = wide(HeaderFooterRole::Footer, HeaderFooterVariant::Default);
+            let header_first_ref = wide(HeaderFooterRole::Header, HeaderFooterVariant::First);
+            let footer_first_ref = wide(HeaderFooterRole::Footer, HeaderFooterVariant::First);
+            let header_even_ref = wide(HeaderFooterRole::Header, HeaderFooterVariant::Even);
+            let footer_even_ref = wide(HeaderFooterRole::Footer, HeaderFooterVariant::Even);
             let doc_title_page = default_section.map(|s| s.title_page).unwrap_or(false);
 
             let load_header_lines =
@@ -2779,6 +2984,9 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         let mut notes = parser.parse_notes_xml(&part.content, b"w:footnote")?;
                         Self::capture_note_run_props(&mut notes, &part.content, "w:footnote");
+                        if let Some(package) = document.package.as_ref() {
+                            Self::resolve_note_images(&mut notes, part, package);
+                        }
                         footnotes_map = notes
                             .into_iter()
                             .map(|note| (note.id.clone(), note))
@@ -2793,6 +3001,9 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         let mut notes = parser.parse_notes_xml(&part.content, b"w:endnote")?;
                         Self::capture_note_run_props(&mut notes, &part.content, "w:endnote");
+                        if let Some(package) = document.package.as_ref() {
+                            Self::resolve_note_images(&mut notes, part, package);
+                        }
                         endnotes_map = notes
                             .into_iter()
                             .map(|note| (note.id.clone(), note))
@@ -2858,13 +3069,13 @@ impl WordDocument {
             // results from leaking through outside the main body.
             let header_lines = load_header_lines(
                 &mut document,
-                parsed_doc.header_reference.clone(),
+                header_ref,
                 &doc_settings.document_variables,
                 theme_part.as_ref(),
             )?;
             let footer_lines = load_header_lines(
                 &mut document,
-                parsed_doc.footer_reference.clone(),
+                footer_ref,
                 &doc_settings.document_variables,
                 theme_part.as_ref(),
             )?;
@@ -3023,8 +3234,22 @@ impl WordDocument {
 
     /// Materializes the preservation-oriented XML tree and links its node IDs
     /// to the already parsed semantic document. This is idempotent.
+    #[inline]
     pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
+        // Every edit asks; once built, the answer must cost no more than
+        // this check, and the build stays out of the caller's code.
         if self.raw_document.is_some() {
+            return Ok(false);
+        }
+        self.build_deferred_roundtrip_xml()
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn build_deferred_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
+        // A document built in memory, or a package without a main part, has
+        // no source XML to build a tree from.
+        if self.document_part.is_none() {
             return Ok(false);
         }
         let doc_part = self
@@ -3034,6 +3259,12 @@ impl WordDocument {
         let raw_xml = DocxXmlDocument::parse(&doc_part.content)?;
         self.attach_roundtrip_xml(raw_xml)?;
         Ok(true)
+    }
+
+    /// Whether `document.xml` holds something the deferred tree would get
+    /// wrong: see [`Self::load_for_initial_render`].
+    fn first_paint_needs_roundtrip_xml(document_xml: &str) -> bool {
+        document_xml.contains("FORMCHECKBOX") || document_xml.contains("altChunk")
     }
 
     pub(crate) fn attach_roundtrip_xml(
@@ -3059,6 +3290,9 @@ impl WordDocument {
         let text_metrics_cache = self.text_metrics_cache.get_mut().clone();
         self.rebuild_paragraph_surfaces();
         *self.text_metrics_cache.get_mut() = text_metrics_cache;
+        // The counter was read at load from a tree that was not there, so
+        // the next tracked change would reuse the ids the file already has.
+        self.refresh_revision_counter();
         Ok(())
     }
 
@@ -5361,6 +5595,7 @@ impl WordDocument {
         let mut doc = Self {
             package: None,
             settings_protection_mention_cache: RefCell::new(None),
+            hf_story_cache: RefCell::default(),
             source_archive: None,
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
@@ -5371,6 +5606,7 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             body_surface_indices: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
+            rendered_field_lengths: RenderedFieldLengths::default(),
             revision_session: None,
             protection_lifted: false,
             opened_read_only: false,
@@ -6460,18 +6696,29 @@ impl WordDocument {
         let Some(raw) = self.raw_document.as_mut() else {
             return Ok(());
         };
+        let twips = columns.iter().map(|column| {
+            column
+                .width
+                .filter(|width| width.is_finite())
+                .map(|width| (f64::from(width.max(0.0)) * 20.0).round() as i32)
+        });
+        Self::write_table_grid(raw, node_id, twips)
+    }
+
+    fn write_table_grid(
+        raw: &mut DocxXmlDocument,
+        node_id: XmlNodeId,
+        columns: impl IntoIterator<Item = Option<i32>>,
+    ) -> Result<(), DocxXmlError> {
         let mut grid_element = raw.create_element("w:tblGrid", Vec::new(), Vec::new());
-        for column in columns {
-            let mut attributes = Vec::new();
-            if let Some(width) = column.width {
-                if width.is_finite() {
-                    let dxa = ((width.max(0.0) as f64) * 20.0).round() as i32;
-                    attributes.push(XmlAttribute {
-                        name: "w:w".to_string(),
-                        value: dxa.to_string(),
-                    });
-                }
-            }
+        for width in columns {
+            let attributes = width
+                .map(|width| XmlAttribute {
+                    name: "w:w".to_string(),
+                    value: width.to_string(),
+                })
+                .into_iter()
+                .collect();
             let grid_col = raw.create_element("w:gridCol", attributes, Vec::new());
             grid_element.children.push(XmlNode::Element(grid_col));
         }
@@ -6495,7 +6742,14 @@ impl WordDocument {
         }
 
         if let Some(idx) = grid_index {
-            table_element.children[idx] = XmlNode::Element(grid_element);
+            let XmlNode::Element(grid) = &mut table_element.children[idx] else {
+                unreachable!("the grid index points to an element");
+            };
+            // The active column widths can change without discarding the
+            // earlier grid stored inside w:tblGridChange.
+            grid.children
+                .retain(|child| !matches!(child, XmlNode::Element(col) if col.name == "w:gridCol"));
+            grid.children.splice(..0, grid_element.children);
         } else {
             let insert_at = match insert_index {
                 Some(idx) => idx,
@@ -6611,7 +6865,8 @@ impl WordDocument {
                 let ids = reserved_ids
                     .next()
                     .ok_or_else(|| "table cell width node ids were not reserved".to_string())?;
-                Self::apply_table_cell_width_element(cell, width, ids);
+                let twips = width.map(|width| (f64::from(width) * 20.0).round() as i32);
+                Self::apply_table_cell_width_element(cell, twips, ids);
             }
         }
         raw.rebuild_index();
@@ -6693,13 +6948,13 @@ impl WordDocument {
 
     fn apply_table_cell_width_element(
         cell: &mut XmlElement,
-        width: Option<f32>,
+        twips: Option<i32>,
         (tc_pr_id, tc_w_id): (XmlNodeId, XmlNodeId),
     ) {
         let tc_pr_index = cell.children.iter().position(
             |child| matches!(child, XmlNode::Element(element) if element.name == "w:tcPr"),
         );
-        let tc_pr_index = match (tc_pr_index, width) {
+        let tc_pr_index = match (tc_pr_index, twips) {
             (Some(index), _) => index,
             (None, Some(_)) => {
                 cell.children.insert(
@@ -6721,7 +6976,7 @@ impl WordDocument {
         tc_pr
             .children
             .retain(|child| !matches!(child, XmlNode::Element(element) if element.name == "w:tcW"));
-        if let Some(width) = width {
+        if let Some(twips) = twips {
             tc_pr.children.insert(
                 0,
                 XmlNode::Element(XmlElement {
@@ -6734,7 +6989,7 @@ impl WordDocument {
                         },
                         XmlAttribute {
                             name: "w:w".to_string(),
-                            value: ((width as f64 * 20.0).round() as i32).to_string(),
+                            value: twips.to_string(),
                         },
                     ],
                     children: Vec::new(),
@@ -7617,6 +7872,32 @@ impl WordDocument {
         );
     }
 
+    /// A note's pictures are related from its notes part, not the document.
+    fn resolve_note_images(
+        notes: &mut [crate::document::Note],
+        part: &DocumentPart,
+        package: &OpenXmlPackage,
+    ) {
+        let rel_map: HashMap<&str, &Relationship> = part
+            .relationships
+            .iter()
+            .map(|rel| (rel.id.as_str(), rel))
+            .collect();
+        let mut metafile_cache = HashMap::new();
+        for note in notes {
+            for element in &mut note.body {
+                Self::resolve_images_in_element(
+                    element,
+                    part,
+                    package,
+                    &rel_map,
+                    &mut metafile_cache,
+                    &mut Self::try_convert_metafile_to_svg_data_uri,
+                );
+            }
+        }
+    }
+
     fn resolve_images_with_converter(
         document: &mut Document,
         doc_part: &DocumentPart,
@@ -8161,6 +8442,19 @@ impl WordDocument {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
+                    // A text box's pictures are related from the same part.
+                    if let Some(text_box) = run.text_box.as_mut() {
+                        for block in &mut text_box.blocks {
+                            Self::resolve_images_in_element(
+                                block,
+                                doc_part,
+                                package,
+                                rel_map,
+                                metafile_cache,
+                                convert_metafile,
+                            );
+                        }
+                    }
                     if let Some(group) = run
                         .image
                         .as_mut()
@@ -9319,6 +9613,7 @@ impl WordDocument {
                 _ => return Ok(false),
             }
         };
+        self.carry_stories_into_following_section(body_index, paragraph_id)?;
         if let (Some(raw), Some(paragraph_id)) = (self.raw_document.as_mut(), paragraph_id) {
             if let Some(sect_pr_id) = Self::paragraph_section_properties_id(raw, paragraph_id) {
                 let path = raw
@@ -9341,6 +9636,171 @@ impl WordDocument {
         }
         Self::rebuild_section_ranges(document);
         Ok(true)
+    }
+
+    /// Gives the section after the break on body paragraph `body_index` the
+    /// headers and footers of the section that break ends wherever it names
+    /// none of its own, before the two are joined. Linked (前と同じ), it
+    /// showed them; Word keeps showing them once the break is gone, where
+    /// joined without them it showed the stories of a section further back,
+    /// or none.
+    fn carry_stories_into_following_section(
+        &mut self,
+        body_index: usize,
+        paragraph_id: Option<XmlNodeId>,
+    ) -> Result<(), String> {
+        let (ending, following) = {
+            let Some(body) = self
+                .document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+            else {
+                return Ok(());
+            };
+            let section_of = |index: usize| match body.elements.get(index) {
+                Some(BodyElement::Paragraph(paragraph)) => paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.section.clone())
+                    .map(|section| (section, paragraph.node_id)),
+                _ => None,
+            };
+            let Some((ending, _)) = section_of(body_index) else {
+                return Ok(());
+            };
+            let following =
+                (body_index + 1..body.elements.len()).find(|&index| section_of(index).is_some());
+            (ending, following)
+        };
+        // The model: the following section's mark, or the final section.
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let into = match following {
+            Some(index) => match document
+                .body
+                .as_mut()
+                .and_then(|body| body.elements.get_mut(index))
+            {
+                Some(BodyElement::Paragraph(paragraph)) => paragraph
+                    .properties
+                    .as_mut()
+                    .and_then(|props| props.section.as_mut()),
+                _ => None,
+            },
+            None => document.default_section.as_mut(),
+        };
+        if let Some(into) = into {
+            Self::fill_missing_story_references(into, &ending);
+        }
+        // The XML: references the following `w:sectPr` lacks, copied whole.
+        let Some(paragraph_id) = paragraph_id else {
+            return Ok(());
+        };
+        let following_id = match following {
+            Some(index) => self
+                .document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+                .and_then(|body| match body.elements.get(index) {
+                    Some(BodyElement::Paragraph(paragraph)) => paragraph.node_id,
+                    _ => None,
+                })
+                .and_then(|id| {
+                    self.raw_document
+                        .as_ref()
+                        .and_then(|raw| Self::paragraph_section_properties_id(raw, id))
+                }),
+            None => self.ensure_default_sect_pr_id()?,
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return Ok(());
+        };
+        let (Some(from_id), Some(into_id)) = (
+            Self::paragraph_section_properties_id(raw, paragraph_id),
+            following_id,
+        ) else {
+            return Ok(());
+        };
+        let Some(from) = raw.element(from_id).cloned() else {
+            return Ok(());
+        };
+        Self::carry_story_references_raw(raw, &from, into_id)
+    }
+
+    /// Fills each header and footer reference `into` leaves unset from `from`.
+    fn fill_missing_story_references(into: &mut SectionProperties, from: &SectionProperties) {
+        for (into, from) in [
+            (&mut into.header_reference, &from.header_reference),
+            (&mut into.footer_reference, &from.footer_reference),
+            (
+                &mut into.header_reference_first,
+                &from.header_reference_first,
+            ),
+            (
+                &mut into.footer_reference_first,
+                &from.footer_reference_first,
+            ),
+            (&mut into.header_reference_even, &from.header_reference_even),
+            (&mut into.footer_reference_even, &from.footer_reference_even),
+        ] {
+            if into.is_none() {
+                into.clone_from(from);
+            }
+        }
+    }
+
+    /// Copies into `w:sectPr` `into_id` each header and footer reference of
+    /// `from` whose kind and variant it does not name, ahead of its other
+    /// children as the schema orders them.
+    fn carry_story_references_raw(
+        raw: &mut DocxXmlDocument,
+        from: &XmlElement,
+        into_id: XmlNodeId,
+    ) -> Result<(), String> {
+        let is_reference = |name: &str| name == "w:headerReference" || name == "w:footerReference";
+        let kind = |element: &XmlElement| {
+            element
+                .attributes
+                .iter()
+                .find(|attribute| attribute.name == "w:type")
+                .map_or_else(
+                    || "default".to_string(),
+                    |attribute| attribute.value.clone(),
+                )
+        };
+        let Some(into) = raw.element(into_id) else {
+            return Ok(());
+        };
+        let named: HashSet<(String, String)> = into
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) if is_reference(&element.name) => {
+                    Some((element.name.clone(), kind(element)))
+                }
+                _ => None,
+            })
+            .collect();
+        let missing: Vec<XmlElement> = from
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element)
+                    if is_reference(&element.name)
+                        && !named.contains(&(element.name.clone(), kind(element))) =>
+                {
+                    Some(element.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        for (index, reference) in missing.into_iter().enumerate() {
+            let copy = raw.create_element(reference.name, reference.attributes, Vec::new());
+            raw.insert_node(into_id, index, XmlNode::Element(copy))
+                .map_err(|error| error.to_string())?;
+        }
+        Ok(())
     }
 
     /// Moves the section break of top-level body paragraph `from` (its
@@ -9390,9 +9850,30 @@ impl WordDocument {
                 paragraph(to_body_index)?.node_id,
             )
         };
-        let Some(section) = section else {
+        let Some(mut section) = section else {
             return self.remove_section_break_at_paragraph(to);
         };
+        // A break on `to` goes, its section joining `from`'s, which keeps the
+        // headers and footers it showed through the link.
+        let ending = self
+            .document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| match body.elements.get(to_body_index) {
+                Some(BodyElement::Paragraph(paragraph)) => paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.section.clone()),
+                _ => None,
+            });
+        let ending_raw = match (self.raw_document.as_ref(), to_id) {
+            (Some(raw), Some(to_id)) => Self::paragraph_section_properties_id(raw, to_id)
+                .and_then(|id| raw.element(id).cloned()),
+            _ => None,
+        };
+        if let Some(ending) = ending.as_ref() {
+            Self::fill_missing_story_references(&mut section, ending);
+        }
 
         if let (Some(raw), Some(from_id), Some(to_id)) =
             (self.raw_document.as_ref(), from_id, to_id)
@@ -9410,6 +9891,12 @@ impl WordDocument {
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+            if let (Some(ending), Some(moved)) = (
+                ending_raw.as_ref(),
+                Self::paragraph_section_properties_id(raw, to_id),
+            ) {
+                Self::carry_story_references_raw(raw, ending, moved)?;
+            }
             let path = raw
                 .path(sect_pr_id)
                 .ok_or_else(|| "section properties are not indexed".to_string())?;
@@ -10072,23 +10559,22 @@ impl WordDocument {
             return Ok(false);
         }
 
+        // Word's 透かし command writes every header of every section: a
+        // section with its own (unlinked) header shows the watermark too,
+        // and a header a page shows but the package lacks is created.
         if normalized.is_some() {
-            self.ensure_hf_part_for_edit(HeaderFooterRole::Header, HeaderFooterVariant::Default)?;
+            for (section, variant) in self.missing_watermark_header_slots() {
+                let previous = std::mem::replace(&mut self.hf_edit_section, section);
+                let created = self.ensure_hf_part_for_edit(HeaderFooterRole::Header, variant);
+                self.hf_edit_section = previous;
+                created?;
+            }
         }
 
-        for variant in [
-            HeaderFooterVariant::Default,
-            HeaderFooterVariant::First,
-            HeaderFooterVariant::Even,
-        ] {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
-                .is_some();
-            if present {
-                self.sync_watermark_to_header_variant(variant, normalized.as_ref())?;
-            }
+        for reference in self.watermark_header_references() {
+            let path =
+                self.resolve_header_footer_reference_path(HeaderFooterRole::Header, &reference)?;
+            self.sync_watermark_to_header_part(&path, normalized.as_ref())?;
         }
 
         if let Some(document) = self.document_mut() {
@@ -10190,21 +10676,12 @@ impl WordDocument {
         &mut self,
         expected: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> bool {
-        for variant in [
-            HeaderFooterVariant::Default,
-            HeaderFooterVariant::First,
-            HeaderFooterVariant::Even,
-        ] {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
-                .is_some();
-            if !present {
-                continue;
-            }
+        if expected.is_some() && !self.missing_watermark_header_slots().is_empty() {
+            return false;
+        }
+        for reference in self.watermark_header_references() {
             let Ok(path) =
-                self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)
+                self.resolve_header_footer_reference_path(HeaderFooterRole::Header, &reference)
             else {
                 return false;
             };
@@ -10226,6 +10703,84 @@ impl WordDocument {
         true
     }
 
+    /// Every header part a page of the document can show: each section's
+    /// default, first-page and even-page header after "link to previous",
+    /// each part once, in document order.
+    fn watermark_header_references(&self) -> Vec<String> {
+        let Some(document) = self.document.as_deref() else {
+            return Vec::new();
+        };
+        let mut references: Vec<String> = Vec::new();
+        for section in 0..document.sections.len().max(1) {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                if let Some(reference) =
+                    hf_reference_for_section(document, section, HeaderFooterRole::Header, variant)
+                {
+                    if !references.contains(&reference) {
+                        references.push(reference);
+                    }
+                }
+            }
+        }
+        references
+    }
+
+    /// The headers pages show blank because no section up to theirs
+    /// declares one: the default header, the first-page header of a section
+    /// with a title page, and the even-page header with different odd and
+    /// even pages. Setting a watermark creates them, as Word's command does.
+    /// A header created for the first section lacking one serves the linked
+    /// sections after it, so each kind is listed once, with the section to
+    /// create it in (`None`: the document-wide section of a document without
+    /// section ranges). Kinds no page shows are not created.
+    fn missing_watermark_header_slots(&self) -> Vec<(Option<usize>, HeaderFooterVariant)> {
+        let Some(document) = self.document.as_deref() else {
+            return Vec::new();
+        };
+        let mut slots = Vec::new();
+        for variant in [
+            HeaderFooterVariant::Default,
+            HeaderFooterVariant::First,
+            HeaderFooterVariant::Even,
+        ] {
+            let in_use = |title_page: bool| match variant {
+                HeaderFooterVariant::Default => true,
+                HeaderFooterVariant::First => title_page,
+                HeaderFooterVariant::Even => self.even_and_odd_headers,
+            };
+            if document.sections.is_empty() {
+                if in_use(self.title_page)
+                    && pick_hf_reference(document, HeaderFooterRole::Header, variant).is_none()
+                {
+                    slots.push((None, variant));
+                }
+                continue;
+            }
+            let first_in_use = (0..document.sections.len()).find(|&section| {
+                let title_page = document.sections[section]
+                    .properties
+                    .as_ref()
+                    .is_some_and(|properties| properties.title_page);
+                in_use(title_page)
+                    && hf_reference_for_section(
+                        document,
+                        section,
+                        HeaderFooterRole::Header,
+                        variant,
+                    )
+                    .is_none()
+            });
+            if let Some(section) = first_in_use {
+                slots.push((Some(section), variant));
+            }
+        }
+        slots
+    }
+
     fn watermark_from_loaded_headers(
         document: &WordDocument,
         parsed_document: &Document,
@@ -10237,7 +10792,7 @@ impl WordDocument {
             HeaderFooterVariant::Even,
         ] {
             let Some(reference_id) =
-                pick_hf_reference(parsed_document, HeaderFooterRole::Header, variant)
+                document_wide_hf_reference(parsed_document, HeaderFooterRole::Header, variant)
             else {
                 continue;
             };
@@ -10365,9 +10920,18 @@ impl WordDocument {
         variant: HeaderFooterVariant,
         watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> Result<(), String> {
-        let text = watermark.map(|(text, _)| text.as_str());
         let part_path =
             self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)?;
+        self.sync_watermark_to_header_part(&part_path, watermark)
+    }
+
+    fn sync_watermark_to_header_part(
+        &mut self,
+        part_path: &str,
+        watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
+    ) -> Result<(), String> {
+        let text = watermark.map(|(text, _)| text.as_str());
+        let part_path = part_path.to_string();
         let existing = self
             .read_xml_part_content(&part_path)
             .ok_or_else(|| format!("missing {part_path}"))?;
@@ -10445,7 +11009,14 @@ impl WordDocument {
 
         let serialized = xml.to_string().map_err(|error| error.to_string())?;
         self.upsert_xml_part_content(&part_path, serialized);
-        self.refresh_header_footer_lines_for(HeaderFooterRole::Header, variant, &part_path)
+        // One part can serve several variants and sections. The refresh
+        // reparses the part and updates every variant that shows it, so the
+        // variant passed here is never read (its parameter is unused).
+        self.refresh_header_footer_lines_for(
+            HeaderFooterRole::Header,
+            HeaderFooterVariant::Default,
+            &part_path,
+        )
     }
 
     fn build_watermark_run(
@@ -10714,22 +11285,37 @@ impl WordDocument {
         }
         let mut normalized = spec.map(PageBorderSpec::normalized).transpose()?;
         if let Some(borders) = normalized.as_mut() {
+            let current = self.page_borders(section);
+            // The frame dialog does not edit which pages carry the frame
+            // (`w:display`) or whether it sits behind text (`w:zOrder`):
+            // keep the section's own values.
+            if let Some(current) = current {
+                borders.display = current.display.clone();
+                borders.z_order = current.z_order.clone();
+            }
             // Word uses edge-local `w:space` even though the UI exposes one
-            // frame anchor. Make the authored default explicit so export and
-            // reopen retain exactly the geometry Jade renders.
-            let default_space = if borders.offset_from.as_deref() == Some("page") {
-                24
-            } else {
-                0
+            // frame anchor. An edge measured from the same reference keeps
+            // its authored space; any other takes Word's default for the
+            // anchor (24pt from the page edge; 1pt above and below the text,
+            // 4pt beside it), written out so export and reopen retain exactly
+            // the geometry Jade renders.
+            let anchored_to_page = |offset_from: Option<&str>| offset_from == Some("page");
+            let page = anchored_to_page(borders.offset_from.as_deref());
+            let kept =
+                current.filter(|current| anchored_to_page(current.offset_from.as_deref()) == page);
+            let current_space = |edge: fn(&PageBorders) -> &Option<BorderEdge>| {
+                kept.and_then(|current| edge(current).as_ref())
+                    .and_then(|edge| edge.space)
             };
-            for edge in [
-                &mut borders.top,
-                &mut borders.bottom,
-                &mut borders.left,
-                &mut borders.right,
+            for (edge, current, text_default) in [
+                (&mut borders.top, current_space(|b| &b.top), 1),
+                (&mut borders.bottom, current_space(|b| &b.bottom), 1),
+                (&mut borders.left, current_space(|b| &b.left), 4),
+                (&mut borders.right, current_space(|b| &b.right), 4),
             ] {
                 if let Some(edge) = edge.as_mut() {
-                    edge.space = Some(default_space);
+                    let default = if page { 24 } else { text_default };
+                    edge.space = Some(current.unwrap_or(default));
                 }
             }
         }
@@ -10738,28 +11324,12 @@ impl WordDocument {
         }
 
         self.sync_page_borders_raw(section, normalized.as_ref())?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self
-            .document_mut()
+        self.document
+            .as_ref()
             .ok_or_else(|| "document is unavailable".to_string())?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .page_borders = normalized.clone();
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .page_borders = normalized.clone();
-            if let Some(last_section) = document.sections.last_mut() {
-                last_section
-                    .properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .page_borders = normalized;
-            }
-        }
+        self.edit_section_properties(section, |properties| {
+            properties.page_borders = normalized.clone()
+        });
         Ok(true)
     }
 
@@ -10829,28 +11399,12 @@ impl WordDocument {
             Self::set_element_attr(element, "w:start", start.map(|value| value.to_string()));
         })?;
 
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self
-            .document_mut()
+        self.document
+            .as_ref()
             .ok_or_else(|| "document is unavailable".to_string())?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .page_number_type = Some(next.clone());
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .page_number_type = Some(next.clone());
-            if let Some(last_section) = document.sections.last_mut() {
-                last_section
-                    .properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .page_number_type = Some(next);
-            }
-        }
+        self.edit_section_properties(section, |properties| {
+            properties.page_number_type = Some(next.clone())
+        });
         Ok(true)
     }
 
@@ -10912,25 +11466,12 @@ impl WordDocument {
                 properties.children.insert(0, XmlNode::Element(fresh));
             }
         })?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self.document_mut().ok_or("document is unavailable")?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .endnote_position = Some(position);
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .endnote_position = Some(position);
-            if let Some(last) = document.sections.last_mut() {
-                last.properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .endnote_position = Some(position);
-            }
-        }
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
+            properties.endnote_position = Some(position)
+        });
         Ok(true)
     }
 
@@ -11039,35 +11580,16 @@ impl WordDocument {
                 }
             }
         })?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self.document_mut().ok_or("document is unavailable")?;
-        let update = |properties: &mut SectionProperties| {
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
             if is_footnote {
                 properties.footnote_properties = Some(next.clone());
             } else {
                 properties.endnote_properties = Some(next.clone());
             }
-        };
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            update(
-                range
-                    .properties
-                    .get_or_insert_with(SectionProperties::default),
-            );
-        }
-        if targets_default {
-            update(
-                document
-                    .default_section
-                    .get_or_insert_with(SectionProperties::default),
-            );
-            if let Some(last) = document.sections.last_mut() {
-                update(
-                    last.properties
-                        .get_or_insert_with(SectionProperties::default),
-                );
-            }
-        }
+        });
         self.refresh_note_cross_references();
         Ok(true)
     }
@@ -11662,7 +12184,6 @@ impl WordDocument {
                     ("w:gutter", "0"),
                 ]),
             ),
-            ("w:cols", attributes(&[("w:space", "425")])),
             (
                 "w:docGrid",
                 attributes(&[("w:type", "lines"), ("w:linePitch", "360")]),
@@ -11919,16 +12440,24 @@ impl WordDocument {
                 )));
             }
         }
-        let offset_from = borders.offset_from.clone();
+        let container_attributes = [
+            ("w:zOrder", borders.z_order.clone()),
+            ("w:display", borders.display.clone()),
+            ("w:offsetFrom", borders.offset_from.clone()),
+        ];
         self.upsert_sect_pr_child(sect_pr_id, "w:pgBorders", move |element| {
-            element
-                .attributes
-                .retain(|attribute| attribute.name != "w:offsetFrom");
-            if let Some(offset_from) = offset_from {
-                element.attributes.push(XmlAttribute {
-                    name: "w:offsetFrom".to_string(),
-                    value: offset_from,
-                });
+            element.attributes.retain(|attribute| {
+                !container_attributes
+                    .iter()
+                    .any(|(name, _)| attribute.name == *name)
+            });
+            for (name, value) in container_attributes {
+                if let Some(value) = value {
+                    element.attributes.push(XmlAttribute {
+                        name: name.to_string(),
+                        value,
+                    });
+                }
             }
             let mut extensions = std::mem::take(&mut element.children)
                 .into_iter()
@@ -12071,14 +12600,86 @@ impl WordDocument {
     }
 
     pub fn export_docx(&self) -> Result<Vec<u8>, DocxExportError> {
+        self.export_docx_with_table_grids(&[])
+    }
+
+    /// Writes resolved column widths in twips for tables in the main XML part.
+    /// A fixed table saves automatic cell widths from its authored grid. The
+    /// live model and explicitly preferred widths are kept.
+    pub fn export_docx_with_table_grids(
+        &self,
+        grids: &[(XmlNodeId, Vec<i32>)],
+    ) -> Result<Vec<u8>, DocxExportError> {
+        #[cfg(debug_assertions)]
+        self.debug_check_section_ranges_are_derived();
         let package = self
             .package
             .as_ref()
             .ok_or(DocxExportError::MissingPackage)?;
-        let raw_document = self
-            .raw_document
-            .as_ref()
-            .ok_or(DocxExportError::MissingRawDocument)?;
+        // A deferred load that has not built its tree has not been edited
+        // either (edits need the tree), so the source XML parsed afresh is the
+        // tree it would have.
+        let mut raw_document = match self.raw_document.as_ref() {
+            Some(raw) => Cow::Borrowed(raw),
+            None => {
+                let content = &self
+                    .document_part
+                    .as_ref()
+                    .ok_or(DocxExportError::MissingRawDocument)?
+                    .content;
+                Cow::Owned(
+                    DocxXmlDocument::parse(content)
+                        .map_err(|_| DocxExportError::MissingRawDocument)?,
+                )
+            }
+        };
+
+        for (id, widths) in grids {
+            let Some(table) = raw_document
+                .element(*id)
+                .filter(|table| table.name == "w:tbl")
+            else {
+                continue;
+            };
+            let columns = Self::nth_element_with_name(table, "w:tblGrid", 0);
+            let authored: Vec<_> = columns
+                .into_iter()
+                .flat_map(|grid| {
+                    grid.children.iter().filter_map(|child| match child {
+                        XmlNode::Element(col) if col.name == "w:gridCol" => Some(
+                            col.attributes
+                                .iter()
+                                .find(|attr| attr.name == "w:w")
+                                .and_then(|attr| attr.value.parse::<i32>().ok()),
+                        ),
+                        _ => None,
+                    })
+                })
+                .collect();
+            let automatic = Self::automatic_fixed_table_cell_widths(table, &authored);
+            if !authored
+                .iter()
+                .copied()
+                .eq(widths.iter().copied().map(Some))
+            {
+                Self::write_table_grid(
+                    raw_document.to_mut(),
+                    *id,
+                    widths.iter().copied().map(Some),
+                )?;
+            }
+            if !automatic.is_empty() {
+                let raw = raw_document.to_mut();
+                for (cell_id, twips) in automatic {
+                    let ids = (raw.allocate_node_id(), raw.allocate_node_id());
+                    let cell = raw
+                        .element_mut(cell_id)
+                        .ok_or(DocxXmlError::UnknownNode(cell_id))?;
+                    Self::apply_table_cell_width_element(cell, Some(twips), ids);
+                }
+                raw.rebuild_index();
+            }
+        }
 
         let xml = raw_document.to_string()?;
         let mut overrides = HashMap::new();
@@ -12114,6 +12715,57 @@ impl WordDocument {
                 &self.removed_parts,
             )?
         })
+    }
+
+    fn automatic_fixed_table_cell_widths(
+        table: &XmlElement,
+        grid: &[Option<i32>],
+    ) -> Vec<(XmlNodeId, i32)> {
+        let fixed = Self::nth_element_with_name(table, "w:tblPr", 0)
+            .and_then(|properties| Self::nth_element_with_name(properties, "w:tblLayout", 0))
+            .is_some_and(|layout| {
+                layout
+                    .attributes
+                    .iter()
+                    .any(|attribute| attribute.name == "w:type" && attribute.value == "fixed")
+            });
+        if !fixed {
+            return Vec::new();
+        }
+        let mut automatic = Vec::new();
+        for row in table.children.iter().filter_map(|child| match child {
+            XmlNode::Element(row) if row.name == "w:tr" => Some(row),
+            _ => None,
+        }) {
+            let cells = row.children.iter().filter_map(|child| match child {
+                XmlNode::Element(cell) if cell.name == "w:tc" => Some(cell),
+                _ => None,
+            });
+            if cells.clone().count() != grid.len() {
+                return Vec::new();
+            }
+            for (cell, &width) in cells.zip(grid) {
+                let properties = Self::nth_element_with_name(cell, "w:tcPr", 0);
+                if properties.is_some_and(|properties| {
+                    Self::nth_element_with_name(properties, "w:gridSpan", 0).is_some()
+                        || Self::nth_element_with_name(properties, "w:vMerge", 0).is_some()
+                }) {
+                    return Vec::new();
+                }
+                let preference = properties
+                    .and_then(|properties| Self::nth_element_with_name(properties, "w:tcW", 0));
+                let uses_grid = preference.is_none_or(|preference| {
+                    preference.attributes.iter().any(|attribute| {
+                        attribute.name == "w:type"
+                            && matches!(attribute.value.as_str(), "auto" | "nil")
+                    })
+                });
+                if let Some(width) = width.filter(|width| uses_grid && *width > 0) {
+                    automatic.push((cell.id, width));
+                }
+            }
+        }
+        automatic
     }
 
     pub fn snapshot(&self) -> Option<WordDocumentSnapshot> {
@@ -12225,6 +12877,28 @@ impl WordDocument {
 
     pub fn revision_session(&self) -> Option<&RevisionSession> {
         self.revision_session.as_ref()
+    }
+
+    /// The open session as a change recorded now is stamped with. Without a
+    /// fixed `date` it takes the host clock's current minute (`w:date`, and
+    /// the UTC instant as `w16du:dateUtc` unless that is fixed), so each
+    /// change is dated when it is made, as Word does; read-back revisions
+    /// keep theirs.
+    pub fn recording_revision_session(&self) -> Option<RevisionSession> {
+        let mut session = self.revision_session.clone()?;
+        // CT_TrackChange requires an author on every new revision. Match the
+        // default used when loading a document with change tracking enabled;
+        // starting and editing in one batch must be just as valid after save.
+        if session.author.is_none() {
+            session.author = Some("jade".to_string());
+        }
+        if session.date.is_none() {
+            if let Some((date, date_utc)) = crate::revision_clock::revision_date_now() {
+                session.date = Some(date);
+                session.date_utc.get_or_insert(date_utc);
+            }
+        }
+        Some(session)
     }
 
     pub fn ensure_revision_decision_supported(
@@ -12642,8 +13316,7 @@ impl WordDocument {
         paragraph_index: usize,
     ) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -12772,8 +13445,7 @@ impl WordDocument {
 
     fn mark_deleted_paragraph_break_raw(&mut self, paragraph_index: usize) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -13321,6 +13993,7 @@ impl WordDocument {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -13517,7 +14190,32 @@ impl WordDocument {
         offset: usize,
         text: &str,
     ) -> Result<String, String> {
-        self.insert_note_at(paragraph_index, offset, text, NoteKind::Footnote)
+        self.insert_note_at(paragraph_index, offset, text, NoteKind::Footnote, None)
+    }
+
+    /// A note whose reference is `mark` (Word's 任意の記号) rather than a
+    /// number: `w:customMarkFollows`, with the mark as the reference run's
+    /// text and as the note's first run, in place of `w:footnoteRef`.
+    pub fn insert_note_with_mark_at(
+        &mut self,
+        footnote: bool,
+        paragraph_index: usize,
+        offset: usize,
+        text: &str,
+        mark: &str,
+    ) -> Result<String, String> {
+        if mark.is_empty() {
+            return Err("a custom mark must not be empty".to_string());
+        }
+        if mark.chars().count() > 10 {
+            return Err("a custom mark is at most 10 characters".to_string());
+        }
+        let kind = if footnote {
+            NoteKind::Footnote
+        } else {
+            NoteKind::Endnote
+        };
+        self.insert_note_at(paragraph_index, offset, text, kind, Some(mark))
     }
 
     pub fn insert_endnote_at(
@@ -13526,7 +14224,7 @@ impl WordDocument {
         offset: usize,
         text: &str,
     ) -> Result<String, String> {
-        self.insert_note_at(paragraph_index, offset, text, NoteKind::Endnote)
+        self.insert_note_at(paragraph_index, offset, text, NoteKind::Endnote, None)
     }
 
     /// Moves the rich note body and all references to the endnote part.
@@ -14200,7 +14898,18 @@ impl WordDocument {
         let mut lines = Vec::new();
         collect(elements, &mut lines);
         let mut text = lines.join("\n");
-        if text.starts_with('\t') {
+        // The separator after the note's number: Word saves a space there
+        // as a run of its own, other tools start the text with a tab. A
+        // space the text itself starts with stays.
+        let separator_run = elements
+            .iter()
+            .find_map(|element| match element {
+                BodyElement::Paragraph(paragraph) => Some(paragraph),
+                _ => None,
+            })
+            .and_then(|paragraph| paragraph.runs.iter().find(|run| !run.text.is_empty()))
+            .is_some_and(|run| run.text == " ");
+        if separator_run || text.starts_with('\t') {
             text.remove(0);
         }
         text
@@ -14230,6 +14939,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14240,7 +14950,8 @@ impl WordDocument {
                     revision: None,
                 },
                 Run {
-                    text: format!("\t{text}"),
+                    // Word's space after the note's number, a run of its own.
+                    text: " ".to_string(),
                     properties: None,
                     image: None,
                     text_box: None,
@@ -14249,6 +14960,28 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
+                    revision_node_id: None,
+                    comment_reference_ids: Vec::new(),
+                    footnote_reference_ids: Vec::new(),
+                    endnote_reference_ids: Vec::new(),
+                    note_separator: None,
+                    has_footnote_ref: false,
+                    has_endnote_ref: false,
+                    revision: None,
+                },
+                Run {
+                    // The note's own text.
+                    text: text.to_string(),
+                    properties: None,
+                    image: None,
+                    text_box: None,
+                    math: None,
+                    field: None,
+                    hyperlink: None,
+                    node_id: None,
+                    text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14272,6 +15005,7 @@ impl WordDocument {
         offset: usize,
         text: &str,
         kind: NoteKind,
+        custom_mark: Option<&str>,
     ) -> Result<String, String> {
         if self.raw_document.is_none() {
             return Err("raw document xml is unavailable".to_string());
@@ -14320,6 +15054,17 @@ impl WordDocument {
             note_para_style.as_deref(),
             note_char_style.as_deref(),
         )?;
+        // Recorded before the reference is written, so the sync below marks
+        // it `w:customMarkFollows`.
+        if custom_mark.is_some() {
+            let document = self
+                .document_mut()
+                .ok_or_else(|| "document is unavailable".to_string())?;
+            match kind {
+                NoteKind::Footnote => document.custom_mark_footnotes.insert(note_id.clone()),
+                NoteKind::Endnote => document.custom_mark_endnotes.insert(note_id.clone()),
+            };
+        }
 
         {
             let zero_width = self.zero_width_runs(paragraph_index);
@@ -14328,7 +15073,7 @@ impl WordDocument {
                 .ok_or_else(|| "target paragraph is missing".to_string())?;
             let tail = split_runs_at_preserving_source(&mut paragraph.runs, offset, &zero_width);
             paragraph.runs.push(Run {
-                text: String::new(),
+                text: custom_mark.unwrap_or_default().to_string(),
                 properties: reference_run_properties.clone(),
                 image: None,
                 text_box: None,
@@ -14337,6 +15082,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: if kind == NoteKind::Footnote {
@@ -14372,7 +15118,8 @@ impl WordDocument {
         let mut note_body = vec![BodyElement::from_paragraph(Paragraph {
             runs: vec![
                 Run {
-                    text: String::new(),
+                    // The note's number, or the custom mark standing in for it.
+                    text: custom_mark.unwrap_or_default().to_string(),
                     properties: reference_run_properties,
                     image: None,
                     text_box: None,
@@ -14381,17 +15128,19 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
                     endnote_reference_ids: Vec::new(),
                     note_separator: None,
-                    has_footnote_ref: kind == NoteKind::Footnote,
-                    has_endnote_ref: kind == NoteKind::Endnote,
+                    has_footnote_ref: custom_mark.is_none() && kind == NoteKind::Footnote,
+                    has_endnote_ref: custom_mark.is_none() && kind == NoteKind::Endnote,
                     revision: None,
                 },
                 Run {
-                    text: format!("\t{text}"),
+                    // Word's space after the note's number, a run of its own.
+                    text: " ".to_string(),
                     properties: None,
                     image: None,
                     text_box: None,
@@ -14400,6 +15149,28 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
+                    revision_node_id: None,
+                    comment_reference_ids: Vec::new(),
+                    footnote_reference_ids: Vec::new(),
+                    endnote_reference_ids: Vec::new(),
+                    note_separator: None,
+                    has_footnote_ref: false,
+                    has_endnote_ref: false,
+                    revision: None,
+                },
+                Run {
+                    // The note's own text.
+                    text: text.to_string(),
+                    properties: None,
+                    image: None,
+                    text_box: None,
+                    math: None,
+                    field: None,
+                    hyperlink: None,
+                    node_id: None,
+                    text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14721,6 +15492,7 @@ impl WordDocument {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -14789,6 +15561,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -14875,6 +15648,89 @@ impl WordDocument {
         image_mime: InlineImageMime,
     ) -> Result<Relationship, String> {
         self.add_image_media_part(bytes, image_mime, "jade-image")
+    }
+
+    /// Stores a picture's media part and relates it from `kind`'s notes part.
+    fn add_note_image_media_part(
+        &mut self,
+        kind: NoteKind,
+        bytes: &[u8],
+        image_mime: InlineImageMime,
+    ) -> Result<Relationship, String> {
+        let part_path = self.ensure_notes_part(kind)?;
+        let media_path = self.next_image_part_path("jade-image", image_mime.extension());
+        let rels_path = self.get_relationships_path(&part_path);
+        let existing = self.read_xml_part_content(&rels_path).unwrap_or_else(|| {
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"#
+                .to_string()
+        });
+        let mut rels_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
+        let occupied: HashSet<String> = rels_doc
+            .root()
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) => element
+                    .attributes
+                    .iter()
+                    .find(|attr| attr.name == "Id")
+                    .map(|attr| attr.value.clone()),
+                _ => None,
+            })
+            .collect();
+        let id = (1u32..)
+            .map(|next| format!("rId{next}"))
+            .find(|id| !occupied.contains(id))
+            .ok_or("relationship ids are exhausted")?;
+        // Relative to the notes part when it sits beside the media folder's
+        // parent, else from the package root.
+        let target = match part_path.rsplit_once('/') {
+            Some(("word", _)) => media_path
+                .strip_prefix("word/")
+                .unwrap_or(&media_path)
+                .to_string(),
+            _ => format!("/{media_path}"),
+        };
+        let relationship = Relationship {
+            id,
+            r#type: RelationshipTypes::Image.as_str().to_string(),
+            target,
+            target_mode: None,
+        };
+        let element = rels_doc.create_element(
+            "Relationship",
+            vec![
+                XmlAttribute {
+                    name: "Id".to_string(),
+                    value: relationship.id.clone(),
+                },
+                XmlAttribute {
+                    name: "Type".to_string(),
+                    value: relationship.r#type.clone(),
+                },
+                XmlAttribute {
+                    name: "Target".to_string(),
+                    value: relationship.target.clone(),
+                },
+            ],
+            Vec::new(),
+        );
+        let root_id = rels_doc.root().id;
+        let index = rels_doc.root().children.len();
+        rels_doc
+            .insert_node(root_id, index, XmlNode::Element(element))
+            .map_err(|err| err.to_string())?;
+        let serialized = rels_doc.to_string().map_err(|err| err.to_string())?;
+        self.upsert_xml_part_content(&rels_path, serialized);
+        self.ensure_content_types_has_image(
+            &media_path,
+            image_mime.extension(),
+            image_mime.content_type(),
+        )?;
+        self.removed_parts.remove(&media_path);
+        self.binary_parts.insert(media_path, bytes.to_vec());
+        Ok(relationship)
     }
 
     fn add_image_media_part(
@@ -15127,6 +15983,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -15248,7 +16105,15 @@ impl WordDocument {
             ));
         }
 
-        let relationship = self.add_inline_image_media_part(bytes, image_mime)?;
+        // A note's picture is related from the note part, as Word saves it:
+        // its `r:embed` resolves against that part's relationships.
+        let relationship = match self.paragraph_surfaces.get(paragraph_index) {
+            Some(ParagraphSurface::Note { kind, .. }) => {
+                let kind = *kind;
+                self.add_note_image_media_part(kind, bytes, image_mime)?
+            }
+            _ => self.add_inline_image_media_part(bytes, image_mime)?,
+        };
         let inserted_run_index = {
             let zero_width = self.zero_width_runs(paragraph_index);
             let paragraph = self
@@ -15286,6 +16151,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -15395,6 +16261,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -16008,8 +16875,10 @@ impl WordDocument {
         image.relationship_id = Some(relationship.id);
         image.data_uri = Some(data_uri);
         image.placeholder_label = None;
+        let previous = (image.width_px, image.height_px, image.layout.rotation_deg);
         image.width_px = next_width;
         image.height_px = next_height;
+        image.refit_effect_extent(previous);
 
         self.sync_paragraph_text(target.paragraph_index);
         self.rebuild_paragraph_surfaces();
@@ -16965,9 +17834,55 @@ impl WordDocument {
             .bookmarks
             .iter()
             .find(|bookmark| bookmark.name == name)?;
+        self.bookmark_start(bookmark, self.live_bookmark_markers().as_ref())
+    }
+
+    /// Where `bookmark` starts, as a paragraph surface and an offset into its
+    /// text. A start written between paragraphs begins the paragraph after it.
+    ///
+    /// `live` is [`Self::live_bookmark_markers`]: where the marker sits in the
+    /// document XML now. The stored position is only used without it.
+    pub(crate) fn bookmark_start(
+        &self,
+        bookmark: &Bookmark,
+        live: Option<&LiveBookmarkMarkers>,
+    ) -> Option<TextPosition> {
+        if let Some(position) = live.and_then(|live| live.starts.get(&bookmark.id)) {
+            return Some(self.model_to_rendered_text_position(*position));
+        }
         let paragraph = self.bookmark_surface_index(bookmark.start_paragraph)?;
-        let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
-        let model = TextPosition::new(paragraph, bookmark.start_offset.min(length));
+        let offset = if marker_between_paragraphs(bookmark.start_run, bookmark.start_offset) {
+            0
+        } else {
+            let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
+            bookmark.start_offset.min(length)
+        };
+        Some(self.model_to_rendered_text_position(TextPosition::new(paragraph, offset)))
+    }
+
+    /// Where `bookmark` ends (exclusive). An end written between paragraphs
+    /// closes the paragraph before it, so the range never reaches into the
+    /// next one.
+    pub(crate) fn bookmark_end(
+        &self,
+        bookmark: &Bookmark,
+        live: Option<&LiveBookmarkMarkers>,
+    ) -> Option<TextPosition> {
+        if let Some(position) = live.and_then(|live| live.ends.get(&bookmark.id)) {
+            return Some(self.model_to_rendered_text_position(*position));
+        }
+        let model = if marker_between_paragraphs(bookmark.end_run, bookmark.end_offset) {
+            let paragraph =
+                self.bookmark_last_surface_index(bookmark.end_paragraph.checked_sub(1)?)?;
+            TextPosition::new(
+                paragraph,
+                self.paragraph_text_len_at(paragraph).unwrap_or(0),
+            )
+        } else {
+            let paragraph = self.bookmark_surface_index(bookmark.end_paragraph)?;
+            let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
+            TextPosition::new(paragraph, bookmark.end_offset.min(length))
+        };
         Some(self.model_to_rendered_text_position(model))
     }
 
@@ -16977,6 +17892,159 @@ impl WordDocument {
         self.paragraph_surfaces.iter().position(|surface| matches!(surface,
             ParagraphSurface::Body { path } if path.first() == Some(&PathEntry::Element(body_element))
         ))
+    }
+
+    /// The last paragraph surface of a top-level body element (the last cell
+    /// paragraph of a table).
+    fn bookmark_last_surface_index(&self, body_element: usize) -> Option<usize> {
+        self.paragraph_surfaces.iter().rposition(|surface| matches!(surface,
+            ParagraphSurface::Body { path } if path.first() == Some(&PathEntry::Element(body_element))
+        ))
+    }
+
+    /// Where every bookmark's markers sit in the document XML now, keyed by
+    /// `w:id`, as model positions. `None` without the XML.
+    ///
+    /// The positions in `document.bookmarks` are the top-level body indices
+    /// read when the file was opened. Edits that add or remove paragraphs
+    /// (Enter, joining paragraphs, pasting) leave them where they were, while
+    /// the markers themselves move with the text: after Enter at the end of a
+    /// clause, the next clause's bookmark was reported on the new paragraph
+    /// and its own text fell outside every clause. Reading the markers back
+    /// gives the live position.
+    ///
+    /// A marker between paragraphs (a child of `w:body`) starts the paragraph
+    /// after it or ends the one before it, as [`Self::bookmark_start`] reads
+    /// a stored one. A marker inside a paragraph is placed after the runs
+    /// before it; it is left out when a run of its paragraph is not bound to
+    /// the XML, so the stored position is used instead.
+    pub(crate) fn live_bookmark_markers(&self) -> Option<LiveBookmarkMarkers> {
+        #[derive(Default)]
+        struct Walk {
+            order: HashMap<XmlNodeId, usize>,
+            events: Vec<Event>,
+        }
+        enum Event {
+            Paragraph(XmlNodeId),
+            Marker {
+                start: bool,
+                id: String,
+                node: XmlNodeId,
+                paragraph: Option<XmlNodeId>,
+            },
+        }
+        impl Walk {
+            fn visit(&mut self, element: &XmlElement, paragraph: Option<XmlNodeId>) {
+                self.order.insert(element.id, self.order.len());
+                let paragraph = if element.name == "w:p" {
+                    self.events.push(Event::Paragraph(element.id));
+                    Some(element.id)
+                } else {
+                    paragraph
+                };
+                let start = element.name == "w:bookmarkStart";
+                if start || element.name == "w:bookmarkEnd" {
+                    if let Some(id) = element
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == "w:id")
+                    {
+                        self.events.push(Event::Marker {
+                            start,
+                            id: id.value.clone(),
+                            node: element.id,
+                            paragraph,
+                        });
+                    }
+                }
+                for child in &element.children {
+                    if let XmlNode::Element(child) = child {
+                        self.visit(child, paragraph);
+                    }
+                }
+            }
+        }
+
+        let raw = self.raw_document.as_ref()?;
+        if self
+            .document
+            .as_ref()
+            .is_none_or(|document| document.bookmarks.is_empty())
+        {
+            return Some(LiveBookmarkMarkers::default());
+        }
+        let surfaces: HashMap<XmlNodeId, usize> = (0..self.paragraph_count())
+            .filter(|index| self.is_body_paragraph_surface(*index))
+            .filter_map(|index| self.paragraph(index)?.node_id.map(|id| (id, index)))
+            .collect();
+        let mut walk = Walk::default();
+        walk.visit(raw.root(), None);
+
+        // Text before a marker: the runs of its paragraph that come before it
+        // in the XML. None when a run is not bound to the XML.
+        let offset_before = |surface: usize, marker: usize| -> Option<usize> {
+            let mut offset = 0;
+            for run in &self.paragraph(surface)?.runs {
+                if *walk.order.get(&run.node_id?)? < marker {
+                    offset += run.text.len();
+                }
+            }
+            Some(offset)
+        };
+        let mut live = LiveBookmarkMarkers::default();
+        let mut pending_starts = Vec::new();
+        let mut previous = None;
+        for event in &walk.events {
+            match event {
+                Event::Paragraph(id) => {
+                    let Some(&surface) = surfaces.get(id) else {
+                        continue;
+                    };
+                    for id in pending_starts.drain(..) {
+                        live.starts.insert(id, TextPosition::new(surface, 0));
+                    }
+                    previous = Some(surface);
+                }
+                Event::Marker {
+                    start: true,
+                    id,
+                    paragraph: None,
+                    ..
+                } => pending_starts.push(id.clone()),
+                Event::Marker {
+                    start: false,
+                    id,
+                    paragraph: None,
+                    ..
+                } => {
+                    if let Some(surface) = previous {
+                        let length = self.paragraph_text_len_at(surface).unwrap_or(0);
+                        live.ends
+                            .insert(id.clone(), TextPosition::new(surface, length));
+                    }
+                }
+                Event::Marker {
+                    start,
+                    id,
+                    node,
+                    paragraph: Some(paragraph),
+                } => {
+                    let Some(&surface) = surfaces.get(paragraph) else {
+                        continue;
+                    };
+                    let Some(offset) = offset_before(surface, walk.order[node]) else {
+                        continue;
+                    };
+                    let positions = if *start {
+                        &mut live.starts
+                    } else {
+                        &mut live.ends
+                    };
+                    positions.insert(id.clone(), TextPosition::new(surface, offset));
+                }
+            }
+        }
+        Some(live)
     }
 
     pub(crate) fn bookmark_render_map(&self) -> HashMap<String, usize> {
@@ -17610,6 +18678,7 @@ impl WordDocument {
             CrossReferenceKind::Page => RunFieldKind::PageRef {
                 name: bookmark_name.to_string(),
                 hyperlink,
+                relative_position: false,
             },
         };
         let resolved_value = matches!(kind, CrossReferenceKind::Text | CrossReferenceKind::Number)
@@ -17647,6 +18716,7 @@ impl WordDocument {
             hyperlink: link,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18346,6 +19416,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18380,6 +19451,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18400,6 +19472,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -18652,6 +19725,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18920,7 +19994,10 @@ impl WordDocument {
         Ok((None, Some(target.to_string())))
     }
 
-    fn validate_text_position_boundary(&self, position: TextPosition) -> Result<(), String> {
+    pub(crate) fn validate_text_position_boundary(
+        &self,
+        position: TextPosition,
+    ) -> Result<(), String> {
         let text = self
             .paragraph(position.paragraph)
             .map(|paragraph| {
@@ -19358,6 +20435,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -19617,6 +20695,7 @@ impl WordDocument {
                     hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: vec![comment_id.clone()],
                     footnote_reference_ids: Vec::new(),
@@ -19899,6 +20978,7 @@ impl WordDocument {
                     hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: vec![comment_id.clone()],
                     footnote_reference_ids: Vec::new(),
@@ -20648,7 +21728,8 @@ impl WordDocument {
         xml: &DocxXmlDocument,
     ) -> Option<Paragraph> {
         let reference = self.active_hf_reference(role, variant)?;
-        let mut body = self.header_footer_body_for_reference(&reference)?;
+        // Ids are attached to a private copy; the shared story stays as is.
+        let mut body = (*self.header_footer_body_for_reference(&reference)?).clone();
         if body
             .elements
             .iter()
@@ -22066,6 +23147,7 @@ impl WordDocument {
                 RunFieldKind::PageRef {
                     name: name.to_owned(),
                     hyperlink: true,
+                    relative_position: false,
                 },
                 "1".to_owned(),
             ),
@@ -22801,6 +23883,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -23330,6 +24413,8 @@ impl WordDocument {
         let mut references = Vec::new();
         if let Some(document) = self.document.as_deref() {
             for (role, variant) in slots {
+                // The last section's own reference is enough here: the loop
+                // below also walks every section's own references.
                 if let Some(reference) = pick_hf_reference(document, role, variant) {
                     references.push((role, reference));
                 }
@@ -23727,7 +24812,7 @@ impl WordDocument {
         // cells' paragraphs lost what their styles give them (Normal's
         // justification, the table style's spacing) until it was reopened.
         let Some(styles) = self.styles_part.clone() else {
-            return Self::with_inserted_table_border_defaults(table);
+            return Self::with_inserted_table_defaults(table);
         };
         let mut elements = [BodyElement::from_table(table)];
         Self::apply_style_paragraph_defaults_to_elements(
@@ -23742,15 +24827,28 @@ impl WordDocument {
         let [BodyElement::Table(table)] = elements else {
             unreachable!("the table was put in")
         };
-        Self::with_inserted_table_border_defaults(*table)
+        Self::with_inserted_table_defaults(*table)
     }
 
-    fn with_inserted_table_border_defaults(mut table: Table) -> Table {
+    fn with_inserted_table_defaults(mut table: Table) -> Table {
         if jade_docx_reader::word_platform::word_layout_platform()
-            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
-            && table.resolved_style.is_none()
-            && table.borders.is_none()
+            != jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+            || table.resolved_style.is_some()
         {
+            return table;
+        }
+        // Save the same horizontal padding the editor uses for a fresh
+        // unstyled table so the package reopens with matching geometry.
+        let margins = table
+            .cell_margins
+            .get_or_insert_with(TableCellMargins::default);
+        if margins.physical_left(table.bidi_visual).is_none() {
+            margins.left = Some(DEFAULT_HORIZONTAL_CELL_MARGIN_PT);
+        }
+        if margins.physical_right(table.bidi_visual).is_none() {
+            margins.right = Some(DEFAULT_HORIZONTAL_CELL_MARGIN_PT);
+        }
+        if table.borders.is_none() {
             // Preserve the editor's existing 1px black insertion grid as
             // authored OOXML. An undeclared border must remain absent when
             // reading arbitrary Word documents, including this export.
@@ -24580,6 +25678,7 @@ impl WordDocument {
                 kind: RunFieldKind::PageRef {
                     name: bookmark.to_string(),
                     hyperlink: options.hyperlinks,
+                    relative_position: false,
                 },
                 cached_text: Some("1".to_string()),
                 source_field_id: None,
@@ -26184,7 +27283,23 @@ impl WordDocument {
             return Ok(());
         };
         let properties_id = Self::ensure_properties_element(raw, node_id, properties_name)?;
+        let margins_element = Self::cell_margins_element(raw, element_name, margins);
+        let properties = raw
+            .element_mut(properties_id)
+            .ok_or_else(|| format!("failed to locate {properties_name}"))?;
+        properties.children.retain(
+            |node| !matches!(node, XmlNode::Element(existing) if existing.name == element_name),
+        );
+        properties.children.push(XmlNode::Element(margins_element));
+        raw.rebuild_index_for_subtree(node_id);
+        Ok(())
+    }
 
+    fn cell_margins_element(
+        raw: &mut DocxXmlDocument,
+        element_name: &str,
+        margins: &TableCellMargins,
+    ) -> XmlElement {
         let mut children = Vec::new();
         for (edge, value) in [
             ("w:top", margins.top),
@@ -26212,17 +27327,7 @@ impl WordDocument {
             children.push(XmlNode::Element(element));
         }
 
-        let margins_element =
-            raw.create_element_preserving_child_ids(element_name, Vec::new(), children);
-        let properties = raw
-            .element_mut(properties_id)
-            .ok_or_else(|| format!("failed to locate {properties_name}"))?;
-        properties.children.retain(
-            |node| !matches!(node, XmlNode::Element(existing) if existing.name == element_name),
-        );
-        properties.children.push(XmlNode::Element(margins_element));
-        raw.rebuild_index_for_subtree(node_id);
-        Ok(())
+        raw.create_element_preserving_child_ids(element_name, Vec::new(), children)
     }
 
     /// `RRGGBB` as OOXML writes it, from `#RRGGBB` or `RRGGBB`.
@@ -26448,47 +27553,64 @@ impl WordDocument {
         table_order_index: usize,
         widths: &[f32],
     ) -> Result<(), String> {
-        if widths.is_empty() {
-            return Err("set_table_column_widths requires at least one width".to_string());
-        }
-        if widths
-            .iter()
-            .any(|width| !width.is_finite() || *width < 0.0)
-        {
-            return Err("widths must be finite non-negative numbers".to_string());
-        }
-        let (table_id, columns_snapshot) = {
-            let table = self
-                .table_mut_by_order(table_order_index)
-                .ok_or_else(|| format!("table {table_order_index} was not found"))?;
-            // The grid has to keep describing the cells. Writing a different
-            // number of widths used to rewrite `w:tblGrid` to that arity and
-            // leave the rows as they were, which is a table Word has to repair.
-            // Adding or removing a column is `insert_table_column` /
-            // `delete_table_column`.
-            let column_count = Self::resolved_table_column_count(table);
-            if widths.len() != column_count {
-                return Err(format!(
-                    "table {table_order_index} has {column_count} columns but {} widths were given; \
-                     use insert_table_column / delete_table_column to change the column count",
-                    widths.len()
-                ));
-            }
-            table.columns = widths
-                .iter()
-                .map(|width| TableColumn {
-                    width: Some(whole_twips(width.max(MIN_TABLE_COLUMN_WIDTH_PT))),
-                })
-                .collect();
-            table.table_layout = Some(TableLayoutMode::Fixed);
-            (table.node_id, table.columns.clone())
+        use crate::commands::{
+            resize_table_column::ResizeTableColumnCommand, Command, CommandContext, CommandError,
         };
-        self.sync_table_grid(table_id, &columns_snapshot)
-            .map_err(|err| err.to_string())?;
-        self.sync_table_cell_widths(table_order_index)?;
-        self.sync_table_layout(table_id, Some(TableLayoutMode::Fixed))
-            .map_err(|err| err.to_string())?;
-        Ok(())
+        ResizeTableColumnCommand::all_columns(table_order_index, widths.to_vec())
+            .apply(&mut CommandContext::new(self, &mut None))
+            .map_err(|error| match error {
+                CommandError::Custom(message) if message == "target table not found" => {
+                    format!("table {table_order_index} was not found")
+                }
+                other => other.to_string(),
+            })
+    }
+
+    pub(crate) fn nested_resize_column_grid(&self, order: usize) -> Option<(Vec<f32>, f32)> {
+        let document = self.document.as_ref()?;
+        let table = self.table_by_order(order)?;
+        crate::windows_nested_resize_grid(
+            &document.body.as_ref()?.elements,
+            table,
+            self.text_column_width(),
+        )
+    }
+
+    pub(crate) fn sync_resized_nested_table_width(
+        &mut self,
+        order: usize,
+        cell_frame_width: f32,
+        previous_rendered_width: Option<f32>,
+    ) -> Result<(), String> {
+        let table = self.table_by_order(order).ok_or("target table not found")?;
+        let Some(width) = table.style.get("width") else {
+            return Ok(());
+        };
+        let total = table
+            .columns
+            .iter()
+            .filter_map(|column| column.width)
+            .sum::<f32>();
+        let resized = match Self::parse_table_width_spec(width) {
+            Ok(TableWidthSpec::Points(_)) => format!("{total:.2}pt"),
+            Ok(TableWidthSpec::Percent(percent)) => {
+                let frame = previous_rendered_width
+                    .filter(|_| percent > 0.0)
+                    .map(|previous| previous * 100.0 / percent)
+                    .filter(|width| width.is_finite() && *width > 0.0)
+                    .unwrap_or(cell_frame_width);
+                // Word saves an absolute width as soon as the new grid
+                // exceeds the enclosing cell's frame by a whole twip.
+                if (total * 20.0).round() > (frame * 20.0).round() {
+                    format!("{total:.2}pt")
+                } else {
+                    // Use the same fiftieths of a percent as tblW in the model.
+                    format!("{:.2}%", (5000.0 * total / frame).round() / 50.0)
+                }
+            }
+            _ => return Ok(()),
+        };
+        self.set_table_width(order, &resized)
     }
 
     /// Word's 表の分割: the rows from `row_index` on become a second table
@@ -28544,10 +29666,10 @@ impl WordDocument {
             Vec::new(),
         );
         tbl_pr_children.push(XmlNode::Element(tbl_w));
-        if table.node_id.is_none()
+        let new_windows_table = table.node_id.is_none()
             && jade_docx_reader::word_platform::word_layout_platform()
-                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
-        {
+                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows;
+        if new_windows_table {
             if let Some(borders) = table.borders.as_ref() {
                 let children = Self::table_border_xml_children(raw, borders);
                 let borders =
@@ -28564,6 +29686,13 @@ impl WordDocument {
             Vec::new(),
         );
         tbl_pr_children.push(XmlNode::Element(tbl_layout));
+        if let Some(margins) = table.cell_margins.as_ref().filter(|_| new_windows_table) {
+            tbl_pr_children.push(XmlNode::Element(Self::cell_margins_element(
+                raw,
+                "w:tblCellMar",
+                margins,
+            )));
+        }
         let tbl_pr = raw.create_element("w:tblPr", Vec::new(), tbl_pr_children);
         table_children.push(XmlNode::Element(tbl_pr));
 
@@ -29409,31 +30538,12 @@ impl WordDocument {
 
         self.sync_title_page_raw(different_first_page, section)?;
         let targets_default = self.section_targets_default_sect_pr(section);
-        {
-            let document = self
-                .document_mut()
-                .ok_or_else(|| "document is unavailable".to_string())?;
-            if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-                range
-                    .properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .title_page = different_first_page;
-            }
-            if targets_default {
-                document
-                    .default_section
-                    .get_or_insert_with(SectionProperties::default)
-                    .title_page = different_first_page;
-                // The final section range mirrors the body-level `w:sectPr`;
-                // leaving it stale makes the ribbon read back the old switch.
-                if let Some(last_section) = document.sections.last_mut() {
-                    last_section
-                        .properties
-                        .get_or_insert_with(SectionProperties::default)
-                        .title_page = different_first_page;
-                }
-            }
-        }
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
+            properties.title_page = different_first_page
+        });
         if targets_default {
             self.title_page = different_first_page;
         }
@@ -29624,48 +30734,23 @@ impl WordDocument {
     ) {
         let edit_section = self.hf_edit_section;
         let targets_default = self.section_targets_default_sect_pr(edit_section);
-        let Some(document) = self.document_mut() else {
-            return;
-        };
-        if let Some(range) = edit_section.and_then(|index| document.sections.get_mut(index)) {
-            Self::set_section_hf_reference(
-                range
-                    .properties
-                    .get_or_insert_with(SectionProperties::default),
-                role,
-                variant,
-                rel_id.clone(),
-            );
-        }
+        self.edit_section_properties(edit_section, |properties| {
+            Self::set_section_hf_reference(properties, role, variant, rel_id.clone())
+        });
         if !targets_default {
             return;
         }
+        let Some(document) = self.document_mut() else {
+            return;
+        };
         match role {
             HeaderFooterRole::Header if variant == HeaderFooterVariant::Default => {
-                document.header_reference = Some(rel_id.clone())
+                document.header_reference = Some(rel_id)
             }
             HeaderFooterRole::Footer if variant == HeaderFooterVariant::Default => {
-                document.footer_reference = Some(rel_id.clone())
+                document.footer_reference = Some(rel_id)
             }
             _ => {}
-        }
-        Self::set_section_hf_reference(
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default),
-            role,
-            variant,
-            rel_id.clone(),
-        );
-        if let Some(last_section) = document.sections.last_mut() {
-            Self::set_section_hf_reference(
-                last_section
-                    .properties
-                    .get_or_insert_with(SectionProperties::default),
-                role,
-                variant,
-                rel_id,
-            );
         }
     }
 
@@ -31050,7 +32135,17 @@ impl WordDocument {
                 XmlNode::Element(marker),
             ],
         );
-        let tab = notes_doc.create_element("w:tab", Vec::new(), Vec::new());
+        // Word starts a note's text with a space after its number, not a
+        // tab, in a run of its own: what it types into a note it inserts.
+        let space = notes_doc.create_element(
+            "w:t",
+            vec![XmlAttribute {
+                name: "xml:space".to_string(),
+                value: "preserve".to_string(),
+            }],
+            vec![XmlNode::Text(" ".to_string())],
+        );
+        let space_run = notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(space)]);
         let mut text_attrs = Vec::new();
         if Self::needs_preserve(text) {
             text_attrs.push(XmlAttribute {
@@ -31060,11 +32155,8 @@ impl WordDocument {
         }
         let text_node =
             notes_doc.create_element("w:t", text_attrs, vec![XmlNode::Text(text.to_string())]);
-        let text_run = notes_doc.create_element(
-            "w:r",
-            Vec::new(),
-            vec![XmlNode::Element(tab), XmlNode::Element(text_node)],
-        );
+        let text_run =
+            notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text_node)]);
         let mut paragraph_children = Vec::new();
         if let Some(style_id) = paragraph_style_id {
             let p_style = notes_doc.create_element(
@@ -31080,6 +32172,7 @@ impl WordDocument {
             paragraph_children.push(XmlNode::Element(ppr));
         }
         paragraph_children.push(XmlNode::Element(marker_run));
+        paragraph_children.push(XmlNode::Element(space_run));
         paragraph_children.push(XmlNode::Element(text_run));
         let paragraph = notes_doc.create_element("w:p", Vec::new(), paragraph_children);
         let note = notes_doc.create_element(
@@ -31142,7 +32235,17 @@ impl WordDocument {
                 XmlNode::Element(marker),
             ],
         );
-        let tab = notes_doc.create_element("w:tab", Vec::new(), Vec::new());
+        // Word starts a note's text with a space after its number, not a
+        // tab, in a run of its own: what it types into a note it inserts.
+        let space = notes_doc.create_element(
+            "w:t",
+            vec![XmlAttribute {
+                name: "xml:space".to_string(),
+                value: "preserve".to_string(),
+            }],
+            vec![XmlNode::Text(" ".to_string())],
+        );
+        let space_run = notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(space)]);
         let mut text_attributes = Vec::new();
         if Self::needs_preserve(text) {
             text_attributes.push(XmlAttribute {
@@ -31155,15 +32258,16 @@ impl WordDocument {
             text_attributes,
             vec![XmlNode::Text(text.to_string())],
         );
-        let text_run = notes_doc.create_element(
-            "w:r",
-            Vec::new(),
-            vec![XmlNode::Element(tab), XmlNode::Element(text_element)],
-        );
+        let text_run =
+            notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text_element)]);
         let paragraph = notes_doc.create_element(
             "w:p",
             Vec::new(),
-            vec![XmlNode::Element(marker_run), XmlNode::Element(text_run)],
+            vec![
+                XmlNode::Element(marker_run),
+                XmlNode::Element(space_run),
+                XmlNode::Element(text_run),
+            ],
         );
         let target = notes_doc
             .element_mut(target_id)
@@ -31219,6 +32323,10 @@ impl WordDocument {
         initials: Option<String>,
         date: Option<String>,
     ) -> Result<String, String> {
+        // CT_TrackChange (the base of CT_Comment) requires w:author. An
+        // anonymous comment still needs the attribute; an empty value avoids
+        // inventing an identity and keeps the saved/reloaded model consistent.
+        let author = Some(author.unwrap_or_default());
         let existing = self
             .read_xml_part_content(comments_part_path)
             .ok_or_else(|| format!("missing {comments_part_path}"))?;
@@ -31638,6 +32746,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: Self::find_first_run_id_in_nodes(&old_children),
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -32951,7 +34060,7 @@ impl WordDocument {
         if length == 0 {
             return;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return;
         };
         let zero_width = self.zero_width_runs(paragraph_index);
@@ -33020,7 +34129,7 @@ impl WordDocument {
         if length == 0 {
             return false;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return false;
         };
 
@@ -33585,6 +34694,95 @@ impl WordDocument {
         )
     }
 
+    /// Body block before which Word inserts a manual page-break paragraph.
+    /// A caret in a table targets the outer body table.
+    pub(crate) fn manual_page_break_anchor(
+        &self,
+        surface: usize,
+    ) -> Option<(usize, bool, Option<XmlNodeId>)> {
+        let ParagraphSurface::Body { path } = self.paragraph_surfaces.get(surface)? else {
+            return None;
+        };
+        let PathEntry::Element(index) = *path.first()? else {
+            return None;
+        };
+        let element = self.document.as_ref()?.body.as_ref()?.elements.get(index)?;
+        let (before_table, node) = match element {
+            BodyElement::Paragraph(paragraph) if path.len() == 1 => (false, paragraph.node_id),
+            BodyElement::Table(table) => (true, table.node_id),
+            _ => return None,
+        };
+        if let Some(raw) = self.raw_document.as_ref() {
+            let body = Self::find_body_element_id(raw)?;
+            if raw.parent_id(node?) != Some(body) {
+                return None;
+            }
+        }
+        Some((index, before_table, node))
+    }
+
+    pub(crate) fn insert_manual_page_break_paragraph(
+        &mut self,
+        anchor_surface: usize,
+    ) -> Result<usize, String> {
+        let (body_index, before_table, anchor_node) = self
+            .manual_page_break_anchor(anchor_surface)
+            .ok_or("manual page-break anchor is unavailable")?;
+        let mut paragraph = Paragraph {
+            runs: Vec::new(),
+            properties: (!before_table).then(|| ParagraphProperties {
+                widow_control: Some(true),
+                ..Default::default()
+            }),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+
+        if let Some(raw) = self.raw_document.as_mut() {
+            let anchor = anchor_node.ok_or("manual page-break anchor has no XML node")?;
+            let body_id =
+                Self::find_body_element_id(raw).ok_or("document body XML is unavailable")?;
+            let insertion_index = raw
+                .path(anchor)
+                .and_then(|path| path.as_slice().last().copied())
+                .filter(|_| raw.parent_id(anchor) == Some(body_id))
+                .ok_or("manual page-break anchor is not a direct body child")?;
+            let mut children = Vec::new();
+            if !before_table {
+                let widow_control = raw.create_element("w:widowControl", Vec::new(), Vec::new());
+                children.push(XmlNode::Element(raw.create_element(
+                    "w:pPr",
+                    Vec::new(),
+                    vec![XmlNode::Element(widow_control)],
+                )));
+            }
+            let element = raw.create_element("w:p", Vec::new(), children);
+            paragraph.node_id = raw
+                .insert_node_preserving_ids(body_id, insertion_index, XmlNode::Element(element))
+                .map_err(|error| error.to_string())?;
+        }
+        let document = self.document_mut().ok_or("document is unavailable")?;
+        let body = document
+            .body
+            .as_mut()
+            .ok_or("document body is unavailable")?;
+        body.elements
+            .insert(body_index, BodyElement::from_paragraph(paragraph));
+        Self::rebuild_section_ranges(document);
+        self.rebuild_paragraph_surfaces();
+        self.paragraph_surfaces
+            .iter()
+            .position(|surface| {
+                matches!(
+                    surface,
+                    ParagraphSurface::Body { path }
+                        if path.as_slice() == [PathEntry::Element(body_index)]
+                )
+            })
+            .ok_or_else(|| "inserted page-break paragraph is unavailable".into())
+    }
+
     pub(crate) fn table_xml_element(&self, index: usize) -> Option<&XmlElement> {
         let id = self.table_by_order(index)?.node_id?;
         self.raw_document.as_ref()?.element(id)
@@ -33700,6 +34898,12 @@ impl WordDocument {
     }
 
     pub fn rendered_to_model_text_position(&self, position: TextPosition) -> TextPosition {
+        self.rendered_to_model_base(self.without_field_display(position).0)
+    }
+
+    /// [`Self::rendered_to_model_text_position`] for a position whose fields
+    /// count at their run text.
+    fn rendered_to_model_base(&self, position: TextPosition) -> TextPosition {
         let mut offset = position
             .offset
             .saturating_sub(self.rendered_note_marker_len(position.paragraph));
@@ -33733,33 +34937,260 @@ impl WordDocument {
         TextPosition::new(position.paragraph, offset)
     }
 
-    /// The inline equations of a body paragraph (math runs, and EQ fields
-    /// the renderer draws as equations) as (model offset, model length):
-    /// each renders as one object character.
-    fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
-        if !matches!(
-            self.paragraph_surfaces.get(index),
-            Some(ParagraphSurface::Body { .. })
-        ) {
-            return Vec::new();
+    /// Whether paragraph `index` lays its inline equations out as one
+    /// object character each, as (math runs, EQ fields): body and note
+    /// paragraphs do both; a text box's paragraphs do math runs, and show an
+    /// EQ field's result text. A display equation's own paragraph does
+    /// neither.
+    pub(crate) fn equations_are_objects(&self, index: usize) -> (bool, bool) {
+        match self.paragraph_surfaces.get(index) {
+            Some(ParagraphSurface::Body { .. } | ParagraphSurface::Note { .. }) => (true, true),
+            Some(ParagraphSurface::TextBox { .. }) => (true, false),
+            _ => (false, false),
         }
+    }
+
+    /// The objects in a paragraph that render as one object character each,
+    /// as (model offset, model length): the inline pictures and text boxes
+    /// in the line, and the inline equations (math runs, and EQ fields the
+    /// renderer draws as equations) where
+    /// [`Self::equations_are_objects`] says so. A picture holds no model
+    /// text, so the caret Word puts before it and the one after it differ
+    /// only in rendered offsets.
+    fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
         let Some(paragraph) = self.paragraph(index) else {
             return Vec::new();
         };
         let mut spans = Vec::new();
         let mut model_offset = 0usize;
         for run in &paragraph.runs {
-            let equation = run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
-                || run
-                    .field
-                    .as_ref()
-                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind));
-            if equation {
+            if self.run_is_object_character(index, run) {
                 spans.push((model_offset, run.text.len()));
             }
             model_offset += run.text.len();
         }
         spans
+    }
+
+    /// Whether `run` of paragraph `index` renders as one object character.
+    fn run_is_object_character(&self, index: usize, run: &Run) -> bool {
+        let (math_objects, eq_objects) = self.equations_are_objects(index);
+        Self::is_inline_object_run(run)
+            || (math_objects && run.math.as_ref().is_some_and(|m| !m.elements.is_empty()))
+            || (eq_objects
+                && run
+                    .field
+                    .as_ref()
+                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind)))
+    }
+
+    /// Whether `run` is an inline picture or text box: an object in the line
+    /// that the renderer lays out as one object character.
+    pub(crate) fn is_inline_object_run(run: &Run) -> bool {
+        if run.math.as_ref().is_some_and(|m| !m.elements.is_empty()) {
+            return false;
+        }
+        if let Some(text_box) = run.text_box.as_ref() {
+            return !matches!(text_box.layout.kind, RunImageKind::Floating);
+        }
+        run.image
+            .as_ref()
+            .is_some_and(|image| !matches!(image.layout.kind, RunImageKind::Floating))
+    }
+
+    /// How many inline pictures and text boxes at rendered `position`'s
+    /// model offset the caret is after ("AB🖼|CD"): the model offset alone
+    /// would put the caret, and text typed there, in front of them.
+    pub fn rendered_objects_before_caret(&self, position: TextPosition) -> usize {
+        let model = self.rendered_to_model_text_position(position).offset;
+        self.object_character_starts(position.paragraph)
+            .iter()
+            .filter(|(_, model_offset, start)| {
+                *model_offset == model && start + OBJECT_CHAR_LEN <= position.offset
+            })
+            .count()
+    }
+
+    /// Each inline picture and text box of paragraph `index` with its model
+    /// offset and the rendered offset of its object character: past every
+    /// object, reference mark and field result before it, the marks at its
+    /// own model offset included when their runs come first.
+    pub fn inline_object_rendered_starts(
+        &self,
+        index: usize,
+    ) -> Vec<(FloatingObjectTarget, usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        self.object_character_starts(index)
+            .into_iter()
+            .filter_map(|(run_index, model_offset, start)| {
+                let run = paragraph.runs.get(run_index)?;
+                Self::is_inline_object_run(run).then(|| {
+                    (
+                        FloatingObjectTarget {
+                            paragraph_index: index,
+                            run_index,
+                            kind: if run.text_box.is_some() {
+                                FloatingObjectKind::TextBox
+                            } else {
+                                FloatingObjectKind::Image
+                            },
+                        },
+                        model_offset,
+                        start,
+                    )
+                })
+            })
+            .collect()
+    }
+
+    /// Each inline equation (a math run) of paragraph `index` that is one
+    /// object character of its line, as (run index, rendered offset of that
+    /// character).
+    pub fn inline_equation_rendered_starts(&self, index: usize) -> Vec<(usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        self.object_character_starts(index)
+            .into_iter()
+            .filter(|(run_index, _, _)| {
+                paragraph
+                    .runs
+                    .get(*run_index)
+                    .is_some_and(Self::is_inline_math_run)
+            })
+            .map(|(run_index, _, start)| (run_index, start))
+            .collect()
+    }
+
+    /// An inline equation with no model text of its own: one object
+    /// character of a body line.
+    pub(crate) fn is_inline_math_run(run: &Run) -> bool {
+        run.text.is_empty() && run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
+    }
+
+    /// Every empty-text run of paragraph `index` that renders as one object
+    /// character (inline pictures and text boxes, and inline equations where
+    /// [`Self::equations_are_objects`] says so), as (run index, model offset,
+    /// rendered start).
+    fn object_character_starts(&self, index: usize) -> Vec<(usize, usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let body = matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        );
+        let (math_objects, _) = self.equations_are_objects(index);
+        let mut starts = Vec::new();
+        let mut model_offset = 0usize;
+        // What renders at `model_offset` ahead of the next object: marks
+        // and objects whose runs come first.
+        let mut ahead = 0usize;
+        for (run_index, run) in paragraph.runs.iter().enumerate() {
+            if !run.text.is_empty() {
+                model_offset += run.text.len();
+                ahead = 0;
+                continue;
+            }
+            if body {
+                for id in &run.footnote_reference_ids {
+                    if let Some(marker) = self.note_reference_marker(NoteKind::Footnote, id) {
+                        ahead += marker.len();
+                    }
+                }
+                for id in &run.endnote_reference_ids {
+                    if let Some(marker) = self.note_reference_marker(NoteKind::Endnote, id) {
+                        ahead += marker.len();
+                    }
+                }
+            }
+            if Self::is_inline_object_run(run) || (math_objects && Self::is_inline_math_run(run)) {
+                let base = self
+                    .model_to_rendered_text_position(TextPosition::new(index, model_offset))
+                    .offset;
+                starts.push((run_index, model_offset, base + ahead));
+                ahead += OBJECT_CHAR_LEN;
+            }
+        }
+        starts
+    }
+
+    /// The paragraph's text as the caret walks it, in rendered offsets: a
+    /// note's number ahead of its first paragraph, each note reference mark
+    /// where it is drawn, and an object character for each inline picture,
+    /// text box and equation, and each field's shown value.
+    pub fn rendered_paragraph_text(&self, index: usize) -> String {
+        let Some(paragraph) = self.paragraph(index) else {
+            return String::new();
+        };
+        let mut marks = self.reference_marker_spans(index).into_iter().peekable();
+        let mut out = self.rendered_note_marker_text(index);
+        let shown_fields = self
+            .rendered_field_lengths
+            .lock()
+            .map(|shown| shown.clone())
+            .unwrap_or_default();
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            let ids = run.footnote_reference_ids.len() + run.endnote_reference_ids.len();
+            for _ in 0..ids {
+                let Some(span) = marks.next_if(|span| span.model_offset == model_offset) else {
+                    break;
+                };
+                let kind = if span.is_footnote {
+                    NoteKind::Footnote
+                } else {
+                    NoteKind::Endnote
+                };
+                match self.note_reference_marker(kind, &span.note_id) {
+                    Some(marker) if marker.len() == span.rendered_len => out.push_str(&marker),
+                    _ => out.extend(std::iter::repeat_n('*', span.rendered_len)),
+                }
+            }
+            let shown = run
+                .field
+                .as_ref()
+                .and(run.node_id)
+                .and_then(|id| shown_fields.get(&id))
+                .filter(|shown| shown.len() != run.text.len());
+            if self.run_is_object_character(index, run) {
+                out.push('\u{fffc}');
+            } else if let Some(shown) = shown {
+                // A field counts at the value it shows.
+                out.push_str(shown);
+            } else {
+                out.push_str(&run.text);
+            }
+            model_offset += run.text.len();
+        }
+        out
+    }
+
+    /// The inline pictures and text boxes wholly inside rendered `range`, in
+    /// document order.
+    pub fn inline_objects_in_rendered_range(
+        &self,
+        range: SelectionRange,
+    ) -> Vec<FloatingObjectTarget> {
+        let (start, end) = range.normalized();
+        let mut objects = Vec::new();
+        if start == end {
+            return objects;
+        }
+        for paragraph_index in start.paragraph..=end.paragraph {
+            for (object, _, rendered_start) in self.inline_object_rendered_starts(paragraph_index) {
+                let after_start =
+                    paragraph_index > start.paragraph || rendered_start >= start.offset;
+                let before_end = paragraph_index < end.paragraph
+                    || rendered_start + OBJECT_CHAR_LEN <= end.offset;
+                if after_start && before_end {
+                    objects.push(object);
+                }
+            }
+        }
+        objects
     }
 
     /// Whether an EQ instruction uses a structure switch (`\f`, `\r`, `\s`,
@@ -33790,7 +35221,157 @@ impl WordDocument {
         }
     }
 
+    /// The handle the renderer fills with the bytes it shows for each field
+    /// run (`CanvasRenderer::set_rendered_field_lengths`).
+    pub fn rendered_field_lengths(&self) -> RenderedFieldLengths {
+        self.rendered_field_lengths.clone()
+    }
+
+    /// The fields of paragraph `index` the last layout showed at another
+    /// length than their run text: (model offset, model length, shown
+    /// length), in run order.
+    fn rendered_field_spans(&self, index: usize) -> Vec<(usize, usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let Ok(lengths) = self.rendered_field_lengths.lock() else {
+            return Vec::new();
+        };
+        if lengths.is_empty() {
+            return Vec::new();
+        }
+        let mut spans = Vec::new();
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            if run.field.is_some() {
+                if let Some(shown) = run.node_id.and_then(|id| lengths.get(&id)) {
+                    if shown.len() != run.text.len() {
+                        spans.push((model_offset, run.text.len(), shown.len()));
+                    }
+                }
+            }
+            model_offset += run.text.len();
+        }
+        spans
+    }
+
+    /// A position in the text as laid out (fields shown at their values)
+    /// in the editor's rendered space (fields at their run text), and
+    /// whether it is right after a field that shows more than it holds.
+    fn without_field_display(&self, position: TextPosition) -> (TextPosition, bool) {
+        let spans = self.rendered_field_spans(position.paragraph);
+        if spans.is_empty() {
+            return (position, false);
+        }
+        let mut extra = 0isize;
+        for (model_offset, model_len, shown) in spans {
+            let start = self
+                .model_to_rendered_base(TextPosition::new(position.paragraph, model_offset))
+                .offset as isize
+                + extra;
+            let offset = position.offset as isize;
+            if offset <= start {
+                break;
+            }
+            let end = start + shown as isize;
+            if offset < end {
+                // Inside the shown value: before the field.
+                return (
+                    TextPosition::new(position.paragraph, (start - extra).max(0) as usize),
+                    false,
+                );
+            }
+            extra += shown as isize - model_len as isize;
+            if offset == end {
+                return (
+                    TextPosition::new(position.paragraph, (offset - extra).max(0) as usize),
+                    true,
+                );
+            }
+        }
+        (
+            TextPosition::new(
+                position.paragraph,
+                (position.offset as isize - extra).max(0) as usize,
+            ),
+            false,
+        )
+    }
+
+    /// The bytes fields show beyond their run text before model `offset` of
+    /// paragraph `index` (fields at `offset` itself count only if
+    /// `inclusive`).
+    fn field_display_extra(&self, index: usize, offset: usize, inclusive: bool) -> isize {
+        self.rendered_field_spans(index)
+            .into_iter()
+            .filter(|(model_offset, model_len, _)| {
+                let end = model_offset + model_len;
+                end < offset || (inclusive && end <= offset) || (*model_len > 0 && end <= offset)
+            })
+            .map(|(_, model_len, shown)| shown as isize - model_len as isize)
+            .sum()
+    }
+
+    /// Whether rendered `position` sits right after one or more reference
+    /// marks at its model offset ("abc¹|"), or right after a field showing
+    /// more than its run holds ("Page 1|" over an empty PAGE run), where the
+    /// model offset alone would put the caret in front of them.
+    pub fn rendered_position_follows_reference_mark(&self, position: TextPosition) -> bool {
+        let (position, after_field) = self.without_field_display(position);
+        if after_field {
+            return true;
+        }
+        let model = self.rendered_to_model_base(position);
+        self.reference_marker_spans(position.paragraph)
+            .iter()
+            .any(|span| span.model_offset == model.offset)
+            && position.offset > self.model_to_rendered_base(model).offset
+    }
+
+    /// The rendered length of paragraph `index`: its text, a note's own
+    /// number, inline objects and every reference mark — including marks at
+    /// the very end ("Hello¹"), which `model_to_rendered_text_position` keeps
+    /// in front of the caret, so the caret Word puts after the mark is valid.
+    pub fn rendered_paragraph_len(&self, index: usize) -> usize {
+        let Some(len) = self.paragraph(index).map(paragraph_text_len) else {
+            return 0;
+        };
+        let trailing: usize = self
+            .reference_marker_spans(index)
+            .iter()
+            .filter(|span| span.model_offset >= len)
+            .map(|span| span.rendered_len)
+            .sum();
+        // Objects at the very end ("AB🖼"), which the model offset keeps in
+        // front of the caret as it does a mark.
+        let trailing_objects = self
+            .rendered_object_spans(index)
+            .iter()
+            .filter(|(model_offset, model_len)| *model_offset >= len && *model_len == 0)
+            .count()
+            * OBJECT_CHAR_LEN;
+        let extra = self.field_display_extra(index, len, true);
+        (self
+            .model_to_rendered_base(TextPosition::new(index, len))
+            .offset as isize
+            + trailing as isize
+            + trailing_objects as isize
+            + extra)
+            .max(0) as usize
+    }
+
     pub fn model_to_rendered_text_position(&self, position: TextPosition) -> TextPosition {
+        let base = self.model_to_rendered_base(position);
+        let extra = self.field_display_extra(position.paragraph, position.offset, false);
+        TextPosition::new(
+            position.paragraph,
+            (base.offset as isize + extra).max(0) as usize,
+        )
+    }
+
+    /// [`Self::model_to_rendered_text_position`] with fields at their run
+    /// text.
+    fn model_to_rendered_base(&self, position: TextPosition) -> TextPosition {
         let mut objects = 0isize;
         let mut model = position.offset;
         for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
@@ -33921,23 +35502,29 @@ impl WordDocument {
     }
 
     fn rendered_note_marker_len(&self, index: usize) -> usize {
+        self.rendered_note_marker_text(index).len()
+    }
+
+    /// The note number a note's first paragraph is drawn with ahead of its
+    /// text (empty for any other paragraph).
+    fn rendered_note_marker_text(&self, index: usize) -> String {
+        self.rendered_note_marker(index).unwrap_or_default()
+    }
+
+    fn rendered_note_marker(&self, index: usize) -> Option<String> {
         let Some(ParagraphSurface::Note {
             kind,
             note_id,
             path,
         }) = self.paragraph_surfaces.get(index)
         else {
-            return 0;
+            return None;
         };
-        let Some(doc) = self.document.as_ref() else {
-            return 0;
-        };
-        let Some(note) = kind.notes(doc).get(note_id) else {
-            return 0;
-        };
+        let doc = self.document.as_ref()?;
+        let note = kind.notes(doc).get(note_id)?;
         if note.note_type.is_some() || Self::paragraph_ordinal_for_path(&note.body, path) != Some(0)
         {
-            return 0;
+            return None;
         }
         // A preceding top-level display already carries the painted note
         // number. Its marker does not consume bytes in this text paragraph.
@@ -33949,11 +35536,11 @@ impl WordDocument {
                 .any(|block| matches!(block, BodyElement::Math(_))),
             PathEntry::TableCell { .. } => false,
         }) {
-            return 0;
+            return None;
         }
 
         if let Some(marker) = self.note_reference_marker(*kind, note_id) {
-            return marker.len();
+            return Some(marker);
         }
         let ordinal = kind
             .notes(doc)
@@ -33961,17 +35548,14 @@ impl WordDocument {
             .filter(|(_, note)| note.note_type.is_none())
             .position(|(id, _)| id == note_id)
             .map(|index| index + 1);
-        let Some(ordinal) = ordinal else {
-            return 0;
-        };
+        let ordinal = ordinal?;
         let properties = doc.resolved_note_numbering(None, *kind == NoteKind::Footnote);
-        format_note_marker(
+        Some(format_note_marker(
             ordinal,
             properties.number_format.as_deref(),
             properties.number_start,
             *kind == NoteKind::Footnote,
-        )
-        .len()
+        ))
     }
 
     /// Resolves the marker text for a referenced note in document order using
@@ -34011,8 +35595,20 @@ impl WordDocument {
                     NoteKind::Footnote => &run.footnote_reference_ids,
                     NoteKind::Endnote => &run.endnote_reference_ids,
                 };
+                let custom_marks = match kind {
+                    NoteKind::Footnote => &document.custom_mark_footnotes,
+                    NoteKind::Endnote => &document.custom_mark_endnotes,
+                };
                 for id in ids {
                     if !seen.insert(id.as_str()) {
+                        continue;
+                    }
+                    // A custom mark is the text after the reference: no
+                    // number, and none of the sequence taken.
+                    if custom_marks.contains(id) {
+                        if id == note_id {
+                            return Some(String::new());
+                        }
                         continue;
                     }
                     if ordinal > 0
@@ -34483,6 +36079,18 @@ impl WordDocument {
     /// starting at the provided byte `offset`. Returns `false` when the index
     /// is out of range or the document is missing.
     pub fn split_paragraph_at(&mut self, index: usize, offset: usize) -> bool {
+        self.split_paragraph_at_keeping(index, offset, false)
+    }
+
+    /// [`Self::split_paragraph_at`], with the note references at `offset`
+    /// kept before the split when `references_before`: Enter with the caret
+    /// after a reference mark ("Hello¹|") leaves the mark where it is.
+    pub fn split_paragraph_at_keeping(
+        &mut self,
+        index: usize,
+        offset: usize,
+        references_before: bool,
+    ) -> bool {
         let surface = match self.paragraph_surfaces.get(index).cloned() {
             Some(surface) => surface,
             None => return false,
@@ -34505,6 +36113,11 @@ impl WordDocument {
                 // A complex field's code runs are empty in the model; the
                 // split keeps them so the field stays whole on its side.
                 let zero_width = self.zero_width_runs(surface_index);
+                let zero_width = if references_before {
+                    zero_width.keeping_references_before_split()
+                } else {
+                    zero_width
+                };
                 let source_node_id = {
                     let Some(doc) = self.document_mut() else {
                         return false;
@@ -35188,6 +36801,44 @@ impl WordDocument {
     /// and `document.page_settings` from the first section — the renderer
     /// lays that section out with it, and removing or restoring a break can
     /// give the first section different properties.
+    /// Section ranges are derived from the section-ending paragraphs and the
+    /// body-level `w:sectPr`, and rebuilt from them (a section break does).
+    /// A setter that writes a range alone loses its change at the next
+    /// rebuild while the saved `w:sectPr` keeps it; section properties are
+    /// written through `edit_section_properties`. Debug builds check, on
+    /// every export, that the ranges still match what a rebuild derives:
+    /// this crate's tests panic, and other debug builds (`wasm-dev`, whose
+    /// collaboration capture and story export also export) only warn, so a
+    /// false positive cannot end an editing session.
+    #[cfg(debug_assertions)]
+    fn debug_check_section_ranges_are_derived(&self) {
+        let Some(document) = self.document.as_deref() else {
+            return;
+        };
+        if document.body.is_none() || document.sections.is_empty() {
+            return;
+        }
+        let properties = |sections: &[SectionRange]| -> Vec<String> {
+            sections
+                .iter()
+                .map(|section| format!("{:?}", section.properties))
+                .collect()
+        };
+        let ranges = properties(&document.sections);
+        let derived = properties(&Self::section_ranges(document));
+        if ranges == derived {
+            return;
+        }
+        let message = "a section property was written into a section range only; \
+                       write it through `edit_section_properties`";
+        #[cfg(test)]
+        panic!("{message}\n  ranges: {ranges:?}\n derived: {derived:?}");
+        #[cfg(all(not(test), target_arch = "wasm32"))]
+        web_sys::console::warn_1(&message.into());
+        #[cfg(all(not(test), not(target_arch = "wasm32")))]
+        eprintln!("warning: {message}");
+    }
+
     pub(crate) fn rebuild_section_ranges(document: &mut Document) {
         document.sections = Self::section_ranges(document);
         document.sync_page_settings_with_first_section();
@@ -35311,15 +36962,8 @@ impl WordDocument {
                 while split_point > 0 && !runs[index].text.is_char_boundary(split_point) {
                     split_point = split_point.saturating_sub(1);
                 }
-                let right_text = runs[index]
-                    .text
-                    .get(split_point..)
-                    .unwrap_or("")
-                    .to_string();
-                runs[index].text.truncate(split_point);
-
-                let mut new_run = runs[index].clone();
-                new_run.text = right_text;
+                let mut new_run = runs[index].with_text_range(split_point..len);
+                runs[index].replace_text_range(split_point..len, "");
                 new_run.node_id = None;
                 new_run.text_node_id = None;
 
@@ -35384,6 +37028,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -36695,6 +38340,62 @@ impl WordDocument {
         }
     }
 
+    /// Rebuilt from the model, a reference loses `w:customMarkFollows`: put
+    /// it back on the custom-mark notes' references in `paragraph_id`.
+    fn mark_custom_note_references(&mut self, paragraph_id: Option<XmlNodeId>) {
+        fn walk(
+            element: &mut XmlElement,
+            footnotes: &BTreeSet<String>,
+            endnotes: &BTreeSet<String>,
+        ) {
+            let custom = match element.name.as_str() {
+                "w:footnoteReference" => Some(footnotes),
+                "w:endnoteReference" => Some(endnotes),
+                _ => None,
+            };
+            if let Some(custom) = custom {
+                let is_custom = element
+                    .attributes
+                    .iter()
+                    .any(|attr| attr.name == "w:id" && custom.contains(&attr.value));
+                if is_custom
+                    && !element
+                        .attributes
+                        .iter()
+                        .any(|attr| attr.name == "w:customMarkFollows")
+                {
+                    element.attributes.push(XmlAttribute {
+                        name: "w:customMarkFollows".to_string(),
+                        value: "1".to_string(),
+                    });
+                }
+            }
+            for child in &mut element.children {
+                if let XmlNode::Element(child) = child {
+                    walk(child, footnotes, endnotes);
+                }
+            }
+        }
+        let Some(paragraph_id) = paragraph_id else {
+            return;
+        };
+        let Some(document) = self.document.as_ref() else {
+            return;
+        };
+        if document.custom_mark_footnotes.is_empty() && document.custom_mark_endnotes.is_empty() {
+            return;
+        }
+        let footnotes = document.custom_mark_footnotes.clone();
+        let endnotes = document.custom_mark_endnotes.clone();
+        if let Some(element) = self
+            .raw_document
+            .as_mut()
+            .and_then(|raw| raw.element_mut(paragraph_id))
+        {
+            walk(element, &footnotes, &endnotes);
+        }
+    }
+
     fn sync_paragraph_xml(&mut self, paragraph_index: usize, preserve_drawings: bool) {
         self.mark_paragraph_text_metrics_dirty(paragraph_index);
         let edited_paragraph_id = self
@@ -36756,6 +38457,7 @@ impl WordDocument {
                             || run.field.is_some()
                     });
                 }
+                self.mark_custom_note_references(edited_paragraph_id);
             }
             ParagraphSurface::TextBox {
                 host_path,
@@ -37650,6 +39352,35 @@ impl WordDocument {
             }
         }
         let mut graphic = graphic.expect("the container was chosen for its graphic");
+
+        // `wp:effectExtent` follows the model, never with a negative edge;
+        // an unchanged one is kept verbatim.
+        let effect = layout.options().effect_extent.unwrap_or_default().clamped();
+        let effect_emu = [effect.left, effect.top, effect.right, effect.bottom].map(px_to_emu);
+        let existing_effect = kept
+            .iter()
+            .position(|element| element.name == "wp:effectExtent");
+        let written_emu = existing_effect.map(|index| {
+            ["l", "t", "r", "b"].map(|name| {
+                get_attr(&kept[index], name)
+                    .and_then(|value| value.trim().parse::<i64>().ok())
+                    .unwrap_or(0)
+            })
+        });
+        if written_emu != Some(effect_emu) && (existing_effect.is_some() || effect_emu != [0; 4]) {
+            if let Some(index) = existing_effect {
+                kept.remove(index);
+            }
+            let [l, t, r, b] = effect_emu;
+            kept.insert(
+                0,
+                doc.create_element(
+                    "wp:effectExtent",
+                    vec![attr("l", l), attr("t", t), attr("r", r), attr("b", b)],
+                    Vec::new(),
+                ),
+            );
+        }
 
         // The graphic: size, rotation, flips, crop, picture.
         if let Some(graphic_data) = child_mut(&mut graphic, "a:graphicData") {
@@ -39646,8 +41377,10 @@ impl WordDocument {
             };
             match kerning {
                 Some(points) if points.is_finite() && points >= 0.0 => {
-                    let half_points =
-                        (points * 2.0).round().clamp(0.0, WORD_MAX_HALF_POINTS) as i32;
+                    // This is a minimum size for kerning, not the run's font
+                    // size. Preserve imported thresholds above the font-size
+                    // ceiling when an unrelated text edit re-emits the run.
+                    let half_points = (points * 2.0).round() as i32;
                     Self::upsert_run_property_child_with_value(
                         doc,
                         &mut element,
@@ -40259,7 +41992,7 @@ impl WordDocument {
         let mut page_break_index = 0usize;
         let mut tab_index = 0usize;
         let mut logical_offset = 0usize;
-        for ch in text.chars() {
+        for (byte_offset, ch) in text.char_indices() {
             let consumed_by_preserved = push_preserved_at_offset(
                 doc,
                 &mut nodes,
@@ -40314,7 +42047,7 @@ impl WordDocument {
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
                 }
-                '\u{00AD}' => {
+                '\u{00AD}' if !run.is_literal_soft_hyphen(byte_offset) => {
                     push_text_node(doc, &mut nodes, &mut buffer, &mut first_text_id);
                     nodes.push(XmlNode::Element(Self::create_soft_hyphen_element(doc)));
                     logical_offset += 1;
@@ -41602,9 +43335,38 @@ impl WordDocument {
                 }
             }
 
+            // The reader splits an ordinary source run at soft breaks. When
+            // those pieces still have one format, write them back through the
+            // original run together: rebuilding each piece separately loses
+            // the break template and duplicates the source run properties.
+            let following_piece = runs.get(run_index + 1).is_some_and(is_unbound_plain_run);
+            let coalesced = match tokens.front() {
+                Some(ChildToken::RunElement(element))
+                    if following_piece
+                        && runs[run_index].node_id == Some(element.id)
+                        && !in_field_instruction(&runs[run_index]) =>
+                {
+                    Self::coalesce_source_soft_break_pieces(element, &runs[run_index..])
+                }
+                _ => None,
+            };
+            if let Some((combined, count)) = coalesced {
+                let Some(ChildToken::RunElement(existing)) = tokens.pop_front() else {
+                    unreachable!("matched source run");
+                };
+                let (element, text_id) =
+                    Self::update_run_element(doc, existing, &combined, preserve_drawings, false)
+                        .expect("a plain run containing a soft break has content");
+                runs[run_index].node_id = Some(element.id);
+                runs[run_index].text_node_id = text_id;
+                new_children.push(XmlNode::Element(element));
+                piece_budget = 0;
+                run_index += count;
+                continue;
+            }
+
             // Ordinary bound runs need no source-text traversal. A budget is
             // only consumed by an immediately following unbound plain run.
-            let following_piece = runs.get(run_index + 1).is_some_and(is_unbound_plain_run);
             let run = &mut runs[run_index];
             let existing_run_element = match tokens.front() {
                 Some(ChildToken::RunElement(element)) if run.node_id == Some(element.id) => {
@@ -41667,6 +43429,107 @@ impl WordDocument {
         }
 
         new_children
+    }
+
+    /// Reuse one authored run without changing the editable model's pieces.
+    /// Inserted/deleted breaks, independently formatted pieces and ambiguous
+    /// unbound continuations retain the ordinary per-run writer path.
+    fn coalesce_source_soft_break_pieces(
+        source: &XmlElement,
+        runs: &[Run],
+    ) -> Option<(Run, usize)> {
+        if !source
+            .children
+            .iter()
+            .any(|node| matches!(node, XmlNode::Element(element) if element.name == "w:br"))
+        {
+            return None;
+        }
+        let mut pieces = Vec::new();
+        let mut has_text = false;
+        for node in &source.children {
+            let XmlNode::Element(element) = node else {
+                continue;
+            };
+            match element.name.as_str() {
+                "w:rPr" => {}
+                "w:t" => has_text |= Self::xml_text_len(element) > 0,
+                "w:br" => match Self::word_break_type(element).as_deref() {
+                    None | Some("textwrapping") => {
+                        if std::mem::take(&mut has_text) {
+                            pieces.push(false);
+                        }
+                        pieces.push(true);
+                    }
+                    // The reader keeps page and column breaks inside the
+                    // adjoining piece of text when splitting at soft breaks.
+                    Some("page" | "column") => has_text = true,
+                    _ => return None,
+                },
+                _ => return None,
+            }
+        }
+        if has_text {
+            pieces.push(false);
+        }
+        if pieces.len() < 2
+            || runs.len() < pieces.len()
+            || runs
+                .get(pieces.len())
+                .is_some_and(|run| run.node_id.is_none())
+        {
+            return None;
+        }
+        let first = &runs[0];
+        let plain = |run: &Run| {
+            run.field.is_none()
+                && run.image.is_none()
+                && run.text_box.is_none()
+                && run.math.is_none()
+                && run.hyperlink.is_none()
+                && run.revision.is_none()
+                && run.comment_reference_ids.is_empty()
+                && run.footnote_reference_ids.is_empty()
+                && run.endnote_reference_ids.is_empty()
+                && run.note_separator.is_none()
+                && !run.has_footnote_ref
+                && !run.has_endnote_ref
+        };
+        for (index, (run, &is_break)) in runs.iter().zip(&pieces).enumerate() {
+            if !plain(run)
+                || run.properties != first.properties
+                || index > 0 && run.node_id.is_some()
+                || (run.text == "\n") != is_break
+                || !is_break && run.text.contains('\n')
+            {
+                return None;
+            }
+        }
+        let mut combined = first.clone();
+        combined.text = runs[..pieces.len()]
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        // Normalization rebases each piece's source controls. Rejoining the
+        // source run must rebase every piece back, including text after a
+        // break; cloning only the first piece changes later literal hyphens
+        // into optional controls when the edited document is reopened.
+        let mut literal_offsets = Vec::new();
+        let mut start = 0;
+        for run in &runs[..pieces.len()] {
+            for (offset, _) in run.text.match_indices('\u{ad}') {
+                if run.is_literal_soft_hyphen(offset) {
+                    literal_offsets.push(start + offset);
+                }
+            }
+            start += run.text.len();
+        }
+        combined.text_controls = (!literal_offsets.is_empty()).then(|| {
+            Box::new(crate::document::RunTextControls {
+                literal_soft_hyphens: literal_offsets,
+            })
+        });
+        Some((combined, pieces.len()))
     }
 
     /// Whether `element` is an inline equation the reader models as a math
@@ -41780,8 +43643,16 @@ impl WordDocument {
             RunFieldKind::Ref {
                 name, hyperlink, ..
             } => format!(" REF {name}{} ", if *hyperlink { " \\h" } else { "" }),
-            RunFieldKind::PageRef { name, hyperlink } => {
-                format!(" PAGEREF {name}{} ", if *hyperlink { " \\h" } else { "" })
+            RunFieldKind::PageRef {
+                name,
+                hyperlink,
+                relative_position,
+            } => {
+                format!(
+                    " PAGEREF {name}{}{} ",
+                    if *hyperlink { " \\h" } else { "" },
+                    if *relative_position { " \\p" } else { "" }
+                )
             }
             RunFieldKind::NoteRef {
                 name,
@@ -43050,6 +44921,7 @@ fn blank_run(text: &str) -> Run {
         hyperlink: None,
         node_id: None,
         text_node_id: None,
+        text_controls: None,
         revision_node_id: None,
         comment_reference_ids: Vec::new(),
         footnote_reference_ids: Vec::new(),
@@ -43568,6 +45440,7 @@ impl HtmlBlock {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -43833,6 +45706,26 @@ fn watermark_style_from_shape(
         }
     }
     style
+}
+
+/// Where bookmark markers sit in the document XML now, keyed by `w:id`; see
+/// [`WordDocument::live_bookmark_markers`].
+#[derive(Default)]
+pub(crate) struct LiveBookmarkMarkers {
+    starts: HashMap<String, TextPosition>,
+    ends: HashMap<String, TextPosition>,
+}
+
+/// Whether a stored bookmark marker sits between paragraphs.
+///
+/// Hosts that mark whole paragraphs (a contract's clauses, for instance) write
+/// `w:bookmarkStart` / `w:bookmarkEnd` as children of `w:body`. With no
+/// paragraph open, the reader stores such a marker at the next body element
+/// with the text length of the paragraph before it. A marker inside a
+/// paragraph with no run before it is at offset 0, so a non-zero offset
+/// before the first run can only be one between paragraphs.
+fn marker_between_paragraphs(run: usize, offset: usize) -> bool {
+    run == 0 && offset > 0
 }
 
 #[cfg(test)]
@@ -44468,10 +46361,7 @@ mod tests {
         let path = "word/document.xml";
         let decoded = String::from_utf8_lossy(&bytes);
         let expected = jade_docx_reader::word_namespaces::normalize(&decoded);
-        doc.package
-            .as_mut()
-            .unwrap()
-            .files
+        std::sync::Arc::make_mut(&mut doc.package.as_mut().unwrap().files)
             .insert(path.to_string(), bytes.clone());
         let result = doc.load_part(path);
         match expected {
@@ -46137,7 +48027,9 @@ mod tests {
         let data = std::fs::read(fixture_path("hello.docx")).expect("read fixture");
         let mut doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
-        let note_id = doc.insert_note_at(0, 1, "", kind).expect("insert note");
+        let note_id = doc
+            .insert_note_at(0, 1, "", kind, None)
+            .expect("insert note");
         let index = doc
             .surface_index_for_story(kind.story(), 0, None, Some(&note_id))
             .expect("note paragraph");
@@ -47539,6 +49431,202 @@ mod tests {
         }
     }
 
+    /// `wp:effectExtent` survives an edit verbatim and reloads as the space
+    /// the picture's effects reserve.
+    #[test]
+    fn edited_image_keeps_its_effect_extent() {
+        use crate::commands::{insert_text::InsertTextCommand, CommandContext, CommandExecutor};
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+
+        const EFFECT: &str = r#"<wp:effectExtent l="19050" t="9525" r="57150" b="76200"/>"#;
+        let xml = single_image_document_xml().replace(
+            r#"<wp:extent cx="914400" cy="609600"/>"#,
+            &format!(r#"<wp:extent cx="914400" cy="609600"/>{EFFECT}"#),
+        );
+        let data = build_document_docx(&xml);
+        let mut word_doc = executor::block_on(WordDocument::load(&data, &Options::default()))
+            .expect("load image docx");
+        let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+        let mut selection = Some(range);
+        CommandExecutor::new()
+            .execute(
+                Box::new(InsertTextCommand::new(range, "X".to_string(), None)),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("insert text");
+        let exported = word_doc.export_docx().expect("export image docx");
+        let xml = read_document_xml_from_docx(&exported);
+        assert!(xml.contains(EFFECT), "lost the effect extent: {xml}");
+
+        let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+            .expect("reload image docx");
+        let extent = reloaded
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.image.as_ref()))
+            .and_then(|image| image.layout.options().effect_extent)
+            .expect("effect extent");
+        assert_eq!(
+            (extent.left, extent.top, extent.right, extent.bottom),
+            (2.0, 1.0, 6.0, 8.0)
+        );
+    }
+
+    /// A picture with `effect` (EMU) around its 914400 by 609600 extent,
+    /// rotated by `rotation_deg`, floating when `floating`.
+    fn effect_extent_image_docx(effect: [i64; 4], rotation_deg: f64, floating: bool) -> Vec<u8> {
+        let [l, t, r, b] = effect;
+        let rot = (rotation_deg * 60_000.0).round() as i64;
+        let xml = single_image_document_xml()
+            .replace(
+                r#"<wp:extent cx="914400" cy="609600"/>"#,
+                &format!(
+                    r#"<wp:extent cx="914400" cy="609600"/><wp:effectExtent l="{l}" t="{t}" r="{r}" b="{b}"/>"#
+                ),
+            )
+            .replace("<a:xfrm>", &format!(r#"<a:xfrm rot="{rot}">"#));
+        let xml = if floating {
+            xml.replace(
+                r#"<wp:inline distT="0" distB="0" distL="0" distR="0">"#,
+                r#"<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="1" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>"#,
+            )
+            .replace("</wp:inline>", "</wp:anchor>")
+            .replace("<wp:docPr", "<wp:wrapSquare wrapText=\"bothSides\"/><wp:docPr")
+        } else {
+            xml
+        };
+        build_document_docx(&xml)
+    }
+
+    fn picture_target() -> FloatingObjectTarget {
+        FloatingObjectTarget {
+            paragraph_index: 0,
+            run_index: 0,
+            kind: FloatingObjectKind::Image,
+        }
+    }
+
+    fn effect_extent_of(word_doc: &WordDocument) -> Option<[f64; 4]> {
+        word_doc
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.image.as_ref()))
+            .and_then(|image| image.layout.options().effect_extent)
+            .map(|extent| [extent.left, extent.top, extent.right, extent.bottom])
+    }
+
+    fn assert_edges_near(actual: Option<[f64; 4]>, expected: [f64; 4], what: &str) {
+        let actual = actual.unwrap_or([0.0; 4]);
+        for (a, e) in actual.iter().zip(expected) {
+            assert!(
+                (a - e).abs() < 0.001,
+                "{what}: expected {expected:?}, got {actual:?}"
+            );
+        }
+    }
+
+    /// Export, reload: the reloaded picture carries the same effect extent.
+    fn reloaded_effect_extent(word_doc: &WordDocument) -> (String, Option<[f64; 4]>) {
+        let exported = word_doc.export_docx().expect("export");
+        let xml = read_document_xml_from_docx(&exported);
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        (xml, effect_extent_of(&reloaded))
+    }
+
+    /// Rotating a picture keeps its effect insets and adds nothing for the
+    /// rotation; a negative edge from the file is written as 0.
+    #[test]
+    fn rotating_a_picture_keeps_its_effect_insets_without_negative_edges() {
+        use crate::commands::format_image::{FormatImageCommand, ImageFormatSpec};
+        use crate::commands::{CommandContext, CommandExecutor};
+
+        for floating in [false, true] {
+            let data = effect_extent_image_docx([72105, 111543, -9525, 111543], 30.0, floating);
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            let expected = [72105.0 / 9525.0, 111543.0 / 9525.0, 0.0, 111543.0 / 9525.0];
+            assert_edges_near(effect_extent_of(&word_doc), expected, "loaded");
+            let mut selection = None;
+            CommandExecutor::new()
+                .execute(
+                    Box::new(FormatImageCommand::new(
+                        picture_target(),
+                        ImageFormatSpec {
+                            rotation_deg: Some(0.0),
+                            ..Default::default()
+                        },
+                    )),
+                    &mut CommandContext::new(&mut word_doc, &mut selection),
+                )
+                .expect("rotate upright");
+            assert_edges_near(effect_extent_of(&word_doc), expected, "upright");
+            let (xml, reloaded) = reloaded_effect_extent(&word_doc);
+            assert!(
+                xml.contains(r#"<wp:effectExtent l="72105" t="111543" r="0" b="111543"/>"#),
+                "floating {floating}: written without a negative edge: {xml}"
+            );
+            assert_edges_near(reloaded, expected, "reloaded");
+        }
+    }
+
+    /// Resizing or rotating a picture with a shadow keeps the shadow's
+    /// insets.
+    #[test]
+    fn resizing_a_shadowed_picture_keeps_its_effect_insets() {
+        use crate::commands::transform_object::TransformObjectCommand;
+        use crate::commands::{CommandContext, CommandExecutor};
+
+        // A shadow of 2, 1, 6 and 8 px.
+        let shadow = [19050, 9525, 57150, 76200];
+        let data = effect_extent_image_docx(shadow, 0.0, true);
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+        let mut selection = None;
+        CommandExecutor::new()
+            .execute(
+                Box::new(TransformObjectCommand::new(
+                    picture_target(),
+                    FloatingObjectTransform {
+                        x: 10.0,
+                        y: 10.0,
+                        width: 192.0,
+                        height: 128.0,
+                        rotation_deg: 0.0,
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("resize");
+        assert_edges_near(effect_extent_of(&word_doc), [2.0, 1.0, 6.0, 8.0], "resized");
+        let (xml, reloaded) = reloaded_effect_extent(&word_doc);
+        assert!(
+            xml.contains(r#"<wp:effectExtent l="19050" t="9525" r="57150" b="76200"/>"#),
+            "the shadow is written unchanged: {xml}"
+        );
+        assert_edges_near(reloaded, [2.0, 1.0, 6.0, 8.0], "reloaded");
+
+        // Rotated 90° as well: the shadow stays as it is, and nothing is
+        // added for the rotation.
+        CommandExecutor::new()
+            .execute(
+                Box::new(TransformObjectCommand::new(
+                    picture_target(),
+                    FloatingObjectTransform {
+                        x: 10.0,
+                        y: 10.0,
+                        width: 192.0,
+                        height: 128.0,
+                        rotation_deg: 90.0,
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("rotate");
+        let expected = [2.0, 1.0, 6.0, 8.0];
+        assert_edges_near(effect_extent_of(&word_doc), expected, "rotated");
+        let (_, reloaded) = reloaded_effect_extent(&word_doc);
+        assert_edges_near(reloaded, expected, "rotated and reloaded");
+    }
+
     #[test]
     fn edited_image_drawingml_exports_and_round_trips_layout_and_crop() {
         let data = build_document_docx(single_image_document_xml());
@@ -47983,6 +50071,133 @@ mod tests {
 
     const SMARTART_DRAWING_XML: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <dsp:drawing xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/><dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1371600" cy="1371600"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="4472C4"/></a:solidFill></dsp:spPr><dsp:style><a:lnRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:lnRef><a:fillRef idx="1"><a:scrgbClr r="0" g="0" b="0"/></a:fillRef><a:effectRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:effectRef><a:fontRef idx="minor"><a:srgbClr val="FFFFFF"/></a:fontRef></dsp:style><dsp:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="2400"/><a:t>Plan</a:t></a:r></a:p></dsp:txBody><dsp:txXfrm><a:off x="0" y="0"/><a:ext cx="1371600" cy="1371600"/></dsp:txXfrm></dsp:sp><dsp:sp modelId="{2}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="2743200" y="0"/><a:ext cx="1371600" cy="1371600"/></a:xfrm><a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="ED7D31"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="2400"/><a:t>Do</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>"#;
+
+    /// Word's 任意の記号: a reference with `w:customMarkFollows` is drawn as
+    /// the text after it, and takes no number, so the next note is 1.
+    #[test]
+    fn a_custom_note_mark_stands_in_for_the_number() {
+        const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        let document = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="{W}"><w:body><w:p><w:r><w:t>Star</w:t></w:r><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteReference w:customMarkFollows="1" w:id="2"/><w:t>*</w:t></w:r><w:r><w:t xml:space="preserve"> then</w:t></w:r><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteReference w:id="3"/></w:r></w:p><w:sectPr/></w:body></w:document>"#
+        );
+        let footnotes = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:footnotes xmlns:w="{W}"><w:footnote w:type="separator" w:id="0"><w:p><w:r><w:separator/></w:r></w:p></w:footnote><w:footnote w:type="continuationSeparator" w:id="1"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:footnote><w:footnote w:id="2"><w:p><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>*</w:t></w:r><w:r><w:t xml:space="preserve"> starred</w:t></w:r></w:p></w:footnote><w:footnote w:id="3"><w:p><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> numbered</w:t></w:r></w:p></w:footnote></w:footnotes>"#
+        );
+        let bytes = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", &document),
+            ("word/footnotes.xml", &footnotes),
+        ]);
+        let check = |doc: &WordDocument| {
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, "2")
+                    .as_deref(),
+                Some("")
+            );
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, "3")
+                    .as_deref(),
+                Some("1")
+            );
+            // The body reads as Word draws it: the mark, then the number 1.
+            assert_eq!(doc.rendered_paragraph_text(0), "Star* then1");
+            let starred = doc.footnote_paragraph_index("2").unwrap();
+            assert_eq!(doc.rendered_paragraph_text(starred), "* starred");
+        };
+        let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        check(&doc);
+        // Typing in the paragraph keeps the mark custom when saved.
+        {
+            use crate::commands::{CommandContext, CommandExecutor};
+            let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+            let mut selection = Some(range);
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            CommandExecutor::new()
+                .execute(
+                    Box::new(crate::commands::insert_text::InsertTextCommand::new(
+                        range,
+                        "A ".to_string(),
+                        None,
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+        }
+        let saved = doc.export_docx().unwrap();
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        assert_eq!(
+            reopened
+                .note_reference_marker(NoteKind::Footnote, "3")
+                .as_deref(),
+            Some("1")
+        );
+        assert_eq!(reopened.rendered_paragraph_text(0), "A Star* then1");
+    }
+
+    /// 任意の記号 from the dialog: the reference is the mark, saved as Word
+    /// saves one, and the next numbered note is still 1.
+    #[test]
+    fn a_note_put_in_with_a_custom_mark_saves_as_word_does() {
+        let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
+        let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        let dagger = doc
+            .insert_note_with_mark_at(true, 0, 0, "daggered", "†")
+            .unwrap();
+        let end = doc.paragraph(0).map(paragraph_text_len).unwrap();
+        let numbered = doc.insert_footnote_at(0, end, "numbered").unwrap();
+        let check = |doc: &WordDocument| {
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, &dagger)
+                    .as_deref(),
+                Some("")
+            );
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, &numbered)
+                    .as_deref(),
+                Some("1")
+            );
+            let text = doc.rendered_paragraph_text(0);
+            assert!(text.starts_with('†') && text.ends_with('1'), "{text}");
+            let note = doc.footnote_paragraph_index(&dagger).unwrap();
+            assert_eq!(doc.rendered_paragraph_text(note), "† daggered");
+        };
+        check(&doc);
+        let saved = doc.export_docx().unwrap();
+        let part = |name: &str| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(saved.clone())).unwrap();
+            let mut xml = String::new();
+            std::io::Read::read_to_string(&mut archive.by_name(name).unwrap(), &mut xml).unwrap();
+            xml
+        };
+        let document = part("word/document.xml");
+        assert!(
+            document.contains(&format!(r#"w:id="{dagger}" w:customMarkFollows="1""#))
+                || document.contains(&format!(r#"w:customMarkFollows="1" w:id="{dagger}""#)),
+            "{document}"
+        );
+        let notes = part("word/footnotes.xml");
+        let dagger_note = notes
+            .split("<w:footnote ")
+            .find(|note| note.contains(&format!(r#"w:id="{dagger}""#)))
+            .unwrap();
+        assert!(
+            dagger_note.contains("†") && !dagger_note.contains("w:footnoteRef"),
+            "{dagger_note}"
+        );
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        check(&reopened);
+    }
 
     fn build_smartart_docx() -> Vec<u8> {
         build_docx_from_parts(&[
@@ -49231,6 +51446,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49264,7 +51480,7 @@ mod tests {
         let mut files = HashMap::new();
         files.insert("word/media/image1.png".to_string(), b"png".to_vec());
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: None,
         };
@@ -49318,6 +51534,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49351,7 +51568,7 @@ mod tests {
         let mut files = HashMap::new();
         files.insert("word/media/image1.wmf".to_string(), b"wmf".to_vec());
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: None,
         };
@@ -49671,6 +51888,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49704,7 +51922,7 @@ mod tests {
         let mut files = HashMap::new();
         files.insert("word/media/image1.emf".to_string(), minimal_emf_bytes());
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: None,
         };
@@ -49793,6 +52011,7 @@ mod tests {
                         }),
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49859,6 +52078,7 @@ mod tests {
                         }),
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49993,6 +52213,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50012,6 +52233,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50084,6 +52306,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50103,6 +52326,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50128,6 +52352,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -51937,6 +54162,7 @@ mod tests {
                                 RunFieldKind::PageRef {
                                     name: actual,
                                     hyperlink: true,
+                                    ..
                                 } if kind == CrossReferenceKind::Page => assert_eq!(actual, name),
                                 RunFieldKind::Ref {
                                     name: actual,
@@ -52088,6 +54314,7 @@ mod tests {
                                 RunFieldKind::PageRef {
                                     name: "参照先_1".into(),
                                     hyperlink: true,
+                                    relative_position: false,
                                 }
                             } else {
                                 RunFieldKind::Ref {
@@ -58428,6 +60655,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -58508,6 +60736,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -58588,6 +60817,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -64231,7 +66461,14 @@ mod tests {
                 .contains(r#"<w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteRef/>"#),
             "the note-area marker run should be superscript: {footnotes_xml}"
         );
-        assert!(footnotes_xml.contains("<w:t>Footnote body edited</w:t>"));
+        assert!(
+            footnotes_xml.contains(r#"<w:t xml:space="preserve"> </w:t></w:r>"#),
+            "Word's space after the number, a run of its own: {footnotes_xml}"
+        );
+        assert!(
+            footnotes_xml.contains(">Footnote body edited</w:t>"),
+            "{footnotes_xml}"
+        );
     }
 
     #[test]
@@ -64286,6 +66523,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -64453,6 +66691,111 @@ mod tests {
     }
 
     #[test]
+    fn source_hyphen_edit_export_keeps_literal_text_and_xml_optional_control_distinct() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct RestorePlatform(WordLayoutPlatform);
+        impl Drop for RestorePlatform {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = RestorePlatform(word_layout_platform());
+        let xml = "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>日\u{ad}a</w:t><w:softHyphen/><w:t>b\u{ad}c</w:t></w:r></w:p></w:body></w:document>";
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let data = build_document_docx(xml);
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let zero_width = doc.zero_width_runs(0);
+            let paragraph = doc.paragraph_mut(0).unwrap();
+            apply_text_edit(&mut paragraph.runs, 0, 0, "🦀", &zero_width);
+            // Split immediately before the XML optional control. Both literal
+            // identities must survive moving the tail to a freshly written run.
+            let tail = split_runs_at_preserving_source(&mut paragraph.runs, 10, &zero_width);
+            paragraph.runs.extend(tail);
+            doc.sync_paragraph_text(0);
+            let raw = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+            assert_eq!(
+                raw.matches("<w:softHyphen/>").count(),
+                1,
+                "{platform:?}: {raw}"
+            );
+            assert_eq!(raw.matches('\u{ad}').count(), 2, "{platform:?}: {raw}");
+            let exported = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            let paragraph = reopened.paragraph(0).unwrap();
+            let mut offset = 0;
+            let mut literal_offsets = Vec::new();
+            let mut text = String::new();
+            for run in &paragraph.runs {
+                for (local, _) in run.text.char_indices() {
+                    if run.is_literal_soft_hyphen(local) {
+                        literal_offsets.push(offset + local);
+                    }
+                }
+                text.push_str(&run.text);
+                offset += run.text.len();
+            }
+            assert_eq!(text, "🦀日\u{ad}a\u{ad}b\u{ad}c", "{platform:?}");
+            assert_eq!(literal_offsets, [7, 13], "{platform:?}");
+        }
+    }
+
+    #[test]
+    fn literal_hyphens_after_source_soft_break_survive_edit_export_and_reopen() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct RestorePlatform(WordLayoutPlatform);
+        impl Drop for RestorePlatform {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = RestorePlatform(word_layout_platform());
+        let xml = "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>日\u{ad}a</w:t><w:br/><w:t>b\u{ad}c</w:t></w:r></w:p></w:body></w:document>";
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let data = build_document_docx(xml);
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let zero_width = doc.zero_width_runs(0);
+            let paragraph = doc.paragraph_mut(0).unwrap();
+            normalize_break_runs(&mut paragraph.runs);
+            apply_text_edit(&mut paragraph.runs, 0, 0, "🦀", &zero_width);
+            doc.sync_paragraph_text(0);
+            let raw = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+            assert_eq!(
+                raw.matches("<w:softHyphen/>").count(),
+                0,
+                "{platform:?}: {raw}"
+            );
+            assert_eq!(raw.matches('\u{ad}').count(), 2, "{platform:?}: {raw}");
+            let exported = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            let paragraph = reopened.paragraph(0).unwrap();
+            let mut offset = 0;
+            let mut literals = Vec::new();
+            let mut text = String::new();
+            for run in &paragraph.runs {
+                for (local, _) in run.text.char_indices() {
+                    if run.is_literal_soft_hyphen(local) {
+                        literals.push(offset + local);
+                    }
+                }
+                text.push_str(&run.text);
+                offset += run.text.len();
+            }
+            assert_eq!(text, "🦀日\u{ad}a\nb\u{ad}c", "{platform:?}");
+            assert_eq!(literals, [7, 12], "{platform:?}");
+        }
+    }
+
+    #[test]
     fn no_break_hyphen_does_not_duplicate_during_run_rebuild() {
         let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -64569,6 +66912,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -64642,6 +66986,112 @@ mod tests {
             raw.contains(r#"<w:t>X</w:t><w:br w:type="futureBreak"/><w:t>F</w:t>"#),
             "unknown break types must survive lossless editing: {raw}",
         );
+    }
+
+    #[test]
+    fn untyped_soft_break_survives_editing_its_split_source_run() {
+        let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Above</w:t><w:br/><w:t>Below</w:t></w:r></w:p></w:body>
+</w:document>"#;
+        let data = build_document_docx(document_xml);
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+        let paragraph = document.paragraph_mut(0).expect("paragraph");
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "Above\nBelow"
+        );
+        paragraph.runs[0].text.insert(0, 'Z');
+        document.sync_paragraph_text(0);
+        let raw = document
+            .raw_document
+            .as_ref()
+            .expect("raw XML")
+            .to_string()
+            .expect("serialize");
+        assert!(
+            raw.contains("<w:br/>"),
+            "original untyped break must survive: {raw}"
+        );
+        assert!(
+            !raw.contains("w:type=\"textWrapping\""),
+            "editing text must not rewrite the original break: {raw}"
+        );
+        assert!(raw.contains("ZAbove") && raw.contains("Below"));
+        assert_eq!(
+            raw.matches("<w:rPr>").count(),
+            1,
+            "source formatting must not be duplicated"
+        );
+
+        // The editable model keeps its split pieces. Repeated synchronization
+        // and an edit to the tail must reuse the same original break again.
+        document
+            .paragraph_mut(0)
+            .unwrap()
+            .runs
+            .last_mut()
+            .unwrap()
+            .text = "Changed".into();
+        document.sync_paragraph_text(0);
+        let raw = document.raw_document.as_ref().unwrap().to_string().unwrap();
+        assert!(raw.contains("<w:br/>") && raw.contains("Changed"));
+        assert_eq!(raw.matches("<w:rPr>").count(), 1);
+        assert_eq!(
+            document
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            "ZAbove\nChanged"
+        );
+
+        document
+            .paragraph_mut(0)
+            .unwrap()
+            .runs
+            .retain(|run| run.text != "\n");
+        document.sync_paragraph_text(0);
+        let raw = document.raw_document.as_ref().unwrap().to_string().unwrap();
+        assert!(
+            !raw.contains("<w:br"),
+            "a deleted break must not return: {raw}"
+        );
+    }
+
+    #[test]
+    fn soft_and_page_or_column_breaks_survive_editing_the_same_run() {
+        for (kind, control) in [("page", "\u{000C}"), ("column", "\u{000E}")] {
+            let xml = format!(
+                r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:t>Above</w:t><w:br/><w:br w:type="{kind}"/></w:r></w:p></w:body>
+</w:document>"#
+            );
+            let data = build_document_docx(&xml);
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let runs = &mut doc.paragraph_mut(0).unwrap().runs;
+            assert_eq!(
+                runs.iter().map(|run| run.text.as_str()).collect::<Vec<_>>(),
+                ["Above", "\n", control],
+            );
+            runs[0].text.insert(0, 'Z');
+            doc.sync_paragraph_text(0);
+            let raw = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+            assert!(
+                raw.contains(&format!(
+                    r#"<w:t>ZAbove</w:t><w:br/><w:br w:type="{kind}"/>"#
+                )),
+                "{raw}"
+            );
+        }
     }
 
     #[test]
@@ -64724,6 +67174,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -65914,6 +68365,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -66067,6 +68519,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -66771,6 +69224,118 @@ mod tests {
             exported_xml.contains("<w:t>Hallo</w:t><w:lastRenderedPageBreak/><w:t>World</w:t>"),
             "marker should retain its logical offset: {exported_xml}"
         );
+    }
+
+    #[test]
+    fn deferred_roundtrip_xml_continues_revision_ids_after_the_file() {
+        let data = std::fs::read(fixture_path("review-kinds.docx")).expect("read fixture");
+        let options = Options::default();
+        let eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        deferred
+            .ensure_roundtrip_xml()
+            .expect("prepare round-trip XML");
+        assert!(
+            eager.next_revision_id > 1,
+            "the fixture has tracked changes"
+        );
+        assert_eq!(deferred.next_revision_id, eager.next_revision_id);
+    }
+
+    #[test]
+    fn deferred_load_builds_the_tree_when_the_first_paint_needs_it() {
+        let alt_chunk = std::fs::read(fixture_path("alt-chunk-html.docx")).expect("read fixture");
+        let check_box = build_document_docx(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"><w:ffData><w:checkBox><w:default w:val="1"/></w:checkBox></w:ffData></w:fldChar></w:r><w:r><w:instrText> FORMCHECKBOX </w:instrText></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document>"#,
+        );
+        for (name, data) in [("alt chunk", alt_chunk), ("check box", check_box)] {
+            let deferred = executor::block_on(WordDocument::load_for_initial_render(
+                &data,
+                &Options::default(),
+            ))
+            .expect("deferred");
+            assert!(deferred.raw_document.is_some(), "{name}");
+        }
+    }
+
+    #[test]
+    fn deferred_load_headless_edits_save_as_an_eager_load_does() {
+        use crate::headless_api::apply_headless_commands_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        let edits = || HeadlessEditRequest {
+            commands: vec![
+                HeadlessCommand::InsertText {
+                    paragraph: 0,
+                    offset: 0,
+                    text: "Edited ".to_string(),
+                },
+                HeadlessCommand::SetHeaderParagraphText {
+                    paragraph: 0,
+                    text: "Header".to_string(),
+                },
+                HeadlessCommand::InsertBlankPage {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 0,
+                },
+            ],
+        };
+        let data =
+            std::fs::read(fixture_path("word-compat-comprehensive.docx")).expect("read fixture");
+        let options = Options::default();
+        let mut eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        apply_headless_commands_to_document(&mut eager, &edits()).expect("eager edit");
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        apply_headless_commands_to_document(&mut deferred, &edits()).expect("deferred edit");
+        assert!(deferred.raw_document.is_some(), "the edit built the tree");
+        assert!(
+            deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+            "a headless edit on a deferred load saved differently"
+        );
+    }
+
+    #[test]
+    fn deferred_load_story_replacement_saves_as_an_eager_load_does() {
+        let data = std::fs::read(fixture_path("contract.docx")).expect("read fixture");
+        let story = std::fs::read(fixture_path("hello.docx")).expect("read story");
+        let options = Options::default();
+        let mut eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        assert!(eager
+            .replace_story_from_docx(0, "header", "default", &story)
+            .expect("eager replace"));
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        assert!(deferred
+            .replace_story_from_docx(0, "header", "default", &story)
+            .expect("deferred replace"));
+        assert!(
+            deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+            "a story replacement on a deferred load saved differently"
+        );
+    }
+
+    #[test]
+    fn deferred_load_exports_as_loaded_before_the_tree() {
+        for fixture in ["contract.docx", "review-kinds.docx"] {
+            let data = std::fs::read(fixture_path(fixture)).expect("read fixture");
+            let options = Options::default();
+            let eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+            let deferred =
+                executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                    .expect("deferred");
+            assert!(deferred.raw_document.is_none(), "{fixture}");
+            assert!(
+                deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+                "{fixture}"
+            );
+        }
     }
 
     #[test]
@@ -67999,6 +70564,7 @@ mod tests {
                 hyperlink: None,
                 node_id: paragraph.node_id,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -68182,7 +70748,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let note_id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let note_id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let part = kind.part_path();
             let mut raw =
                 DocxXmlDocument::parse(&doc.read_xml_part_content(part).unwrap()).unwrap();
@@ -68284,7 +70850,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            doc.insert_note_at(0, 1, "Note", kind).unwrap();
+            doc.insert_note_at(0, 1, "Note", kind, None).unwrap();
             let original = doc
                 .paragraph(0)
                 .unwrap()
@@ -68333,7 +70899,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let surface = doc
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
@@ -68349,7 +70915,7 @@ mod tests {
                     &mut CommandContext::new(&mut doc, &mut selection),
                 )
                 .unwrap();
-            for (ordinal, expected) in ["\tAlpha", "", "", "Beta"].iter().enumerate() {
+            for (ordinal, expected) in [" Alpha", "", "", "Beta"].iter().enumerate() {
                 let index = doc
                     .surface_index_for_story(kind.story(), ordinal, None, Some(&id))
                     .unwrap();
@@ -68387,7 +70953,7 @@ mod tests {
                 let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
                 let mut doc =
                     executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-                let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+                let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
                 let first = doc
                     .surface_index_for_story(kind.story(), 0, None, Some(&id))
                     .unwrap();
@@ -68454,7 +71020,9 @@ mod tests {
                 let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
                 let mut doc =
                     executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-                let id = doc.insert_note_at(0, 0, "AlphaMiddleOmega", kind).unwrap();
+                let id = doc
+                    .insert_note_at(0, 0, "AlphaMiddleOmega", kind, None)
+                    .unwrap();
                 let first = doc
                     .surface_index_for_story(kind.story(), 0, None, Some(&id))
                     .unwrap();
@@ -68547,7 +71115,7 @@ mod tests {
                             .iter()
                             .map(|run| run.text.as_str())
                             .collect::<String>(),
-                        format!("\tAl{}ega", replacement.unwrap_or_default())
+                        format!(" Al{}ega", replacement.unwrap_or_default())
                     );
                     assert!(doc
                         .surface_index_for_story(kind.story(), 1, None, Some(&id))
@@ -68690,11 +71258,11 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let first = doc
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
-            assert!(doc.split_paragraph_at(first, "\tAlpha".len()));
+            assert!(doc.split_paragraph_at(first, " Alpha".len()));
             let body_xml = doc.raw_document.as_ref().unwrap().to_string().unwrap();
             assert!(doc.remove_paragraph_at(first));
             let check = |doc: &WordDocument| {
@@ -68747,7 +71315,7 @@ mod tests {
                     let mut doc =
                         executor::block_on(WordDocument::load(&bytes, &Options::default()))
                             .unwrap();
-                    let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+                    let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
                     let surface = doc
                         .surface_index_for_story(kind.story(), 0, None, Some(&id))
                         .unwrap();
@@ -68784,9 +71352,9 @@ mod tests {
                             assert_eq!(
                                 text,
                                 if ordinal == 0 {
-                                    &"\tAlphaBeta"[..offset]
+                                    &" AlphaBeta"[..offset]
                                 } else {
-                                    &"\tAlphaBeta"[offset..]
+                                    &" AlphaBeta"[offset..]
                                 }
                             );
                         }
@@ -68815,14 +71383,14 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let before = doc.export_docx().unwrap();
             let body_xml = doc.raw_document.as_ref().unwrap().to_string().unwrap();
             let surface = doc
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
             let range = SelectionRange::collapsed(
-                doc.model_to_rendered_text_position(TextPosition::new(surface, "\tAlpha".len())),
+                doc.model_to_rendered_text_position(TextPosition::new(surface, " Alpha".len())),
             );
             let mut selection = Some(range);
             let mut history = CommandExecutor::new();
@@ -68846,7 +71414,7 @@ mod tests {
                         .iter()
                         .map(|run| run.text.as_str())
                         .collect::<String>(),
-                    "\tAlpha"
+                    " Alpha"
                 );
                 assert_eq!(
                     doc.paragraph(second)
@@ -68896,7 +71464,7 @@ mod tests {
                     .iter()
                     .map(|run| run.text.as_str())
                     .collect::<String>(),
-                "\tAlphaBeta"
+                " AlphaBeta"
             );
             assert!(doc
                 .surface_index_for_story(kind.story(), 1, None, Some(&id))
@@ -70966,8 +73534,9 @@ mod tests {
                 "delete across it",
                 format!("<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:t>CD</w:t></w:r></w:p>"),
                 // Rendered offsets: B, the equation's object character, C.
+                // The equation goes with the range, as in Word.
                 vec![delete_range(1, "AB\u{fffc}C".len())],
-                format!("<w:p><w:r><w:t>A</w:t></w:r>{eq}<w:r><w:t>D</w:t></w:r></w:p>"),
+                "<w:p><w:r><w:t>A</w:t></w:r><w:r><w:t>D</w:t></w:r></w:p>".to_string(),
             ),
             (
                 "inside a hyperlink",

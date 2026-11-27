@@ -57,6 +57,9 @@ pub struct SkiaRenderHost {
     /// moved into the renderer, which takes ownership of it.
     pages: Rc<RefCell<Vec<SkiaPainter>>>,
     page_sizes: Vec<(f64, f64)>,
+    /// Whether each retained backing contains a complete page paint. A bounded
+    /// layout may enter and clear its next page before stopping there.
+    page_pixels_valid: Vec<bool>,
     /// Index into `pages` that `painter()` currently hands out.
     current_page: Cell<usize>,
     /// How many pages the last render produced. Surfaces past that are a pool
@@ -112,6 +115,7 @@ impl SkiaRenderHost {
         Some(Self {
             pages: Rc::new(RefCell::new(vec![first])),
             page_sizes: vec![(page_width, page_height)],
+            page_pixels_valid: vec![false],
             current_page: Cell::new(0),
             rendered_pages: Rc::new(Cell::new(1)),
             pass_covers_whole_document: Rc::new(Cell::new(true)),
@@ -177,12 +181,20 @@ impl SkiaRenderHost {
             }
             PdfRenderingMode::Vector => SkiaPainter::new_recording(width, height)?,
         };
+        if options.rendering == PdfRenderingMode::Vector
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            first.set_text_output_dpi(Some(600.0));
+            first.set_preserve_clipped_pdf_text(true);
+        }
         for (family, weight, italic, face) in &fonts.faces {
             first.register_face_styled(family, *weight, *italic, face.clone());
         }
         Some(Self {
             pages: Rc::new(RefCell::new(vec![first])),
             page_sizes: vec![(width, height)],
+            page_pixels_valid: vec![false],
             current_page: Cell::new(0),
             rendered_pages: Rc::new(Cell::new(1)),
             pass_covers_whole_document: Rc::new(Cell::new(true)),
@@ -244,6 +256,14 @@ impl SkiaRenderHost {
             surface.set_dark_paper(self.dark_paper.get());
             surface
         };
+        if self.recording
+            && self.pdf_options.rendering == PdfRenderingMode::Vector
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            surface.set_text_output_dpi(Some(600.0));
+            surface.set_preserve_clipped_pdf_text(true);
+        }
         // Parsed faces, not bytes. A new Skia surface starts with none, and a
         // document that paginates mid-render creates surfaces on the hot path —
         // re-parsing megabytes of font file per page put half a repaint in
@@ -264,9 +284,11 @@ impl SkiaRenderHost {
         if index == self.page_sizes.len() {
             self.pages.borrow_mut().push(surface);
             self.page_sizes.push((width, height));
+            self.page_pixels_valid.push(false);
         } else {
             self.pages.borrow_mut()[index] = surface;
             self.page_sizes[index] = (width, height);
+            self.page_pixels_valid[index] = false;
         }
     }
 
@@ -381,6 +403,25 @@ impl CanvasRenderHost for SkiaRenderHost {
 
     fn requires_full_page_repaint_without_band(&self) -> bool {
         true
+    }
+
+    fn page_has_rendered_pixels(&self, page_index: usize) -> bool {
+        self.page_pixels_valid
+            .get(page_index)
+            .copied()
+            .unwrap_or(false)
+    }
+
+    fn mark_page_rendered(&mut self, page_index: usize) {
+        if let Some(valid) = self.page_pixels_valid.get_mut(page_index) {
+            *valid = true;
+        }
+    }
+
+    fn forget_page_pixels(&mut self, page_index: usize) {
+        if let Some(valid) = self.page_pixels_valid.get_mut(page_index) {
+            *valid = false;
+        }
     }
 
     fn draw_image_data_uri(
@@ -519,6 +560,7 @@ impl CanvasRenderHost for SkiaRenderHost {
             .collect::<Option<Vec<_>>>()
             .expect("valid layout page size");
         *self.pages.borrow_mut() = surfaces;
+        self.page_pixels_valid.fill(false);
         Ok(())
     }
 
@@ -572,17 +614,27 @@ impl CanvasRenderHost for SkiaRenderHost {
         // bound, decides whether the retained tail still belongs to the layout.
         if layout_complete {
             self.rendered_pages.set(total_pages.max(1));
+            for valid in self.page_pixels_valid.iter_mut().skip(total_pages) {
+                *valid = false;
+            }
+        } else {
+            // The layout cursor can cross the requested bound and paint the
+            // first paragraph of the next page before stopping. That surface
+            // is incomplete even though its page-start clear marked it drawn.
+            self.forget_page_pixels(total_pages.saturating_sub(1));
         }
         Ok(())
     }
 
     fn reset_pages(&mut self) -> Result<(), JsValue> {
         self.render_error.borrow_mut().take();
+        // A full repaint may draw only a requested window. The unpainted tail
+        // retains its allocation, but cannot satisfy a later band precondition.
+        self.page_pixels_valid.fill(false);
         // The surfaces are kept rather than dropped. The renderer clears a page
         // before drawing it, and only the pages it will draw, so a page it
-        // skips still holds exactly what belongs on it — the page-bitmap cache
-        // the browser pairs with a narrowed visible range, which this host has
-        // in the form of one surface per page.
+        // skips keeps its previous pixels. Validity is tracked separately:
+        // those retained pixels can belong to an earlier layout generation.
         self.current_page.set(0);
         if self.pass_covers_whole_document.get() {
             // Only a render that paginates everything may shrink the count.
@@ -739,6 +791,36 @@ mod tests {
         assert_eq!(host.page_dimensions(1), Some((600.5, 800.25)));
         let (_, w, h) = host.pages.borrow()[1].read_bgra_premultiplied().unwrap();
         assert_eq!((w, h), (601, 801));
+    }
+
+    #[test]
+    fn retained_page_pixels_require_a_complete_paint_after_invalidation() {
+        let mut host = SkiaRenderHost::new(300.0, 300.0).unwrap();
+        assert!(!host.page_has_rendered_pixels(0));
+        host.mark_page_rendered(0);
+        host.start_new_page(300.0, 300.0, 0.0).unwrap();
+        assert!(!host.page_has_rendered_pixels(1));
+        host.mark_page_rendered(1);
+        host.finish_pagination(2, false).unwrap();
+        assert!(host.page_has_rendered_pixels(0));
+        assert!(!host.page_has_rendered_pixels(1));
+        host.begin_render(true).unwrap();
+        assert!(host.page_has_rendered_pixels(0));
+        host.mark_page_rendered(1);
+        host.finish_pagination(2, true).unwrap();
+        assert!(host.page_has_rendered_pixels(1));
+        host.ensure_page_size(1, 400.0, 300.0);
+        assert!(!host.page_has_rendered_pixels(1));
+        host.mark_page_rendered(1);
+        host.forget_page_pixels(1);
+        assert!(!host.page_has_rendered_pixels(1));
+        host.mark_page_rendered(1);
+        host.set_device_pixel_ratio(1.5).unwrap();
+        assert!(!host.page_has_rendered_pixels(0));
+        assert!(!host.page_has_rendered_pixels(1));
+        host.mark_page_rendered(0);
+        host.reset_pages().unwrap();
+        assert!(!host.page_has_rendered_pixels(0));
     }
 
     #[test]

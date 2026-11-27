@@ -7,6 +7,10 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[path = "selection/paragraph_registry.rs"]
+mod paragraph_registry;
+use paragraph_registry::ParagraphRegistry;
+
 #[derive(Clone, Debug, Default)]
 pub struct GlyphBox {
     pub start: usize,
@@ -334,6 +338,28 @@ pub struct CellLayout {
     pub order: usize,
 }
 
+/// The row x column region of a rectangular cell selection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CellRectSelection {
+    pub table_id: usize,
+    /// First and last row, inclusive.
+    pub rows: (usize, usize),
+    /// First and last grid column, inclusive.
+    pub columns: (usize, usize),
+}
+
+impl CellRectSelection {
+    /// Whether a cell at `row` spanning `column_span` grid columns from
+    /// `column` in table `table_id` lies in the selection.
+    pub fn contains(&self, table_id: usize, row: usize, column: usize, column_span: usize) -> bool {
+        let last = column + column_span.max(1) - 1;
+        table_id == self.table_id
+            && (self.rows.0..=self.rows.1).contains(&row)
+            && column <= self.columns.1
+            && last >= self.columns.0
+    }
+}
+
 const SOFT_BREAK_MIN_HIT_WIDTH: f64 = 8.0;
 const CARET_THICKNESS: f64 = 1.5;
 const CELL_SELECTION_GUTTER_WIDTH: f64 = 8.0;
@@ -359,8 +385,21 @@ pub enum CaretAffinity {
 /// whose lifetime must match the saved line layouts.
 pub struct SelectionSuffix {
     paragraphs: Vec<ParagraphLayout>,
+    /// Set when the paragraphs were parked in the manager's registry instead
+    /// ([`SelectionManager::park_selection_suffix`]); `paragraphs` is then
+    /// empty.
+    parked: Option<u64>,
     caret_x_overrides: HashMap<(usize, usize), f64>,
     non_selectable_paragraphs: HashSet<usize>,
+}
+
+impl SelectionSuffix {
+    /// The saved paragraph layouts, the first one at the index the suffix
+    /// was taken from. Empty for a parked suffix until it is detached
+    /// ([`SelectionManager::detach_selection_suffix`]).
+    pub fn paragraphs(&self) -> &[ParagraphLayout] {
+        &self.paragraphs
+    }
 }
 
 /// Saved cell geometry and its authoritative paragraph lookup.
@@ -378,7 +417,7 @@ impl CellRegistry {
 
 #[derive(Clone, Debug, Default)]
 pub struct SelectionManager {
-    paragraphs: Vec<ParagraphLayout>,
+    paragraphs: ParagraphRegistry,
     selection: Option<SelectionRange>,
     /// The line a collapsed caret on a soft wrap is drawn on.
     caret_affinity: CaretAffinity,
@@ -495,6 +534,35 @@ impl SelectionManager {
         self.preserved_prefix_len = 0;
     }
 
+    /// Moves the registered layout out, leaving this manager empty but with
+    /// the same selection, caret affinity and cell selection, as a fresh
+    /// `begin_render` would. [`Self::restore_registry`] puts it back. Cheaper
+    /// than a clone for a pass whose registrations are to be discarded.
+    pub fn take_registry(&mut self) -> SelectionManager {
+        let mut kept = SelectionManager {
+            selection: self.selection,
+            caret_affinity: self.caret_affinity,
+            cell_selection: self.cell_selection.clone(),
+            frozen: self.frozen,
+            render_pass: self.render_pass,
+            ..Default::default()
+        };
+        std::mem::swap(self, &mut kept);
+        kept
+    }
+
+    /// Puts back what [`Self::take_registry`] took, keeping the selection
+    /// state set since.
+    pub fn restore_registry(&mut self, mut registry: SelectionManager) {
+        registry.selection = self.selection;
+        registry.caret_affinity = self.caret_affinity;
+        registry.cell_selection = std::mem::take(&mut self.cell_selection);
+        registry.frozen = self.frozen;
+        // Later than any pass the restored entries were registered in.
+        registry.render_pass = self.render_pass;
+        *self = registry;
+    }
+
     /// The number of leading paragraphs the current pass preserved from the
     /// previous render (0 after a full `begin_render`).
     pub fn preserved_prefix_len(&self) -> usize {
@@ -528,6 +596,33 @@ impl SelectionManager {
     /// registration. Cell layouts are saved separately by the caller.
     pub fn take_selection_suffix(&mut self, from: usize) -> SelectionSuffix {
         let paragraphs = self.take_paragraph_suffix(from);
+        self.take_selection_suffix_metadata(from, paragraphs, None)
+    }
+
+    /// [`Self::take_selection_suffix`] without moving the paragraphs: they
+    /// are parked out of sight in the registry, which reads exactly as if
+    /// they had been taken. A stable edit sets the tail after the edited
+    /// paragraph aside on every keystroke; moving it out and back copies the
+    /// rest of the document each time.
+    ///
+    /// Hand the suffix back to [`Self::restore_selection_suffix`], or to
+    /// [`Self::detach_selection_suffix`] for one that owns its paragraphs, or
+    /// to [`Self::discard_selection_suffix`]. Parking another tail, or taking
+    /// one, drops a tail still parked.
+    pub fn park_selection_suffix(&mut self, from: usize) -> SelectionSuffix {
+        let parked = self.paragraphs.park(from);
+        if parked.is_some() {
+            *self.paragraph_bounds_index.get_mut() = None;
+        }
+        self.take_selection_suffix_metadata(from, Vec::new(), parked)
+    }
+
+    fn take_selection_suffix_metadata(
+        &mut self,
+        from: usize,
+        paragraphs: Vec<ParagraphLayout>,
+        parked: Option<u64>,
+    ) -> SelectionSuffix {
         let mut caret_x_overrides = HashMap::new();
         self.caret_x_overrides.retain(|&(paragraph, line), x| {
             if paragraph < from {
@@ -548,13 +643,41 @@ impl SelectionManager {
         });
         SelectionSuffix {
             paragraphs,
+            parked,
             caret_x_overrides,
             non_selectable_paragraphs,
         }
     }
 
+    /// A suffix that owns its paragraphs: a parked one's are moved out of the
+    /// registry, which reads the same as before.
+    pub fn detach_selection_suffix(&mut self, mut suffix: SelectionSuffix) -> SelectionSuffix {
+        if let Some(id) = suffix.parked.take() {
+            suffix.paragraphs = self.paragraphs.detach_parked(id);
+        }
+        suffix
+    }
+
+    /// Drops `suffix`, and the paragraphs it parked.
+    pub fn discard_selection_suffix(&mut self, suffix: SelectionSuffix) {
+        if let Some(id) = suffix.parked {
+            self.paragraphs.discard_parked(id);
+        }
+    }
+
+    /// Drops a parked tail whose suffix is gone, as after a failed pass.
+    pub fn discard_parked_selection_suffix(&mut self) {
+        self.paragraphs.drop_parked();
+    }
+
     pub fn restore_selection_suffix(&mut self, from: usize, suffix: SelectionSuffix) {
-        self.restore_paragraph_suffix(from, suffix.paragraphs);
+        match suffix.parked {
+            Some(id) => {
+                *self.paragraph_bounds_index.get_mut() = None;
+                self.paragraphs.restore_parked(id, from);
+            }
+            None => self.restore_paragraph_suffix(from, suffix.paragraphs),
+        }
         self.caret_x_overrides
             .retain(|&(paragraph, _), _| paragraph < from);
         self.caret_x_overrides.extend(suffix.caret_x_overrides);
@@ -715,21 +838,18 @@ impl SelectionManager {
 
     fn ensure_paragraph_internal(&mut self, index: usize) -> &mut ParagraphLayout {
         *self.paragraph_bounds_index.get_mut() = None;
-        if self.paragraphs.len() <= index {
-            let render_pass = self.render_pass;
-            self.paragraphs.resize_with(index + 1, || ParagraphLayout {
-                render_pass,
-                ..ParagraphLayout::default()
-            });
-        }
-        let paragraph = &mut self.paragraphs[index];
-        if paragraph.render_pass != self.render_pass {
+        let render_pass = self.render_pass;
+        let paragraph = self.paragraphs.grow_to(index, || ParagraphLayout {
+            render_pass,
+            ..ParagraphLayout::default()
+        });
+        if paragraph.render_pass != render_pass {
             // First touch in this pass of a paragraph kept from an earlier
             // one: it is being registered afresh, so drop the old copy.
             paragraph.text.clear();
             paragraph.lines.clear();
             paragraph.invalidate_bounding_box();
-            paragraph.render_pass = self.render_pass;
+            paragraph.render_pass = render_pass;
         }
         paragraph
     }
@@ -883,6 +1003,14 @@ impl SelectionManager {
 
     /// Move the cell lookup together with its geometry when the render may
     /// converge and keep the authoritative layout.
+    /// A copy of the cell registry, for a caller that may put it back.
+    pub fn cell_registry_snapshot(&self) -> CellRegistry {
+        CellRegistry {
+            cells: self.cells.clone(),
+            paragraph_to_cell: self.paragraph_to_cell.clone(),
+        }
+    }
+
     pub fn take_cell_registry(&mut self) -> CellRegistry {
         if self.frozen {
             return CellRegistry::default();
@@ -1176,6 +1304,25 @@ impl SelectionManager {
 
     pub fn cell_selection_span(&self) -> Option<(usize, usize)> {
         self.cell_selection_bounds()
+    }
+
+    /// The table, rows and columns the active rectangular cell selection
+    /// covers, independent of cell ids. A render pass reads it before it
+    /// rebuilds the cell registry, so it can paint by cell position.
+    pub fn cell_selection_rect_bounds(&self) -> Option<CellRectSelection> {
+        let state = self.cell_selection.as_ref()?;
+        let anchor = self.cells.get(state.anchor_cell)?;
+        let focus = self.cells.get(state.focus_cell)?;
+        if anchor.table_id != focus.table_id {
+            return None;
+        }
+        let columns = |cell: &CellLayout| (cell.column, cell.column + cell.column_span.max(1) - 1);
+        let ((a0, a1), (f0, f1)) = (columns(anchor), columns(focus));
+        Some(CellRectSelection {
+            table_id: anchor.table_id,
+            rows: (anchor.row.min(focus.row), anchor.row.max(focus.row)),
+            columns: (a0.min(f0), a1.max(f1)),
+        })
     }
 
     /// Computes the set of cells inside the rectangular (row × column) region

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T074209763Z-15c0fc43",
+  "captured_at_utc": "2026-11-17T07:42:09.7660295Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-ms-gothic-size11-cjk-latin-de-enabled-compat15",
+      "source": "w17-k-ms-auto-space-input-snapshots\\word-windows-ms-gothic-size11-cjk-latin-de-enabled-compat15.docx",
+      "sha256": "24ca886187093afb15fb9e39c7eb179d513094524019acca99929b39f8ec4465",
+      "pdf": "word-windows-ms-gothic-size11-cjk-latin-de-enabled-compat15.pdf",
+      "pdf_sha256": "5cfb3dcd333d7c57f84c31aa51d9e724c6f712b27bf534bbf8d2784c81a4e253",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-gothic-size11-cjk-latin-de-enabled-compat15.page-001.emf",
+          "sha256": "f938399c3fea78dcdcb4f8e38b22ed94b442b1ac710a45dd496a46157067640b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

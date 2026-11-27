@@ -223,15 +223,33 @@ pub fn diff_images_with_map(
     let mut diff_pixels = 0u64;
     let mut delta_sum = 0.0f64;
     let mut max_delta_e = 0.0f32;
+    // Byte-identical pixels convert to identical Lab values, so their delta is
+    // exactly +0.0 (x - x is +0.0 for finite x, and sqrt(+0.0) is +0.0); the
+    // conversion is skipped for them. A whole identical row can skip even the
+    // bookkeeping, but only when +0.0 is not above the threshold (a negative
+    // threshold counts every pixel).
+    let zero_is_flagged = 0.0f32 > options.delta_e_threshold;
+    let same_width = expected.width == actual.width;
+    let row_bytes = width as usize * 4;
     for y in 0..height {
+        if !zero_is_flagged && same_width && y < expected.height && y < actual.height {
+            let start = y as usize * row_bytes;
+            if expected.pixels[start..start + row_bytes] == actual.pixels[start..start + row_bytes]
+            {
+                continue;
+            }
+        }
         for x in 0..width {
             let inside_expected = x < expected.width && y < expected.height;
             let inside_actual = x < actual.width && y < actual.height;
             let delta = if inside_expected && inside_actual {
-                delta_e76(
-                    lab.convert(expected.pixel(x, y)),
-                    lab.convert(actual.pixel(x, y)),
-                )
+                let expected_pixel = expected.pixel(x, y);
+                let actual_pixel = actual.pixel(x, y);
+                if expected_pixel == actual_pixel {
+                    0.0
+                } else {
+                    delta_e76(lab.convert(expected_pixel), lab.convert(actual_pixel))
+                }
             } else {
                 OUT_OF_BOUNDS_DELTA_E
             };
@@ -471,6 +489,115 @@ impl LabConverter {
 }
 
 #[cfg(test)]
+/// The original full path, kept as the oracle for the fast path.
+fn reference_diff_images_with_map(
+    expected: &RgbaImage,
+    actual: &RgbaImage,
+    options: DiffOptions,
+) -> (DiffReport, Vec<f32>) {
+    let width = expected.width.max(actual.width);
+    let height = expected.height.max(actual.height);
+    let cell_size = options.cell_size.max(1);
+    let lab = LabConverter::new();
+
+    let mut delta_map = vec![0.0f32; width as usize * height as usize];
+    let mut diff_pixels = 0u64;
+    let mut delta_sum = 0.0f64;
+    let mut max_delta_e = 0.0f32;
+    for y in 0..height {
+        for x in 0..width {
+            let inside_expected = x < expected.width && y < expected.height;
+            let inside_actual = x < actual.width && y < actual.height;
+            let delta = if inside_expected && inside_actual {
+                delta_e76(
+                    lab.convert(expected.pixel(x, y)),
+                    lab.convert(actual.pixel(x, y)),
+                )
+            } else {
+                OUT_OF_BOUNDS_DELTA_E
+            };
+            delta_map[y as usize * width as usize + x as usize] = delta;
+            max_delta_e = max_delta_e.max(delta);
+            if delta > options.delta_e_threshold {
+                diff_pixels += 1;
+                delta_sum += f64::from(delta);
+            }
+        }
+    }
+
+    let columns = width.div_ceil(cell_size);
+    let rows = height.div_ceil(cell_size);
+    let mut cell_counts = vec![0u32; columns as usize * rows as usize];
+    for y in 0..height {
+        for x in 0..width {
+            if delta_map[y as usize * width as usize + x as usize] > options.delta_e_threshold {
+                cell_counts[(y / cell_size * columns + x / cell_size) as usize] += 1;
+            }
+        }
+    }
+    let flagged: Vec<bool> = cell_counts
+        .iter()
+        .map(|&count| count > 0 && count >= options.min_cell_pixels)
+        .collect();
+
+    let regions = connected_cell_regions(&flagged, columns, rows)
+        .into_iter()
+        .map(|(column0, row0, column1, row1)| {
+            let x = column0 * cell_size;
+            let y = row0 * cell_size;
+            let right = ((column1 + 1) * cell_size).min(width);
+            let bottom = ((row1 + 1) * cell_size).min(height);
+            let mut region_pixels = 0u64;
+            let mut region_sum = 0.0f64;
+            let mut region_max = 0.0f32;
+            for py in y..bottom {
+                for px in x..right {
+                    let delta = delta_map[py as usize * width as usize + px as usize];
+                    region_max = region_max.max(delta);
+                    if delta > options.delta_e_threshold {
+                        region_pixels += 1;
+                        region_sum += f64::from(delta);
+                    }
+                }
+            }
+            DiffRegion {
+                x,
+                y,
+                width: right - x,
+                height: bottom - y,
+                diff_pixels: region_pixels,
+                mean_delta_e: mean(region_sum, region_pixels),
+                max_delta_e: region_max,
+            }
+        })
+        .collect();
+
+    let area = u64::from(width) * u64::from(height);
+    let report = DiffReport {
+        expected: Size {
+            width: expected.width,
+            height: expected.height,
+        },
+        actual: Size {
+            width: actual.width,
+            height: actual.height,
+        },
+        compared: Size { width, height },
+        options,
+        diff_pixels,
+        diff_ratio: if area == 0 {
+            0.0
+        } else {
+            diff_pixels as f64 / area as f64
+        },
+        mean_delta_e: mean(delta_sum, diff_pixels),
+        max_delta_e,
+        regions,
+    };
+    (report, delta_map)
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -587,5 +714,187 @@ mod tests {
         assert_eq!(picture.pixel(0, 0), [0, 90, 255, 255], "region outline");
         assert_eq!(picture.pixel(3, 3), [220, 0, 0, 255], "differing pixel");
         assert_eq!(picture.pixel(12, 12), WHITE, "unchanged white page");
+    }
+
+    // ---- equivalence of the identical-pixel fast path with the full path ----
+
+    struct Rng(u64);
+
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+        fn below(&mut self, n: u64) -> u64 {
+            self.next() % n
+        }
+    }
+
+    fn assert_same_as_oracle(expected: &RgbaImage, actual: &RgbaImage, options: DiffOptions) {
+        let (report, map) = diff_images_with_map(expected, actual, options);
+        let (oracle_report, oracle_map) = reference_diff_images_with_map(expected, actual, options);
+        // Debug output of floats round-trips, so this also separates -0.0 / 0.0.
+        assert_eq!(format!("{report:?}"), format!("{oracle_report:?}"));
+        assert_eq!(report, oracle_report);
+        assert_eq!(
+            report.mean_delta_e.to_bits(),
+            oracle_report.mean_delta_e.to_bits()
+        );
+        assert_eq!(
+            report.max_delta_e.to_bits(),
+            oracle_report.max_delta_e.to_bits()
+        );
+        assert_eq!(
+            report.diff_ratio.to_bits(),
+            oracle_report.diff_ratio.to_bits()
+        );
+        let bits = |m: &[f32]| m.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+        assert_eq!(bits(&map), bits(&oracle_map));
+        let picture = render_diff(actual, &report, &map, options);
+        let oracle_picture = render_diff(actual, &oracle_report, &oracle_map, options);
+        assert_eq!(picture.pixels, oracle_picture.pixels);
+    }
+
+    fn option_sets() -> Vec<DiffOptions> {
+        let base = DiffOptions::default();
+        vec![
+            base,
+            DiffOptions {
+                delta_e_threshold: 0.0,
+                min_cell_pixels: 1,
+                ..base
+            },
+            DiffOptions {
+                delta_e_threshold: -1.0,
+                min_cell_pixels: 1,
+                ..base
+            },
+            DiffOptions {
+                delta_e_threshold: 2.3,
+                cell_size: 0,
+                min_cell_pixels: 2,
+            },
+        ]
+    }
+
+    #[test]
+    fn fast_path_matches_oracle_on_identical_images() {
+        let mut image = RgbaImage::filled(50, 37, WHITE);
+        fill_rect(&mut image, 5, 5, 10, 3, BLACK);
+        fill_rect(&mut image, 20, 20, 5, 5, [10, 200, 30, 90]);
+        for options in option_sets() {
+            assert_same_as_oracle(&image, &image.clone(), options);
+        }
+    }
+
+    #[test]
+    fn fast_path_matches_oracle_on_scattered_edge_and_antialiased_differences() {
+        let expected = RgbaImage::filled(64, 40, WHITE);
+        let mut scattered = expected.clone();
+        for (x, y) in [(3, 3), (40, 7), (41, 7), (13, 30), (50, 22)] {
+            scattered.set_pixel(x, y, BLACK);
+        }
+        let mut edge = expected.clone();
+        edge.set_pixel(63, 39, BLACK);
+        edge.set_pixel(0, 0, BLACK);
+        edge.set_pixel(63, 0, [255, 0, 0, 255]);
+        let mut antialiased = expected.clone();
+        for (i, shade) in [250u8, 220, 180, 120, 60, 20].into_iter().enumerate() {
+            fill_rect(
+                &mut antialiased,
+                10 + i as u32,
+                10,
+                1,
+                8,
+                [shade, shade, shade, 255],
+            );
+        }
+        let mut dense = expected.clone();
+        fill_rect(&mut dense, 8, 8, 16, 16, [30, 60, 90, 255]);
+        for actual in [&scattered, &edge, &antialiased, &dense] {
+            for options in option_sets() {
+                assert_same_as_oracle(&expected, actual, options);
+                assert_same_as_oracle(actual, &expected, options);
+            }
+        }
+    }
+
+    #[test]
+    fn fast_path_matches_oracle_with_varying_alpha_and_sizes() {
+        let mut expected = RgbaImage::filled(24, 24, [200, 100, 50, 128]);
+        fill_rect(&mut expected, 0, 0, 12, 24, [0, 0, 0, 0]);
+        let mut actual = expected.clone();
+        // Same RGB, different alpha; different RGB, alpha 0 (both white page).
+        fill_rect(&mut actual, 14, 2, 4, 4, [200, 100, 50, 129]);
+        fill_rect(&mut actual, 2, 14, 4, 4, [9, 9, 9, 0]);
+        for options in option_sets() {
+            assert_same_as_oracle(&expected, &actual, options);
+        }
+        let narrow = RgbaImage::filled(20, 30, [200, 100, 50, 128]);
+        for options in option_sets() {
+            assert_same_as_oracle(&expected, &narrow, options);
+            assert_same_as_oracle(&narrow, &expected, options);
+        }
+    }
+
+    #[test]
+    fn fast_path_matches_oracle_on_random_image_pairs() {
+        let mut rng = Rng(0x9E37_79B9_7F4A_7C15);
+        let options = option_sets();
+        for case in 0..400 {
+            let width = 1 + rng.below(40) as u32;
+            let height = 1 + rng.below(40) as u32;
+            let mut expected = RgbaImage::filled(width, height, WHITE);
+            for y in 0..height {
+                for x in 0..width {
+                    if rng.below(3) == 0 {
+                        let alpha = if rng.below(4) == 0 {
+                            rng.below(256) as u8
+                        } else {
+                            255
+                        };
+                        expected.set_pixel(
+                            x,
+                            y,
+                            [
+                                rng.below(256) as u8,
+                                rng.below(256) as u8,
+                                rng.below(256) as u8,
+                                alpha,
+                            ],
+                        );
+                    }
+                }
+            }
+            let (aw, ah) = if case % 5 == 0 {
+                (1 + rng.below(40) as u32, 1 + rng.below(40) as u32)
+            } else {
+                (width, height)
+            };
+            let mut actual = RgbaImage::filled(aw, ah, WHITE);
+            for y in 0..ah {
+                for x in 0..aw {
+                    let pixel = if x < width && y < height && rng.below(8) != 0 {
+                        expected.pixel(x, y)
+                    } else {
+                        let alpha = if rng.below(3) == 0 {
+                            rng.below(256) as u8
+                        } else {
+                            255
+                        };
+                        [
+                            rng.below(256) as u8,
+                            rng.below(256) as u8,
+                            rng.below(256) as u8,
+                            alpha,
+                        ]
+                    };
+                    actual.set_pixel(x, y, pixel);
+                }
+            }
+            assert_same_as_oracle(&expected, &actual, options[case % options.len()]);
+        }
     }
 }

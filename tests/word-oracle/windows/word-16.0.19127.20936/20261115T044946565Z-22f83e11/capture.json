@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T044946565Z-22f83e11",
+  "captured_at_utc": "2026-11-15T04:49:46.5714868Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-shading-indent-left12-right18-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w15-i-paragraph-shading-input-snapshots\\word-windows-edge-shading-indent-left12-right18-compat15.docx",
+      "sha256": "7b94a5ba702d5a189512e932bece02ee7cc0da0d865703e2f92fb80b146ca340",
+      "pdf": "word-windows-edge-shading-indent-left12-right18-compat15.pdf",
+      "pdf_sha256": "b9a8fa07077cb339d7a120d4f939fd30385a6f4daace60967c2d3500f2ab1037",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-shading-indent-left12-right18-compat15.page-001.emf",
+          "sha256": "97112296f4bdf27e6b6170ec0af26f9435245df7d0f83b3a2a8d6a0cdcdc5d9c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

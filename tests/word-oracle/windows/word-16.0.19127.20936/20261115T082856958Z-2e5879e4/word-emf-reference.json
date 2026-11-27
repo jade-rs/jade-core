@@ -1,0 +1,134 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T082856958Z-2e5879e4",
+  "captured_at_utc": "2026-11-15T08:28:56.9630004Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-justify-tiers-yu20-cjk3-space1-both-balance1-compat15",
+      "docx_sha256": "2e8c3c372e1ee1ff594a347b88e810fd95502e03154f87bd347c343ebbec1a5a",
+      "pdf_sha256": "8846de6d39dd286acb02cf8801f31ed7a10bf7b35444185be9d1a92bae371f6d",
+      "pdf_file": "word-windows-edge-justify-tiers-yu20-cjk3-space1-both-balance1-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-tiers-yu20-cjk3-space1-both-balance1-compat15.page-001.emf",
+          "sha256": "e7e6b25bec0a49ec730641770858dce150fca14325b669c4b0569dd36a51dceb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          124.31704675028506
+        ],
+        [
+          1,
+          "g",
+          99.23666599475911,
+          124.31704675028506
+        ],
+        [
+          1,
+          "日",
+          160.794597863334,
+          124.31704675028506
+        ],
+        [
+          1,
+          "本",
+          222.23253376335413,
+          124.31704675028506
+        ],
+        [
+          1,
+          "語",
+          283.5504736948196,
+          124.31704675028506
+        ],
+        [
+          1,
+          "A",
+          395.9866962305986,
+          124.31704675028506
+        ],
+        [
+          1,
+          "B",
+          410.1462205200564,
+          124.31704675028506
+        ],
+        [
+          1,
+          "C",
+          423.94575690385,
+          124.31704675028506
+        ],
+        [
+          1,
+          "x",
+          438.5852650675267,
+          124.31704675028506
+        ],
+        [
+          1,
+          "y",
+          448.0649465833501,
+          124.31704675028506
+        ],
+        [
+          1,
+          "z",
+          457.78462003628294,
+          124.31704675028506
+        ],
+        [
+          1,
+          "0",
+          467.0243096149969,
+          124.31704675028506
+        ],
+        [
+          1,
+          "1",
+          477.8239467849223,
+          124.31704675028506
+        ],
+        [
+          1,
+          "2",
+          488.7435799234025,
+          124.31704675028506
+        ],
+        [
+          1,
+          "3",
+          499.5432170933279,
+          124.31704675028506
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          160.31619156214367
+        ]
+      ]
+    }
+  ]
+}

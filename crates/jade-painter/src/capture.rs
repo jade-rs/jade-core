@@ -367,6 +367,10 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         }
     }
 
+    fn text_output_dpi(&self) -> Option<f64> {
+        self.inner.text_output_dpi()
+    }
+
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         if self.record(|| PaintOp::FillText(Rc::from(text), x, y)) {
             return Ok(());
@@ -395,6 +399,27 @@ impl<P: Painter> Painter for RoutedPainter<P> {
             return Ok(());
         }
         self.inner.fill_upright_text(text, x, y)
+    }
+
+    fn supports_font_glyphs(&self) -> bool {
+        !self.is_capturing() && self.inner.supports_font_glyphs()
+    }
+
+    fn try_fill_font_glyph(
+        &self,
+        text: &str,
+        program: &std::sync::Arc<[u8]>,
+        glyph: u16,
+        font_units_scale: f64,
+        origin: (f64, f64),
+    ) -> Result<bool, Self::Error> {
+        // Keep the caller's exact outline during deferred capture. A replay
+        // backend may differ from the surface on which the capture began.
+        if self.is_capturing() {
+            return Ok(false);
+        }
+        self.inner
+            .try_fill_font_glyph(text, program, glyph, font_units_scale, origin)
     }
 
     /// Recorded whole, so the shaping (a ligature for its letters) happens
@@ -436,6 +461,13 @@ impl<P: Painter> Painter for RoutedPainter<P> {
 
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
         self.inner.measure_text_width(text)
+    }
+
+    fn measure_windows_pdf_ascii_widths(
+        &self,
+        text: &str,
+    ) -> Result<Option<Vec<f64>>, Self::Error> {
+        self.inner.measure_windows_pdf_ascii_widths(text)
     }
 
     fn measure_upright_vertical_advance(&self, text: &str) -> Result<Option<f64>, Self::Error> {

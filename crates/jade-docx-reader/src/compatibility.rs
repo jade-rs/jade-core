@@ -50,7 +50,7 @@ impl OpenXmlPackage {
         };
         report.parts.sort();
         let mut counts = BTreeMap::new();
-        for (part, bytes) in &self.files {
+        for (part, bytes) in self.files.iter() {
             if part == "word/document.xml" {
                 report.protected_text_digests = protected_text_digests(bytes);
                 let (paragraphs, revisions, deleted_paragraph_marks, inserted_paragraph_marks) =
@@ -364,13 +364,16 @@ fn known_limitation(namespace: &[u8], local: &[u8]) -> Option<&'static str> {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::sync::Arc;
 
     fn package(parts: &[(&str, &str)]) -> OpenXmlPackage {
         OpenXmlPackage {
-            files: parts
-                .iter()
-                .map(|(path, xml)| (path.to_string(), xml.as_bytes().to_vec()))
-                .collect::<HashMap<_, _>>(),
+            files: Arc::new(
+                parts
+                    .iter()
+                    .map(|(path, xml)| (path.to_string(), xml.as_bytes().to_vec()))
+                    .collect::<HashMap<_, _>>(),
+            ),
             relationships: vec![],
             original_size_bytes: None,
         }
@@ -380,7 +383,7 @@ mod tests {
     fn reports_alt_chunks_by_namespace_and_part_with_stable_counts() {
         let xml = r#"<x:document xmlns:x="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><x:body><x:altChunk/><x:altChunk></x:altChunk></x:body></x:document>"#;
         let pkg = package(&[("word/header1.xml", xml), ("word/document.xml", xml)]);
-        let original = pkg.files.clone();
+        let original = (*pkg.files).clone();
         let report = pkg.compatibility_report();
         assert_eq!(
             report.issues,
@@ -397,16 +400,14 @@ mod tests {
                 },
             ]
         );
-        assert_eq!(pkg.files, original);
+        assert_eq!(*pkg.files, original);
     }
 
     #[test]
     fn inventories_every_package_part_in_stable_order() {
         let mut pkg = package(&[("word/document.xml", "<document/>")]);
-        pkg.files
-            .insert("word/media/image.png".into(), vec![1, 2, 3]);
-        pkg.files
-            .insert("customXml/item1.xml".into(), b"<data/>".to_vec());
+        Arc::make_mut(&mut pkg.files).insert("word/media/image.png".into(), vec![1, 2, 3]);
+        Arc::make_mut(&mut pkg.files).insert("customXml/item1.xml".into(), b"<data/>".to_vec());
         let report = pkg.compatibility_report();
         assert_eq!(
             report.parts,
@@ -477,11 +478,9 @@ mod tests {
     #[test]
     fn detects_changed_opaque_part_bytes_even_when_part_name_is_preserved() {
         let mut pkg = package(&[("word/document.xml", "<document/>")]);
-        pkg.files
-            .insert("word/media/image.png".into(), vec![1, 2, 3]);
+        Arc::make_mut(&mut pkg.files).insert("word/media/image.png".into(), vec![1, 2, 3]);
         let before = pkg.compatibility_report();
-        pkg.files
-            .insert("word/media/image.png".into(), vec![1, 2, 4]);
+        Arc::make_mut(&mut pkg.files).insert("word/media/image.png".into(), vec![1, 2, 4]);
         let after = pkg.compatibility_report();
         assert_eq!(before.parts, after.parts);
         assert_ne!(before.opaque_part_digests, after.opaque_part_digests);
@@ -490,10 +489,9 @@ mod tests {
     #[test]
     fn detects_changed_xml_part_bytes_even_when_part_name_is_preserved() {
         let mut pkg = package(&[("word/document.xml", "<document/>")]);
-        pkg.files
-            .insert("word/styles.xml".into(), b"<styles/>".to_vec());
+        Arc::make_mut(&mut pkg.files).insert("word/styles.xml".into(), b"<styles/>".to_vec());
         let before = pkg.compatibility_report();
-        pkg.files.insert(
+        Arc::make_mut(&mut pkg.files).insert(
             "word/styles.xml".into(),
             b"<styles changed=\"1\"/>".to_vec(),
         );
@@ -588,8 +586,8 @@ mod tests {
         let mut pkg = package(&[("relocated/main.xml", xml)]);
         let mut utf16 = vec![0xff, 0xfe];
         utf16.extend(xml.encode_utf16().flat_map(u16::to_le_bytes));
-        pkg.files.insert("relocated/utf16.xml".into(), utf16);
-        pkg.files.insert("word/media/image.png".into(), vec![0xff]);
+        Arc::make_mut(&mut pkg.files).insert("relocated/utf16.xml".into(), utf16);
+        Arc::make_mut(&mut pkg.files).insert("word/media/image.png".into(), vec![0xff]);
         let report = pkg.compatibility_report();
         assert_eq!(report.scanned_xml_parts, 2);
         assert_eq!(report.issues.len(), 2);

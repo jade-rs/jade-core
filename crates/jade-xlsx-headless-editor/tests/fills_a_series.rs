@@ -548,7 +548,8 @@ proptest! {
     }
 
     /// Numbered text counts with its words untouched, except recognized
-    /// quarter names, which cycle through the four quarters.
+    /// quarter names, which cycle through the four quarters, and ordinal
+    /// endings (`1st`, `2nd`), which follow the number.
     #[test]
     fn counting_text_keeps_its_words(
         prefix in prop_oneof![
@@ -580,14 +581,41 @@ proptest! {
         // Built-in quarter lists take precedence over generic numbered text.
         // Keep this oracle independent of the production list recognizer.
         let quarters = suffix.is_empty()
-            && ["Q", "q", "Qtr", "qtr", "QTR"].contains(&prefix.as_str())
+            && ["Q", "q", "Qtr", "qtr", "QTR", "Qtr ", "qtr ", "QTR "].contains(&prefix.as_str())
             && (0..count).all(|index| (1..=4).contains(&(first + step * i64::from(index))));
+        // Every source number wearing its own ordinal ending, with no letter
+        // running on after it: the ending changes with the number.
+        let ending = |value: i64| match (value % 10, value % 100) {
+            (_, 11..=13) => "th",
+            (1, _) => "st",
+            (2, _) => "nd",
+            (3, _) => "rd",
+            _ => "th",
+        };
+        let ordinal = suffix.len() >= 2
+            && !suffix[2..].starts_with(|c: char| c.is_ascii_alphabetic())
+            && (0..count).all(|index| {
+                suffix[..2].eq_ignore_ascii_case(ending(first + step * i64::from(index)))
+            });
+        let suffix_for = |value: i64| {
+            if !ordinal {
+                return suffix.clone();
+            }
+            let typed = &suffix[..2];
+            let new = if typed.chars().all(|c| c.is_ascii_uppercase()) {
+                ending(value).to_ascii_uppercase()
+            } else {
+                ending(value).to_string()
+            };
+            format!("{new}{}", &suffix[2..])
+        };
         // One cell continues by one; a run continues by its step.
         let step = if count == 1 { 1 } else { step };
         prop_assert_eq!(writes.len() as u32, above);
         for write in &writes {
             let value = first + step * i64::from(write.at.column);
             let value = if quarters { (value - 1).rem_euclid(4) + 1 } else { value };
+            let suffix = suffix_for(value);
             prop_assert_eq!(&write.value, &CellInput::Text(format!("{prefix}{value}{suffix}")));
         }
     }
@@ -837,4 +865,96 @@ fn a_sheet_with_a_table_copies_with_a_table_of_its_own() {
         .flat_map(|sheet| sheet.tables.iter().map(|table| table.name.clone()))
         .collect();
     assert_eq!(names, [original.clone(), copied.name.clone()]);
+}
+
+// ── Ordinals, times, counting down and more quarter names ────────────────
+
+fn texts(writes: &[FillWrite]) -> Vec<String> {
+    writes
+        .iter()
+        .map(|write| match &write.value {
+            CellInput::Text(text) => text.clone(),
+            other => panic!("{:?} is not text: {other:?}", write.at),
+        })
+        .collect()
+}
+
+fn fill_texts(source: &[&str], count: u32) -> Vec<String> {
+    let cells = source
+        .iter()
+        .enumerate()
+        .map(|(row, text)| {
+            (
+                CellRef::new(1, row as u32 + 1),
+                CellValue::Text((*text).to_string()),
+                None,
+            )
+        })
+        .collect();
+    let sheet = sheet_with(cells);
+    let rows = source.len() as u32;
+    texts(&plan_fill(
+        &sheet,
+        &StyleTable::default(),
+        range(CellRef::new(1, 1), CellRef::new(1, rows)),
+        range(CellRef::new(1, 1), CellRef::new(1, rows + count)),
+    ))
+}
+
+#[test]
+fn quarters_typed_with_full_width_digits_go_round_too() {
+    assert_eq!(fill_texts(&["第４四半期"], 1), ["第１四半期"]);
+}
+
+#[test]
+fn quarters_go_round_four() {
+    assert_eq!(fill_texts(&["Q3"], 3), ["Q4", "Q1", "Q2"]);
+    assert_eq!(fill_texts(&["Qtr 4"], 1), ["Qtr 1"]);
+    assert_eq!(
+        fill_texts(&["3rd Quarter"], 2),
+        ["4th Quarter", "1st Quarter"]
+    );
+}
+
+#[test]
+fn ordinals_count_with_their_endings() {
+    assert_eq!(fill_texts(&["1st"], 4), ["2nd", "3rd", "4th", "5th"]);
+    assert_eq!(fill_texts(&["10th"], 4), ["11th", "12th", "13th", "14th"]);
+    assert_eq!(fill_texts(&["21ST place"], 2), ["22ND place", "23RD place"]);
+    // A word after the digits that is not an ending is kept as it is.
+    assert_eq!(fill_texts(&["1stage"], 1), ["2stage"]);
+}
+
+#[test]
+fn counting_down_goes_through_zero_and_back_up() {
+    assert_eq!(
+        fill_texts(&["Item 2", "Item 1"], 3),
+        ["Item 0", "Item 1", "Item 2"]
+    );
+}
+
+#[test]
+fn a_lone_time_steps_an_hour() {
+    let mut workbook = open();
+    set(
+        &mut workbook,
+        &[
+            ("F1", CellInput::Number(9.0 / 24.0)),
+            ("G1", CellInput::Number(45_292.375)),
+        ],
+    );
+    for (range, code) in [("F1", "h:mm"), ("G1", "yyyy/m/d h:mm")] {
+        let change = jade_xlsx_headless_editor::FormatChange {
+            number_format: Some(code.to_string()),
+            ..Default::default()
+        };
+        workbook.set_format(SHEET, range, &change).expect("format");
+    }
+
+    workbook.fill(SHEET, "F1:G1", "F1:G3").expect("fill");
+
+    assert_eq!(workbook.cell(SHEET, "F2").expect("cell").display, "10:00");
+    assert_eq!(workbook.cell(SHEET, "F3").expect("cell").display, "11:00");
+    // A date with its time still steps a day.
+    assert!((number(&workbook, "G2") - number(&workbook, "G1") - 1.0).abs() < 1e-9);
 }

@@ -123,19 +123,19 @@ fn read_page_master(
     part: &str,
     fallback: &Arc<SlideTheme>,
 ) -> Result<Option<PageMaster>> {
-    let Some(xml) = package.part_str(part)? else {
+    let Some(xml) = package.part_text(part)? else {
         return Ok(None);
     };
-    let root = parse_tree(&xml)?;
-    let mut content = parse_slide_xml(&xml)?;
+    let root = parse_tree(xml)?;
+    let mut content = parse_slide_xml(xml)?;
     if let Some(style) = root.child("notesStyle") {
         content.text_styles = Some(TextStyles {
             body: crate::slide::parse_list_style(style),
             ..TextStyles::default()
         });
     }
-    if let Some(rels) = package.part_str(&jade_opc::rels_part_name(part))? {
-        let relationships = jade_opc::parse_relationships(&rels)?;
+    if let Some(rels) = package.part_text(&jade_opc::rels_part_name(part))? {
+        let relationships = jade_opc::parse_relationships(rels)?;
         crate::resolve_content_images(&mut content, &relationships, part);
     }
     let header_footer = root
@@ -151,7 +151,7 @@ fn read_page_master(
         })
         .unwrap_or_default();
     let theme = if package
-        .part_str(&jade_opc::rels_part_name(part))?
+        .part_text(&jade_opc::rels_part_name(part))?
         .is_some_and(|rels| rels.contains("/theme\""))
     {
         let (colors, fonts, fill_styles, background_fill_styles, line_styles) =
@@ -180,8 +180,8 @@ fn read_page_master(
 pub fn read_notes_pages(bytes: &[u8]) -> Result<NotesPages> {
     let package = OpcPackage::open(bytes)?;
     let presentation = crate::presentation_part_name(&package)?;
-    let presentation_xml = package.required_part_str(&presentation)?;
-    let root = parse_tree(&presentation_xml)?;
+    let presentation_xml = package.required_part_text(&presentation)?;
+    let root = parse_tree(presentation_xml)?;
     let page_size = root
         .child("notesSz")
         .and_then(|size| {
@@ -192,8 +192,8 @@ pub fn read_notes_pages(bytes: &[u8]) -> Result<NotesPages> {
         })
         .filter(|size| size.width_emu > 0 && size.height_emu > 0)
         .unwrap_or(DEFAULT_NOTES_SIZE);
-    let rels = match package.part_str(&jade_opc::rels_part_name(&presentation))? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?,
+    let rels = match package.part_text(&jade_opc::rels_part_name(&presentation))? {
+        Some(xml) => jade_opc::parse_relationships(xml)?,
         None => Default::default(),
     };
     let (colors, fonts, fill_styles, background_fill_styles, line_styles) =
@@ -221,18 +221,18 @@ pub fn read_notes_pages(bytes: &[u8]) -> Result<NotesPages> {
     };
     let mut notes = Vec::new();
     for slide in crate::read_pptx(bytes)?.slides {
-        let part = match package.part_str(&jade_opc::rels_part_name(&slide.part_name))? {
-            Some(xml) => jade_opc::parse_relationships(&xml)?
+        let part = match package.part_text(&jade_opc::rels_part_name(&slide.part_name))? {
+            Some(xml) => jade_opc::parse_relationships(xml)?
                 .target_by_type_suffix("/notesSlide")
                 .map(|target| jade_opc::resolve_target(&slide.part_name, target)),
             None => None,
         };
         let notes_slide = match part {
-            Some(part) => match package.part_str(&part)? {
+            Some(part) => match package.part_text(&part)? {
                 Some(xml) => {
-                    let mut content = parse_slide_xml(&xml)?;
-                    if let Some(rels) = package.part_str(&jade_opc::rels_part_name(&part))? {
-                        let relationships = jade_opc::parse_relationships(&rels)?;
+                    let mut content = parse_slide_xml(xml)?;
+                    if let Some(rels) = package.part_text(&jade_opc::rels_part_name(&part))? {
+                        let relationships = jade_opc::parse_relationships(rels)?;
                         crate::resolve_content_images(&mut content, &relationships, &part);
                     }
                     Some(NotesSlide {

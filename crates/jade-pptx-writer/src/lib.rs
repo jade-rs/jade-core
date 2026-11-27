@@ -777,14 +777,21 @@ pub fn validate_shape_transform(
 }
 
 fn slide_xml(bytes: &[u8], index: usize) -> Result<(PreservingOpcPackage<'_>, String, String)> {
-    let presentation = jade_pptx_reader::read_pptx(bytes)?;
-    let slide = presentation
-        .slides
-        .get(index)
-        .ok_or(WriteError::NoSlide(index))?;
     let package = OpcPackage::open_preserving(bytes)?;
-    let xml = package.required_part_str(&slide.part_name)?;
-    Ok((package, slide.part_name.clone(), xml))
+    // The same resolution `read_pptx` uses, run on the one open package.
+    let part_name = slide_part_name(&package, index)?;
+    let xml = package.required_part_str(&part_name)?;
+    Ok((package, part_name, xml))
+}
+
+/// Part name of slide `index` in presentation order. Reads only
+/// `presentation.xml` and its relationships, not any slide body.
+fn slide_part_name(package: &OpcPackage, index: usize) -> Result<String> {
+    let mut presentation = jade_pptx_reader::read_presentation(package)?;
+    if index >= presentation.slides.len() {
+        return Err(WriteError::NoSlide(index));
+    }
+    Ok(presentation.slides.swap_remove(index).part_name)
 }
 
 pub fn editable_runs(bytes: &[u8], slide: usize) -> Result<Vec<EditableRun>> {
@@ -1325,4 +1332,99 @@ pub fn duplicate_slides(bytes: &[u8], indices: &[usize]) -> Result<Vec<u8>> {
 }
 pub fn validate_slide_duplications(bytes: &[u8], indices: &[usize]) -> Result<()> {
     duplicate_slides(bytes, indices).map(|_| ())
+}
+
+#[cfg(test)]
+mod slide_part_name_tests {
+    use super::*;
+
+    const FIXTURES: [(&str, &[u8]); 4] = [
+        (
+            "sample-deck",
+            include_bytes!("../../../public/fixtures/sample-deck.pptx"),
+        ),
+        (
+            "grouped-deck",
+            include_bytes!("../../../public/fixtures/grouped-deck.pptx"),
+        ),
+        (
+            "inherited-deck",
+            include_bytes!("../../../public/fixtures/inherited-deck.pptx"),
+        ),
+        (
+            "themed-deck",
+            include_bytes!("../../../public/fixtures/themed-deck.pptx"),
+        ),
+    ];
+
+    /// Reverses the `<p:sldId>` entries so presentation order differs from
+    /// file-name order.
+    fn reversed(bytes: &[u8]) -> Vec<u8> {
+        let mut package = OpcPackage::open(bytes).unwrap();
+        let xml = package.required_part_str("ppt/presentation.xml").unwrap();
+        let mut entries = Vec::new();
+        let mut rest = xml.as_str();
+        while let Some(start) = rest.find("<p:sldId ") {
+            let end = start + rest[start..].find("/>").unwrap() + 2;
+            entries.push(rest[start..end].to_string());
+            rest = &rest[end..];
+        }
+        let first = xml.find("<p:sldId ").unwrap();
+        let last = xml.find("</p:sldIdLst>").unwrap();
+        let mut out = String::new();
+        out.push_str(&xml[..first]);
+        entries.reverse();
+        out.push_str(&entries.concat());
+        out.push_str(&xml[last..]);
+        package.replace("ppt/presentation.xml", out.into_bytes());
+        package.write().unwrap()
+    }
+
+    fn check(name: &str, bytes: &[u8]) {
+        let expected = jade_pptx_reader::read_pptx(bytes).unwrap().slides;
+        let package = OpcPackage::open_preserving(bytes).unwrap();
+        for (i, slide) in expected.iter().enumerate() {
+            assert_eq!(
+                slide_part_name(&package, i).unwrap(),
+                slide.part_name,
+                "{name} #{i}"
+            );
+            assert_eq!(
+                slide_xml(bytes, i).unwrap().1,
+                slide.part_name,
+                "{name} #{i}"
+            );
+        }
+        let n = expected.len();
+        assert!(matches!(slide_part_name(&package, n), Err(WriteError::NoSlide(i)) if i == n));
+        assert!(matches!(slide_xml(bytes, n), Err(WriteError::NoSlide(i)) if i == n));
+    }
+
+    #[test]
+    fn matches_read_pptx_for_every_index() {
+        for (name, bytes) in FIXTURES {
+            check(name, bytes);
+        }
+    }
+
+    #[test]
+    fn matches_read_pptx_when_slide_order_differs_from_file_order() {
+        let mut saw_multi = false;
+        for (name, bytes) in FIXTURES {
+            let original = jade_pptx_reader::read_pptx(bytes).unwrap().slides;
+            if original.len() < 2 {
+                continue;
+            }
+            saw_multi = true;
+            let swapped = reversed(bytes);
+            let after = jade_pptx_reader::read_pptx(&swapped).unwrap().slides;
+            assert_eq!(
+                after.first().map(|s| &s.part_name),
+                original.last().map(|s| &s.part_name),
+                "{name}"
+            );
+            check(name, &swapped);
+        }
+        assert!(saw_multi, "no multi-slide fixture");
+    }
 }

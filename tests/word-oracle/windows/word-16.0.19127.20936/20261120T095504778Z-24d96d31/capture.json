@@ -1,0 +1,486 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T095504778Z-24d96d31",
+  "captured_at_utc": "2026-11-20T09:55:04.7917786Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-device-writer-holdout-regular-s14-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-regular-s14-pairs48-m14.docx",
+      "sha256": "bdd50e95e8d247f809ee5df6efd5598e4cf93367f818a31bbdc13218d266d445",
+      "pdf": "word-windows-device-writer-holdout-regular-s14-pairs48-m14.pdf",
+      "pdf_sha256": "eaeb44e3bab034377b47d603848a1d3446d1386c042da4e73487adcb71df8b1b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-regular-s14-pairs48-m14.xps",
+      "xps_sha256": "aad3eaeeb5c5d91f14843e2e63fcdff10d36d7f2fc8e87794a5b05f37979914d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-regular-s14-pairs48-m14.page-001.emf",
+          "sha256": "b1ad5eb1ad0bea261c2f503ad30703116d24820308542034be1c78346d7ee1b9",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-regular-s14-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-regular-s14-widths48-m14.docx",
+      "sha256": "24cf3286802eaa0db694275d549c199e2ad23077e19703bc186b7530a1860ff0",
+      "pdf": "word-windows-device-writer-holdout-regular-s14-widths48-m14.pdf",
+      "pdf_sha256": "ccc44ac76f6684a74861ba0adf90e3039cfad56ff1c1c533bf717213d6ba5081",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-regular-s14-widths48-m14.xps",
+      "xps_sha256": "734323ebc220a5f60369efcc5c51f93fb48e5dad73f1a890262557fffb49b950",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-regular-s14-widths48-m14.page-001.emf",
+          "sha256": "c6fc954bd606e6b9cad7852c69ea3ce4128364944ebae3e29209e20577063819",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-regular-s15p5-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-regular-s15p5-pairs48-m14.docx",
+      "sha256": "f76d0918db030ab7f01cfdc6f93f77a5667c6dfd4eaad34c7b791a993c758d74",
+      "pdf": "word-windows-device-writer-holdout-regular-s15p5-pairs48-m14.pdf",
+      "pdf_sha256": "47c646232b393724bbecdadbbf567bbb734a8c6cc7d9859f88039c192a4540f4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-regular-s15p5-pairs48-m14.xps",
+      "xps_sha256": "b372be70fc359a95853a9785ad72242837221d2d058947baf228764fe2cda0bb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-regular-s15p5-pairs48-m14.page-001.emf",
+          "sha256": "7f0833be29d8a507b24667c37f228af096ea5c5834d1cdb560053974ff6d0d36",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-regular-s15p5-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-regular-s15p5-widths48-m14.docx",
+      "sha256": "392197366b0e31d98e2827e8d6f96ea7c4c181ce69acab0681a4f9309ea3a2dc",
+      "pdf": "word-windows-device-writer-holdout-regular-s15p5-widths48-m14.pdf",
+      "pdf_sha256": "29dc4fc558b971865b32cdc0ecbdff0acf36a0cb314b3928eb4064fcdf683589",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-regular-s15p5-widths48-m14.xps",
+      "xps_sha256": "07e4f4736028d4dfd1af8e6e04a40bd4c63bc250cfc6d4eb2fc74fdc6b412c81",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-regular-s15p5-widths48-m14.page-001.emf",
+          "sha256": "e8440abb2bda42c4be0851462cd792904f896eb081ceb1813a7c5087d02c513c",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s14-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bold-s14-pairs48-m14.docx",
+      "sha256": "7e8d87402be95c3ce6b3e7cfa83907308691a6b8f50100ec99f2d7002916f376",
+      "pdf": "word-windows-device-writer-holdout-bold-s14-pairs48-m14.pdf",
+      "pdf_sha256": "ad939e859287179a23dde25b8412501875a28759c940263c2e1fc70552355aad",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bold-s14-pairs48-m14.xps",
+      "xps_sha256": "36c9cc6f1b9d0dae30239faf867690a84e03e8a00c823400449c115945a7ba8f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bold-s14-pairs48-m14.page-001.emf",
+          "sha256": "b51e3acf4925ac7ddba9d6d95c4e44a1ac9a9956de9bc294d3f26998ac74934e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s14-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bold-s14-widths48-m14.docx",
+      "sha256": "4c1b68d9738ffae6ca711b663f7c72a4a81eda65bf85dc7f529cb276d5761d26",
+      "pdf": "word-windows-device-writer-holdout-bold-s14-widths48-m14.pdf",
+      "pdf_sha256": "984a39e866372c420480be94faa5b274abe0539ab871e1c8afa35f72588b8ebc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bold-s14-widths48-m14.xps",
+      "xps_sha256": "c5d4257e28d22fbb55eacf18b60f5227fee7756c79d6781f3098a6f740a98808",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bold-s14-widths48-m14.page-001.emf",
+          "sha256": "3741ac1d4be0e2515b1855fb57cbc6efd57e7021d3ff12eb5c64227a22dbb2a1",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s15p5-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bold-s15p5-pairs48-m14.docx",
+      "sha256": "f20acafb1fc8c415453dd53557361c7ad512b25304317c7967fb93abb7427246",
+      "pdf": "word-windows-device-writer-holdout-bold-s15p5-pairs48-m14.pdf",
+      "pdf_sha256": "153c3396eea31836c19e05e68dfeb21256a7a025c34eb8189a35c50f2220f4e0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bold-s15p5-pairs48-m14.xps",
+      "xps_sha256": "d734eabfe4678bc22e431fae4f7ba6ac5ea1af63b999d7f6f299ce6ab5c474da",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bold-s15p5-pairs48-m14.page-001.emf",
+          "sha256": "219769b69cf22f5e99902a1371119312e87b2b5f06de080546dab4063a1e79b1",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s15p5-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bold-s15p5-widths48-m14.docx",
+      "sha256": "dc3b3c8f9e3208030b54949b130115d69764b79799d99b2039c3a103092544d8",
+      "pdf": "word-windows-device-writer-holdout-bold-s15p5-widths48-m14.pdf",
+      "pdf_sha256": "19573293821d96ca6beb0fa9309b9e3ecafd342bd0972806bcebf625f9d26b70",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bold-s15p5-widths48-m14.xps",
+      "xps_sha256": "5822ca58126242211de6473e97791a74ad1692907793c3cfa2c8e32af7f40159",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bold-s15p5-widths48-m14.page-001.emf",
+          "sha256": "be330651f684820e24f337b5aff555d8c98417af26edb75da19d77988e106338",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s14-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-italic-s14-pairs48-m14.docx",
+      "sha256": "3386b78540cbc430ac4c99a9c45c7f3ad2ca2e7eb2a5568d522b21501e787599",
+      "pdf": "word-windows-device-writer-holdout-italic-s14-pairs48-m14.pdf",
+      "pdf_sha256": "0b1548db3c7b9a771401625b895d7b06253f699a4a5bc9ac95bbfe96d802a4e8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-italic-s14-pairs48-m14.xps",
+      "xps_sha256": "1194f95c6b1dc53c5becc91cde9850ccfa47e863cde6970eb5288b184bf108cb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-italic-s14-pairs48-m14.page-001.emf",
+          "sha256": "7ddb5887505b774a9c35b021c8e04032a606aa5cacc663bc6995a0b1a6a9abb5",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s14-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-italic-s14-widths48-m14.docx",
+      "sha256": "5f2a3e7497d911aceca3b884341943b5ac606bbc4d66bfa68b9faa9b216ec1df",
+      "pdf": "word-windows-device-writer-holdout-italic-s14-widths48-m14.pdf",
+      "pdf_sha256": "24027ed2fe8ae9154118234623e734c32fcd05be10d718e98f71b878f83d2f7c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-italic-s14-widths48-m14.xps",
+      "xps_sha256": "babf092936666c8e5a182a260ac4bab1eba9071fde4bcc9bd9476f0a76686e98",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-italic-s14-widths48-m14.page-001.emf",
+          "sha256": "7b8459abbee4f4bbf2b84ea4009b2aceb6709c6f2fda7a9310053939ed3cf761",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s15p5-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-italic-s15p5-pairs48-m14.docx",
+      "sha256": "67dd1306d7c3068ad8170b342370208d38b99cb054701526068ed56e6b75fd67",
+      "pdf": "word-windows-device-writer-holdout-italic-s15p5-pairs48-m14.pdf",
+      "pdf_sha256": "e675d9d71591df4006a9669f533e80c6be7cb1b095c0d5de1f922578058ffbad",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-italic-s15p5-pairs48-m14.xps",
+      "xps_sha256": "ce0958debc24c044c8b038bd82acd53bb155e9ede274b8f48912ec648f19b3f3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-italic-s15p5-pairs48-m14.page-001.emf",
+          "sha256": "1cedc26a92ef9a187e9d0ae73dbc745cd53392e9df5f4df4b9a1b4ce18234418",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s15p5-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-italic-s15p5-widths48-m14.docx",
+      "sha256": "2850785389ac923dc9b5c124c814df604c5daf81d7ab3740af1934060e26e2d3",
+      "pdf": "word-windows-device-writer-holdout-italic-s15p5-widths48-m14.pdf",
+      "pdf_sha256": "be9bb0cabe1d31fdb06b9ec2176e2c57cbe5cef266cefd2f776a1311ac74ccd8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-italic-s15p5-widths48-m14.xps",
+      "xps_sha256": "a64d833b2ef51acfca411f8abe58be891a3cb896d4224592fc49757b7f3f3f60",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-italic-s15p5-widths48-m14.page-001.emf",
+          "sha256": "1269a358f9ff0b085ac2bfa2e50959b976081107d70e935e37e0e82fe9dbeb49",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14.docx",
+      "sha256": "85870abd1d2d959d0b510ff52760e6fbecceacb886c3bea5d12ae5c1c1565e96",
+      "pdf": "word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14.pdf",
+      "pdf_sha256": "a97a662eb356eb00c42acfbfb1d68b1eea266e55667e02b4e5819820a2985507",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14.xps",
+      "xps_sha256": "2eb33bb580d18a3758c6aba650169cbbe4d2203b9f0efb0ce5b87e3909909859",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14.page-001.emf",
+          "sha256": "6d23f4eb068016707874a859aca1272014f76d715d428fe91d6145847edb1d1c",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s14-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bolditalic-s14-widths48-m14.docx",
+      "sha256": "eb18f9654e8af7e8ee32e527cffb7480e33f8875973b12834b838f1603419288",
+      "pdf": "word-windows-device-writer-holdout-bolditalic-s14-widths48-m14.pdf",
+      "pdf_sha256": "b05c1f143cd4afa8e6b4adc2c7d67dbc83fd5d9adab1f1fe978e05f6a1359772",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bolditalic-s14-widths48-m14.xps",
+      "xps_sha256": "7839e662e4e99845fc73bc3e219120c656ffab2bec2c1f6a12baa0c8c999f1d6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bolditalic-s14-widths48-m14.page-001.emf",
+          "sha256": "05216d76378128fbc0d050f0a76130fada7479e6c6850774f42295fd2c0cdb86",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14.docx",
+      "sha256": "602b27247b710890c0a6c888a5dcaf8637bc483e9e006a87f03f0cab58730b21",
+      "pdf": "word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14.pdf",
+      "pdf_sha256": "ea7cc48b11c03761309aa6fe26f1049e57472f0a5d5c5055ab3a3b65609c61dd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14.xps",
+      "xps_sha256": "d35ead635251a160ea69f75fbc478ed802151d54b1bbcf62cd4658fc751fcef9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14.page-001.emf",
+          "sha256": "0a119503e5cc5dfe35a8e575af52fef214d47c3aa25c0608c9c6a231600c7803",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14",
+      "source": "tmp\\w20-mixed-ascii-pairs-inputs\\word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14.docx",
+      "sha256": "39e5c2ba09e2d20542daf3a6b0a3366c1fcbdf39fb0cb50e64f9a3c879359f85",
+      "pdf": "word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14.pdf",
+      "pdf_sha256": "6cc4530958b221b659b5874745459fcafd440de464803488acc70b5976f1fa33",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14.xps",
+      "xps_sha256": "41e39c7c3551ad489afd8ca03b09c4afbf47484beb4bceeb8b29be857d2cc30c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14.page-001.emf",
+          "sha256": "f573d5ecdf26850ba66c3ddffce2c57def8ff20f852524b12c41497cded21c15",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

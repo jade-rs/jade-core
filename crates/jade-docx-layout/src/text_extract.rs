@@ -14,8 +14,8 @@ use crate::line_wrap::{
     ParagraphStyle, RunStyle, DEFAULT_INDENT_CHAR_UNIT_PT,
 };
 use crate::section_transition::{
-    resolve_page_margins, resolve_section_transition, word_section_text_direction,
-    SectionBreakType, SectionTransition,
+    parity_page_advances, resolve_page_margins, resolve_section_transition,
+    word_section_text_direction, SectionBreakType, SectionTransition,
 };
 use crate::units::points_to_px;
 use jade_docx_reader::PAGE_BREAK_CHAR;
@@ -591,13 +591,10 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
 // spaces `w:afterLines="50"` by 9pt on an 18pt grid, 7.5pt on 15pt and 12pt on
 // 24pt, for `lines`, `linesAndChars` and `snapToChars`, in table cells and
 // with `w:snapToGrid w:val="0"` alike; omitted, `default` and no grid give 6pt.
-// Keep the Windows sizing policy until its physical spacing is verified.
-fn paragraph_spacing_line_unit_pt(line_height_points: f32, grid_pitch_pt: Option<f32>) -> f32 {
-    if crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Mac {
-        grid_pitch_pt.unwrap_or(12.0)
-    } else {
-        line_height_points
-    }
+// Windows Word 16.0.19127.20936 originals (grid-line-unit and
+// grid-line-unit-table) use the same nominal unit, including snapToGrid=0.
+fn paragraph_spacing_line_unit_pt(_line_height_points: f32, grid_pitch_pt: Option<f32>) -> f32 {
+    grid_pitch_pt.unwrap_or(12.0)
 }
 
 pub fn spacing_before_px(paragraph: &jade_docx_reader::Paragraph, line_height_points: f32) -> f64 {
@@ -726,6 +723,41 @@ fn paragraph_keeps_next(
         .unwrap_or(false)
 }
 
+fn paragraph_page_break_before(paragraph: &Paragraph, styles: Option<&StylesPart>) -> bool {
+    let properties = paragraph.properties.as_ref();
+    properties
+        .and_then(|p| p.page_break_before)
+        .or_else(|| {
+            let styles = styles?;
+            let id = properties
+                .and_then(|p| p.style.as_deref())
+                .or_else(|| styles.default_paragraph_style_id())?;
+            styles.resolve_paragraph_properties(id)?.page_break_before
+        })
+        .unwrap_or(false)
+}
+
+/// Windows Word promotes the first paragraph of the first cell to a row
+/// page break. In modern compatibility modes only the first header row can
+/// start a new page this way.
+pub fn windows_table_row_page_break_before(
+    row: &jade_docx_reader::TableRow,
+    row_index: usize,
+    header_row_count: usize,
+    compatibility_mode: Option<u32>,
+    styles: Option<&StylesPart>,
+) -> bool {
+    !(row_index > 0
+        && row_index < header_row_count
+        && compatibility_mode.is_some_and(|mode| mode >= 15))
+        && row
+            .cells
+            .first()
+            .and_then(|cell| cell.blocks.first())
+            .and_then(BodyElement::as_paragraph)
+            .is_some_and(|paragraph| paragraph_page_break_before(paragraph, styles))
+}
+
 fn paragraph_allows_style_font_size_defaults(
     _document: &Document,
     _doc_grid: Option<&jade_docx_reader::DocGrid>,
@@ -788,7 +820,11 @@ fn word_oracle_line_x_offset(input: &ParagraphLayoutInput, line_index: usize) ->
 
 fn word_oracle_line_start_x(input: &ParagraphLayoutInput, line_index: usize) -> f64 {
     let start_x = input.base_x + input.paragraph_style.line_indent(line_index);
-    start_x + word_oracle_line_x_offset(input, line_index)
+    start_x
+        + word_oracle_line_x_offset(
+            input,
+            line_index.saturating_sub(input.paragraph_style.leading_page_breaks),
+        )
 }
 
 fn paragraph_line_height_points<C: LineWrapContext>(
@@ -1100,13 +1136,27 @@ fn build_paragraph_input<C: LineWrapContext>(
                 }
             }
         }
+        let first_style = run_styles.len() - 1;
+        crate::literal_soft_hyphens::mark_literal_soft_hyphens(
+            run,
+            &run_text,
+            start,
+            first_style,
+            &mut run_styles,
+            crate::line_metrics::word_layout_platform(),
+        );
     }
     if text.trim().is_empty() {
         return Ok(None);
     }
 
     let mut base_x = content_left_x;
-    let mut paragraph_style = ParagraphStyle::default();
+    let mut paragraph_style = ParagraphStyle {
+        ignore_page_and_column_breaks: in_table_cell
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows,
+        ..ParagraphStyle::default()
+    };
     if let Some(default_tab_stop) = document.default_tab_stop {
         paragraph_style.default_tab_width = points_to_px(default_tab_stop);
     }
@@ -1405,16 +1455,55 @@ pub fn body_follows_manual_page_break(document: &Document, element_index: usize)
         .is_some_and(|run| run.text.ends_with(PAGE_BREAK_CHAR))
 }
 
-fn windows_manual_break_suppresses_before(
-    paragraph: &Paragraph,
+/// Windows Word collapses the preceding paragraph's authored after spacing
+/// against a following pageBreakBefore or section start after a manual break.
+/// The after spacing takes no vertical space of its own.
+pub fn manual_page_break_preserves_spacing_collapse(
     document: &Document,
     element_index: usize,
+    section_index: usize,
+    styles: Option<&StylesPart>,
+) -> bool {
+    if crate::line_metrics::word_layout_platform()
+        != crate::line_metrics::WordLayoutPlatform::Windows
+    {
+        return false;
+    }
+    element_index.checked_add(1).is_some_and(|index| {
+        document
+            .body
+            .as_ref()
+            .and_then(|body| body.elements.get(index))
+            .and_then(BodyElement::as_paragraph)
+            .is_some_and(|next| {
+                next.properties.as_ref().is_none_or(|p| p.frame.is_none())
+                    && (document
+                        .sections
+                        .get(section_index + 1)
+                        .is_some_and(|section| section.start == index)
+                        || paragraph_page_break_before(next, styles))
+                    && !next
+                        .runs
+                        .iter()
+                        .any(|run| run.text.contains(PAGE_BREAK_CHAR))
+            })
+    })
+}
+
+/// A final manual break on the section mark shares the incoming section's page
+/// advance. The section still decides whether to insert an odd/even filler.
+pub fn windows_section_consumes_final_manual_page_break(
+    document: &Document,
+    element_index: usize,
+    section_index: usize,
 ) -> bool {
     crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Windows
-        && paragraph.properties.as_ref().is_none_or(|properties| {
-            properties.page_break_before != Some(true) && properties.frame.is_none()
+        && element_index.checked_add(1).is_some_and(|next_index| {
+            document
+                .sections
+                .get(section_index + 1)
+                .is_some_and(|next| next.start == next_index)
         })
-        && body_follows_manual_page_break(document, element_index)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1792,6 +1881,8 @@ struct TableLayoutBounds {
     content_top_y: f64,
     content_bottom_y: f64,
     section_content_height_pt: f32,
+    opening_column: usize,
+    nested: bool,
 }
 
 fn layout_table_lines<C: LineWrapContext>(
@@ -1811,11 +1902,59 @@ fn layout_table_lines<C: LineWrapContext>(
     let table_left = bounds.content_left_x + table_margin_left_px(table, available_width);
     let column_widths = table_column_widths_px(table, available_width);
 
-    for row in &table.rows {
+    let table_row_breaks = !bounds.nested
+        && !table
+            .style
+            .get("table-position")
+            .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows;
+    let opening_page = *current_page_0;
+    let starts_inside_page = |page, y| {
+        (page == opening_page && bounds.opening_column != 0) || y > bounds.content_top_y + EPS
+    };
+    let header_row_count = table.rows.iter().take_while(|row| row.is_header).count();
+    let compatibility_mode = layout_context
+        .document
+        .east_asian_line_breaking
+        .compatibility_mode;
+    let row_page_break_before = |index: usize| {
+        table_row_breaks
+            && windows_table_row_page_break_before(
+                &table.rows[index],
+                index,
+                header_row_count,
+                compatibility_mode,
+                layout_context.styles,
+            )
+    };
+    if header_row_count != 0
+        && header_row_count < table.rows.len()
+        && compatibility_mode.is_some_and(|mode| mode >= 15)
+        && starts_inside_page(*current_page_0, *current_y)
+        && row_page_break_before(header_row_count)
+    {
+        *current_page_0 += 1;
+        *current_y = bounds.content_top_y;
+    }
+    let mut header_height = 0.0;
+    for (row_index, row) in table.rows.iter().enumerate() {
         let row_height = row
             .height
             .map(points_to_px)
             .unwrap_or_else(|| points_to_px(12.0) * 1.2 + points_to_px(8.0));
+        if row_page_break_before(row_index) && starts_inside_page(*current_page_0, *current_y) {
+            *current_page_0 += 1;
+            *current_y = bounds.content_top_y;
+            if row_index >= header_row_count
+                && header_height + row_height <= bounds.content_bottom_y - bounds.content_top_y
+            {
+                *current_y += header_height;
+            }
+        }
+        if row_index < header_row_count {
+            header_height += row_height;
+        }
         let mut table_column = 0usize;
         ensure_vertical_space_in_columns(
             current_y,
@@ -2081,6 +2220,8 @@ fn layout_table_lines<C: LineWrapContext>(
                                 content_top_y: bounds.content_top_y,
                                 content_bottom_y: bounds.content_bottom_y,
                                 section_content_height_pt: bounds.section_content_height_pt,
+                                opening_column: 0,
+                                nested: true,
                             },
                         )?;
                     }
@@ -2162,6 +2303,16 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
 
     let mut lines = Vec::new();
     let mut current_page_0 = 0usize;
+    // `w:pgNumType w:start` of a section, the number its first page shows.
+    let restart = |properties: Option<&SectionProperties>| {
+        properties
+            .and_then(|properties| properties.page_number_type.as_ref())
+            .and_then(|numbering| numbering.start)
+            .map(|start| start as usize)
+    };
+    // The number page `current_page_0` displays is `current_page_0` plus
+    // this offset: oddPage/evenPage parity follows displayed numbers.
+    let mut page_number_offset = restart(initial_section).map_or(1, |start| start as i64);
     let mut current_column = 0usize;
     // See `CanvasRenderer::trailing_spacing_after`: where the previous
     // paragraph's spacing-after ended, and how much it added.
@@ -2180,6 +2331,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
         let mut next_paragraph_index = 0usize;
         let mut previous_element_was_math = false;
         let mut active_section_index = 0usize;
+        let mut deferred_section_page_break = false;
         for (element_index, element) in body.elements.iter().enumerate() {
             while active_section_index + 1 < document.sections.len()
                 && document.sections[active_section_index + 1].start == element_index
@@ -2190,17 +2342,41 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     target_section.properties.as_ref(),
                     current_page_0 + 1,
                 );
-                let transition = resolve_section_transition(
-                    SectionBreakType::from_word_value(
-                        target_section
-                            .properties
-                            .as_ref()
-                            .and_then(|properties| properties.section_type.as_deref()),
-                    ),
-                    current_page_0 + 1,
+                let section_type = SectionBreakType::from_word_value(
+                    target_section
+                        .properties
+                        .as_ref()
+                        .and_then(|properties| properties.section_type.as_deref()),
+                );
+                let section_type = if std::mem::take(&mut deferred_section_page_break) {
+                    section_type.after_manual_page_break()
+                } else {
+                    section_type
+                };
+                let target_restart = restart(target_section.properties.as_ref());
+                let displayed = (current_page_0 as i64 + page_number_offset).max(0) as usize;
+                let transition = match resolve_section_transition(
+                    section_type,
+                    displayed,
                     !geometry.same_page_geometry(&target_geometry),
                     current_column + 1 < geometry.column_layout.len(),
-                );
+                ) {
+                    SectionTransition::NextPage { .. }
+                        if matches!(
+                            section_type,
+                            SectionBreakType::OddPage | SectionBreakType::EvenPage
+                        ) =>
+                    {
+                        SectionTransition::NextPage {
+                            page_advances: parity_page_advances(
+                                section_type,
+                                displayed,
+                                target_restart,
+                            ),
+                        }
+                    }
+                    transition => transition,
+                };
                 match transition {
                     SectionTransition::Stay => {
                         current_column = 0;
@@ -2214,6 +2390,9 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         current_page_0 += page_advances;
                         current_column = 0;
                         current_y = target_geometry.content_top_y;
+                        if let Some(start) = target_restart {
+                            page_number_offset = start as i64 - current_page_0 as i64;
+                        }
                     }
                 }
                 geometry = target_geometry;
@@ -2231,6 +2410,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 match element {
                     BodyElement::Table(table) => {
                         previous_element_was_math = false;
+                        let page_before_table = current_page_0;
                         layout_table_lines(
                             &layout_context,
                             table,
@@ -2244,8 +2424,16 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                                 content_top_y,
                                 content_bottom_y,
                                 section_content_height_pt,
+                                opening_column: current_column,
+                                nested: false,
                             },
                         )?;
+                        if current_page_0 != page_before_table
+                            && crate::line_metrics::word_layout_platform()
+                                == crate::line_metrics::WordLayoutPlatform::Windows
+                        {
+                            current_column = 0;
+                        }
                     }
                     BodyElement::Math(math) => {
                         let paragraph_index = next_paragraph_index;
@@ -2274,6 +2462,44 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
             previous_element_was_math = false;
             let paragraph_index = next_paragraph_index;
             next_paragraph_index += 1;
+            let section_start = element_index
+                == document
+                    .sections
+                    .get(active_section_index)
+                    .map_or(0, |section| section.start);
+            let windows_body_flow = crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+                && paragraph
+                    .properties
+                    .as_ref()
+                    .is_none_or(|p| p.frame.is_none());
+            let windows_page_break_before =
+                windows_body_flow && paragraph_page_break_before(paragraph, styles);
+            let manual_break_suppresses_before = |before| {
+                windows_body_flow
+                    && before > 0.0
+                    && !windows_page_break_before
+                    && !section_start
+                    && body_follows_manual_page_break(document, element_index)
+            };
+            let legacy_page_break_spacing = windows_page_break_before
+                && crate::line_metrics::preserves_spacing_at_page_break_before(document);
+            if windows_page_break_before && current_y > content_top_y + EPS {
+                let previous_after = preceding_spacing_after(
+                    &mut trailing_spacing_after,
+                    current_page_0,
+                    current_column,
+                    current_y,
+                    || false,
+                );
+                current_page_0 += 1;
+                current_column = 0;
+                current_y = content_top_y;
+                if legacy_page_break_spacing && previous_after > 0.0 {
+                    trailing_spacing_after =
+                        Some((current_page_0, current_column, current_y, previous_after));
+                }
+            }
             let Some(mut input) = build_paragraph_input(
                 &layout_context,
                 paragraph_index,
@@ -2315,20 +2541,16 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         &mut current_page_0,
                         &mut current_column,
                         column_layout.len(),
-                        input.spacing_before_px,
+                        if windows_page_break_before && !legacy_page_break_spacing && !section_start
+                        {
+                            0.0
+                        } else {
+                            input.spacing_before_px
+                        },
                         preceding_spacing_after,
-                        element_index
-                            == document
-                                .sections
-                                .get(active_section_index)
-                                .map_or(0, |section| section.start),
+                        section_start,
                         input.spacing_before_px > 0.0 && input.text.contains(PAGE_BREAK_CHAR),
-                        input.spacing_before_px > 0.0
-                            && windows_manual_break_suppresses_before(
-                                paragraph,
-                                document,
-                                element_index,
-                            ),
+                        manual_break_suppresses_before(input.spacing_before_px),
                         content_top_y,
                         content_bottom_y,
                     );
@@ -2392,21 +2614,25 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         && !input.text.contains(PAGE_BREAK_CHAR)
                 },
             );
+            let page_before_spacing = current_page_0;
             advance_paragraph_spacing_before(
                 &mut current_y,
                 &mut current_page_0,
                 &mut current_column,
                 column_layout.len(),
-                input.spacing_before_px,
+                if windows_page_break_before
+                    && !legacy_page_break_spacing
+                    && !section_start
+                    && !input.text.contains(PAGE_BREAK_CHAR)
+                {
+                    0.0
+                } else {
+                    input.spacing_before_px
+                },
                 preceding_spacing_after,
-                element_index
-                    == document
-                        .sections
-                        .get(active_section_index)
-                        .map_or(0, |section| section.start),
+                section_start,
                 input.spacing_before_px > 0.0 && input.text.contains(PAGE_BREAK_CHAR),
-                input.spacing_before_px > 0.0
-                    && windows_manual_break_suppresses_before(paragraph, document, element_index),
+                manual_break_suppresses_before(input.spacing_before_px),
                 content_top_y,
                 content_bottom_y,
             );
@@ -2507,6 +2733,19 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 continue;
             }
 
+            input.paragraph_style.set_leading_page_breaks(&input.text);
+            let windows_manual_page_break = input.paragraph_style.word_platform
+                == crate::line_metrics::WordLayoutPlatform::Windows
+                && input.text.contains(PAGE_BREAK_CHAR);
+            let section_consumes_final_break = input.text.ends_with(PAGE_BREAK_CHAR)
+                && windows_section_consumes_final_manual_page_break(
+                    document,
+                    element_index,
+                    active_section_index,
+                );
+            deferred_section_page_break |= section_consumes_final_break;
+            let section_break_without_content =
+                section_consumes_final_break && input.text == jade_docx_reader::PAGE_BREAK_STR;
             let wrapped = wrap_text_into_lines(
                 context,
                 &input.text,
@@ -2620,7 +2859,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     );
                 }
             }
-            if input.widow_control_enabled && wrapped.len() > 1 {
+            if input.widow_control_enabled && wrapped.len() > 1 && !section_break_without_content {
                 let remaining = (content_bottom_y - current_y).max(0.0);
                 let lines_fit = line_heights.as_ref().map_or_else(
                     || ((remaining + EPS) / input.line_height_px).floor() as usize,
@@ -2657,7 +2896,27 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
             let mut visible_line_index_in_paragraph = 0usize;
             let mut paragraph_ended_with_page_break = false;
             let mut previous_emitted_line_text: Option<String> = None;
+            let leading_page_breaks = input.paragraph_style.leading_page_breaks;
+            let spacing_before = crate::line_metrics::collapsed_spacing_before(
+                input.spacing_before_px,
+                preceding_spacing_after,
+            );
+            let mut spacing_after_leading_breaks = if section_start { spacing_before } else { 0.0 };
             for (wrapped_line_index, line) in wrapped.iter().enumerate() {
+                if leading_page_breaks != 0 {
+                    if wrapped_line_index == 0 && page_before_spacing != current_page_0 {
+                        current_y = content_top_y;
+                        spacing_after_leading_breaks = spacing_before;
+                        paragraph_ended_with_page_break = true;
+                        continue;
+                    }
+                    if wrapped_line_index == leading_page_breaks
+                        && (line.break_kind != crate::line_wrap::LineBreakKind::ParagraphEnd
+                            || !line.segments.is_empty())
+                    {
+                        current_y += spacing_after_leading_breaks;
+                    }
+                }
                 let line_height_px = line_heights
                     .as_ref()
                     .map_or(input.line_height_px, |heights| heights[wrapped_line_index]);
@@ -2672,15 +2931,31 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         content_bottom_y,
                     );
                 }
-                ensure_vertical_space_in_columns(
-                    &mut current_y,
-                    &mut current_page_0,
-                    &mut current_column,
-                    column_layout.len(),
-                    line_height_px,
-                    content_top_y,
-                    content_bottom_y,
-                );
+                let page_before_line = current_page_0;
+                let section_advances = section_consumes_final_break
+                    && line.break_kind == crate::line_wrap::LineBreakKind::Page
+                    && line
+                        .break_range
+                        .is_some_and(|(_, end)| end == input.text.len());
+                if !section_advances
+                    || !line.segments.is_empty()
+                    || current_y >= content_bottom_y - EPS
+                {
+                    ensure_vertical_space_in_columns(
+                        &mut current_y,
+                        &mut current_page_0,
+                        &mut current_column,
+                        column_layout.len(),
+                        line_height_px,
+                        content_top_y,
+                        content_bottom_y,
+                    );
+                }
+                if wrapped_line_index < leading_page_breaks && current_page_0 != page_before_line {
+                    spacing_after_leading_breaks = spacing_before;
+                    paragraph_ended_with_page_break = true;
+                    continue;
+                }
 
                 let text: String = line
                     .segments
@@ -2705,9 +2980,13 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     .map(|segment| segment.end)
                     .or_else(|| line.break_range.map(|(_, end)| end))
                     .unwrap_or(line_start);
+                let indent_line_index = if windows_manual_page_break {
+                    wrapped_line_index
+                } else {
+                    visible_line_index_in_paragraph
+                };
                 let line_x = column_layout.left(current_column)
-                    + (word_oracle_line_start_x(&input, visible_line_index_in_paragraph)
-                        - content_left_x);
+                    + (word_oracle_line_start_x(&input, indent_line_index) - content_left_x);
 
                 let emitted_line = should_emit_word_oracle_line(&line_text);
                 let duplicate_terminal_line = line_text.graphemes(true).count() <= 1
@@ -2751,9 +3030,11 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 }
 
                 if matches!(line.break_kind, crate::line_wrap::LineBreakKind::Page) {
-                    current_page_0 += 1;
-                    current_column = 0;
-                    current_y = content_top_y;
+                    if !section_advances {
+                        current_page_0 += 1;
+                        current_column = 0;
+                        current_y = content_top_y;
+                    }
                     paragraph_ended_with_page_break = true;
                 }
             }
@@ -2773,6 +3054,20 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     content_top_y,
                     content_bottom_y,
                 );
+                trailing_spacing_after = Some((
+                    current_page_0,
+                    current_column,
+                    current_y,
+                    input.spacing_after_px,
+                ));
+            } else if input.spacing_after_px > 0.0
+                && manual_page_break_preserves_spacing_collapse(
+                    document,
+                    element_index,
+                    active_section_index,
+                    styles,
+                )
+            {
                 trailing_spacing_after = Some((
                     current_page_0,
                     current_column,
@@ -3347,6 +3642,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -3688,7 +3984,7 @@ mod tests {
             assert_eq!(spacing_before_px(&paragraph, font_box) * 0.75, 6.0);
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert!((spacing_after_px(&paragraph, 20.0) * 0.75 - 6.6).abs() < 1e-5);
+        assert!((spacing_after_px(&paragraph, 20.0) * 0.75 - 3.96).abs() < 1e-5);
     }
 
     #[test]
@@ -3721,7 +4017,7 @@ mod tests {
         assert!((before - 7.92).abs() < 1e-5, "{before}");
         set_word_layout_platform(WordLayoutPlatform::Windows);
         let windows = spacing_after_px_on_grid(&paragraph, 20.0, Some(18.0)) * 0.75;
-        assert!((windows - 10.0).abs() < 1e-5, "{windows}");
+        assert!((windows - 9.0).abs() < 1e-5, "{windows}");
     }
 
     #[test]
@@ -3806,8 +4102,9 @@ mod tests {
             paragraph_spacing_after(spacing),
             Some(ParagraphSpacingAmount::Lines(1.0))
         );
-        assert_eq!(spacing_before_px(paragraph, 15.0), 20.0);
-        assert_eq!(spacing_after_px(paragraph, 15.0), 20.0);
+        // A line unit is nominal 12pt (16px), independent of the 15pt font box.
+        assert_eq!(spacing_before_px(paragraph, 15.0), 16.0);
+        assert_eq!(spacing_after_px(paragraph, 15.0), 16.0);
     }
 
     #[test]
@@ -4321,6 +4618,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -4413,6 +4711,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -4498,6 +4797,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -4526,6 +4826,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -4908,6 +5209,82 @@ mod tests {
             lines[1].y, 0.0,
             "Word COM TRACE evidence: tests/word-oracle/hello/word-trace.json places page-2 text at the top margin after a paragraph-final w:br type=\"page\"; paragraph spacing-after must not be carried onto the new page"
         );
+    }
+
+    #[test]
+    fn styled_windows_page_breaks_preserve_word_pages_and_before_spacing() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let context = FixedWidthContext::new(10.0);
+        let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
+        for (name, page, top_pt) in [
+            ("based-on", 2, Some(72.0)),
+            ("previous-manual-direct", 2, Some(72.0)),
+            ("previous-break-only-direct", 2, Some(84.0)),
+            ("previous-after-0-adjacent", 2, Some(84.0)),
+            ("previous-after-160-adjacent", 2, Some(76.0)),
+            ("previous-manual-section-start", 2, Some(72.0)),
+            ("previous-manual-section-evenpage", 2, Some(72.0)),
+            ("previous-manual-section-oddpage", 3, Some(72.0)),
+            ("continuous-margin-change", 2, Some(96.0)),
+            ("next-column-single", 2, Some(72.0)),
+            ("next-column-double", 2, Some(72.0)),
+            ("next-page-near-bottom", 2, None),
+            ("next-page-exact-bottom", 3, None),
+            ("visible-manual-hidden-after", 2, Some(72.0)),
+            ("hidden-manual", 1, Some(118.0)),
+            ("hidden-whole-line", 1, Some(118.0)),
+        ] {
+            let name = format!("word-windows-edge-styled-page-break-{name}-compat14.docx");
+            let bytes = fs::read(fixtures.join(&name)).unwrap();
+            let package = block_on(OpenXmlPackage::load(&bytes)).unwrap();
+            let layout = layout_docx_lines_from_package(&package, &context).unwrap();
+            let line = layout
+                .get_lines()
+                .find(|line| line.text == "TARGET")
+                .unwrap();
+            assert_eq!(line.page, page, "{name}");
+            assert!(line.x < points_to_px(250.0), "{name} x={}", line.x);
+            if let Some(top_pt) = top_pt {
+                assert!(
+                    (line.y - points_to_px(top_pt)).abs() < EPS,
+                    "{name} y={}",
+                    line.y
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn windows_table_page_breaks_follow_first_cell_and_header_rules() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let context = FixedWidthContext::new(10.0);
+        let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
+        for (name, mode, text, page) in [
+            ("inline-same-run", 15, "PRETARGET", 1),
+            ("first-row-document-start", 15, "TARGET", 1),
+            ("first-cell-direct", 15, "TARGET", 2),
+            ("first-cell-inherited", 15, "TARGET", 2),
+            ("first-row-at-second-column-top", 15, "TARGET", 2),
+            ("first-cell-direct-off", 15, "TARGET", 1),
+            ("later-paragraph-after-empty", 15, "TARGET", 1),
+            ("second-cell-direct", 15, "TARGET", 1),
+            ("nested-first-cell", 15, "TARGET", 1),
+            ("repeated-header", 14, "TARGET", 2),
+            ("repeated-header", 15, "TARGET", 3),
+            ("second-header-has-break", 14, "TARGET", 2),
+            ("second-header-has-break", 15, "TARGET", 1),
+        ] {
+            let name = format!("word-windows-edge-table-page-break-{name}-compat{mode}.docx");
+            let bytes = fs::read(fixtures.join(&name)).unwrap();
+            let package = block_on(OpenXmlPackage::load(&bytes)).unwrap();
+            let layout = layout_docx_lines_from_package(&package, &context).unwrap();
+            let line = layout.get_lines().find(|line| line.text == text).unwrap();
+            assert_eq!(line.page, page, "{name}");
+        }
     }
 
     #[test]
@@ -5654,11 +6031,13 @@ mod tests {
 <w:style w:type="character" w:styleId="Toggle"><w:rPr><w:vanish/></w:rPr></w:style>
 </w:styles>"#;
             let package = OpenXmlPackage {
-                files: [
-                    ("word/document.xml".into(), document.into_bytes()),
-                    ("word/styles.xml".into(), styles.as_bytes().to_vec()),
-                ]
-                .into(),
+                files: std::sync::Arc::new(
+                    [
+                        ("word/document.xml".into(), document.into_bytes()),
+                        ("word/styles.xml".into(), styles.as_bytes().to_vec()),
+                    ]
+                    .into(),
+                ),
                 relationships: vec![jade_docx_reader::Relationship {
                     id: "rId1".into(),
                     r#type: RelationshipTypes::OfficeDocument.as_str().into(),
@@ -5878,7 +6257,7 @@ mod tests {
             THEME_XML.as_bytes().to_vec(),
         );
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: vec![jade_docx_reader::Relationship {
                 id: "rId1".to_string(),
                 r#type:

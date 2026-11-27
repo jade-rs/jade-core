@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T050332202Z-29b951b0",
+  "captured_at_utc": "2026-11-18T05:03:32.2056629Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width45-compat14",
+      "source": "w18-x-explicit-hyphen-controls-input-snapshots\\word-windows-explicit-hyphen-soft-literal-width45-compat14.docx",
+      "sha256": "5b152d9f183c969d114739b7efa895a94793ce3a17321b279c86fa0039cf7a04",
+      "pdf": "word-windows-explicit-hyphen-soft-literal-width45-compat14.pdf",
+      "pdf_sha256": "a67c4aff63fcacc90117a85255afb76110f88f2d26583a7799721b5884d5eac6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-explicit-hyphen-soft-literal-width45-compat14.page-001.emf",
+          "sha256": "a57b7aa98e342de275289625c87b131a6922cc446af1af161feb42ceda85d09e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

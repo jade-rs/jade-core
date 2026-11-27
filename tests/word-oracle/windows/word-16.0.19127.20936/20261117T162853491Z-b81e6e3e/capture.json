@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T162853491Z-b81e6e3e",
+  "captured_at_utc": "2026-11-17T16:28:53.4950173Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-long-kern-aptos-size14-regular-compat14",
+      "source": "w18-t2-long-aptos-kerning-input-snapshots\\word-windows-aptos-long-kern-aptos-size14-regular-compat14.docx",
+      "sha256": "57e18bf3137ac6cef803ea4a1af93f1debc3cf65a883138ddfc33ca5b42efd5c",
+      "pdf": "word-windows-aptos-long-kern-aptos-size14-regular-compat14.pdf",
+      "pdf_sha256": "5667d01429aab5ba1efa52a12ae8e14f34f82b7c7d8974d5fcf3a5568627d1f2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-long-kern-aptos-size14-regular-compat14.page-001.emf",
+          "sha256": "2b6d89c7a6b2726c8c8be59ba31d541afd9e55afa1bd2b93c8b41ae954710c71",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

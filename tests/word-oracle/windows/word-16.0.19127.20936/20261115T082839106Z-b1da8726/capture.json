@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T082839106Z-b1da8726",
+  "captured_at_utc": "2026-11-15T08:28:39.1103295Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-tiers-yu20-cjk3-no-space-both-balance0-compat15",
+      "source": "..\\w15-o-justification-tiers-input-snapshots\\word-windows-edge-justify-tiers-yu20-cjk3-no-space-both-balance0-compat15.docx",
+      "sha256": "7f64b795f888d384e72fbc013471db7f0f96b1b649b22b4f47acd3a9347bcf1a",
+      "pdf": "word-windows-edge-justify-tiers-yu20-cjk3-no-space-both-balance0-compat15.pdf",
+      "pdf_sha256": "fb408612d7f743e99436277a53a18f12b73d4a0349e0f9108ee9aeb9812b5b23",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-tiers-yu20-cjk3-no-space-both-balance0-compat15.page-001.emf",
+          "sha256": "f4acedb14adccd0d9a1b777a7f6966ccd2b643ab54b0d541d5167f77ffe22b0e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

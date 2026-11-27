@@ -1,6 +1,7 @@
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::Table;
 use crate::docx_xml::{XmlElement, XmlNodeId};
+use crate::word_document::WordDocument;
 use jade_docx_layout::selection::SelectionRange;
 
 /// Structural table grid edit performed by [`TableStructureCommand`].
@@ -58,11 +59,81 @@ pub struct TableStructureCommand {
     previous_selection: Option<SelectionRange>,
 }
 
-struct TableStructureBackup {
+pub(super) struct TableStructureBackup {
     next_revision_id: u32,
     table: Table,
     table_node_id: Option<XmlNodeId>,
     raw_table_element: Option<XmlElement>,
+}
+
+impl TableStructureBackup {
+    pub(super) fn capture(
+        document: &WordDocument,
+        table_order_index: usize,
+    ) -> CommandResult<TableStructureBackup> {
+        let table = document.table_by_order(table_order_index).ok_or_else(|| {
+            CommandError::Custom(format!("table {table_order_index} was not found"))
+        })?;
+        let table_node_id = table.node_id;
+        let raw_table_element = match (document.raw_document.as_ref(), table_node_id) {
+            (Some(raw), Some(table_id)) => raw.element(table_id).cloned(),
+            _ => None,
+        };
+
+        Ok(TableStructureBackup {
+            next_revision_id: document.revision_id_counter(),
+            table: table.clone(),
+            table_node_id,
+            raw_table_element,
+        })
+    }
+
+    pub(super) fn restore(
+        self,
+        document: &mut WordDocument,
+        table_order_index: usize,
+    ) -> CommandResult<()> {
+        // A structural edit rewrites `<w:tbl>` and gives its descendants new
+        // node ids. Restore the saved children into the live root so the model
+        // ids in the backup again match the raw subtree.
+        let current_node_id = document
+            .table_by_order(table_order_index)
+            .and_then(|table| table.node_id);
+        {
+            let table = document
+                .table_mut_by_order(table_order_index)
+                .ok_or_else(|| {
+                    CommandError::Custom("table to restore was not found".to_string())
+                })?;
+            *table = self.table;
+            table.node_id = current_node_id.or(self.table_node_id);
+        }
+
+        let restore_node_id = current_node_id.or(self.table_node_id);
+        let restored_raw = if let (Some(raw), Some(table_id), Some(raw_table)) = (
+            document.raw_document.as_mut(),
+            restore_node_id,
+            self.raw_table_element.as_ref(),
+        ) {
+            let table_element = raw.element_mut(table_id).ok_or_else(|| {
+                CommandError::Custom("table XML could not be restored".to_string())
+            })?;
+            table_element.attributes = raw_table.attributes.clone();
+            table_element.children = raw_table.children.clone();
+            raw.rebuild_index_for_subtree(table_id);
+            true
+        } else {
+            false
+        };
+        if !restored_raw {
+            document
+                .rewrite_table_xml_from_model(table_order_index)
+                .map_err(CommandError::Custom)?;
+        }
+        document.rebuild_paragraph_surfaces();
+        document.restore_revision_id_counter(self.next_revision_id);
+        Ok(())
+    }
 }
 
 impl TableStructureCommand {
@@ -74,30 +145,6 @@ impl TableStructureCommand {
             whole_table_backup: None,
             previous_selection: None,
         }
-    }
-
-    fn capture_backup(
-        ctx: &CommandContext<'_>,
-        table_order_index: usize,
-    ) -> CommandResult<TableStructureBackup> {
-        let table = ctx
-            .document
-            .table_by_order(table_order_index)
-            .ok_or_else(|| {
-                CommandError::Custom(format!("table {table_order_index} was not found"))
-            })?;
-        let table_node_id = table.node_id;
-        let raw_table_element = match (ctx.document.raw_document.as_ref(), table_node_id) {
-            (Some(raw), Some(table_id)) => raw.element(table_id).cloned(),
-            _ => None,
-        };
-
-        Ok(TableStructureBackup {
-            next_revision_id: ctx.document.revision_id_counter(),
-            table: table.clone(),
-            table_node_id,
-            raw_table_element,
-        })
     }
 
     fn remove_whole_table(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
@@ -133,7 +180,7 @@ impl Command for TableStructureCommand {
 
     fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let previous_selection = *ctx.selection;
-        let snapshot = Self::capture_backup(ctx, self.table_order_index)?;
+        let snapshot = TableStructureBackup::capture(ctx.document, self.table_order_index)?;
 
         match self.op {
             TableStructureOp::InsertRow {
@@ -234,48 +281,7 @@ impl Command for TableStructureCommand {
             .take()
             .ok_or_else(|| CommandError::Custom("table structure backup is missing".into()))?;
 
-        // A structural edit rewrites `<w:tbl>` and gives its descendants new
-        // node ids. Restore the saved children into the live root so the model
-        // ids in the backup again match the raw subtree.
-        let current_node_id = ctx
-            .document
-            .table_by_order(self.table_order_index)
-            .and_then(|table| table.node_id);
-        {
-            let table = ctx
-                .document
-                .table_mut_by_order(self.table_order_index)
-                .ok_or_else(|| {
-                    CommandError::Custom("table to restore was not found".to_string())
-                })?;
-            *table = snapshot.table;
-            table.node_id = current_node_id.or(snapshot.table_node_id);
-        }
-
-        let restore_node_id = current_node_id.or(snapshot.table_node_id);
-        let restored_raw = if let (Some(raw), Some(table_id), Some(raw_table)) = (
-            ctx.document.raw_document.as_mut(),
-            restore_node_id,
-            snapshot.raw_table_element.as_ref(),
-        ) {
-            let table_element = raw.element_mut(table_id).ok_or_else(|| {
-                CommandError::Custom("table XML could not be restored".to_string())
-            })?;
-            table_element.attributes = raw_table.attributes.clone();
-            table_element.children = raw_table.children.clone();
-            raw.rebuild_index_for_subtree(table_id);
-            true
-        } else {
-            false
-        };
-        if !restored_raw {
-            ctx.document
-                .rewrite_table_xml_from_model(self.table_order_index)
-                .map_err(CommandError::Custom)?;
-        }
-        ctx.document.rebuild_paragraph_surfaces();
-        ctx.document
-            .restore_revision_id_counter(snapshot.next_revision_id);
+        snapshot.restore(ctx.document, self.table_order_index)?;
         *ctx.selection = self.previous_selection;
         Ok(())
     }
@@ -304,6 +310,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),

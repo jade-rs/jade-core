@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T042052440Z-794df477",
+  "captured_at_utc": "2026-11-17T04:20:52.4431675Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-title-calibri22-sides-spacing1-compat15",
+      "source": "..\\w17-i-calibri-title-tracking-input-snapshots\\word-windows-title-calibri22-sides-spacing1-compat15.docx",
+      "sha256": "5eaa2bd7668c2c0cbcdb70bf31c69f20326fd365f0ae3d83d71215bf6def3572",
+      "pdf": "word-windows-title-calibri22-sides-spacing1-compat15.pdf",
+      "pdf_sha256": "47f59ecc7ea458807abc16e5b9987190c9f465c11c7f5209881bbcf3feecb1f3",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-title-calibri22-sides-spacing1-compat15.page-001.emf",
+          "sha256": "80e6e5defbeab59c31a7d7d601252191445d1da3014468c6cce2fc7140229c50",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-title-calibri22-sides-spacing1-compat15.page-002.emf",
+          "sha256": "0ab39006baaae0c61cfaf5bc8111b2e2338013492344ed6f9477675a0a3088b8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-title-calibri22-sides-spacing1-compat15.page-003.emf",
+          "sha256": "2e99b7b0062df3823cd317191de18d37c9bea4577705cbaa429563081ca41aee",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

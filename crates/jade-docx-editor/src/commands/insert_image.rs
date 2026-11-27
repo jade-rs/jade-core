@@ -62,6 +62,12 @@ impl Command for InsertImageCommand {
         if !ctx
             .document
             .is_body_paragraph_surface(rendered_position.paragraph)
+            && !ctx
+                .document
+                .is_note_paragraph_surface(rendered_position.paragraph)
+            && !ctx
+                .document
+                .is_text_box_paragraph_surface(rendered_position.paragraph)
         {
             return Err(CommandError::Custom(format!(
                 "images can only be inserted in body paragraphs; caret is in {}",
@@ -69,18 +75,12 @@ impl Command for InsertImageCommand {
                     .paragraph_story_description(rendered_position.paragraph)
             )));
         }
-        let paragraph = ctx
-            .document
+        ctx.document
             .paragraph(rendered_position.paragraph)
             .ok_or(CommandError::ParagraphUnavailable)?;
-        let model_len = paragraph.runs.iter().map(|run| run.text.len()).sum();
         let rendered_len = ctx
             .document
-            .model_to_rendered_text_position(TextPosition::new(
-                rendered_position.paragraph,
-                model_len,
-            ))
-            .offset;
+            .rendered_paragraph_len(rendered_position.paragraph);
         if rendered_position.offset > rendered_len {
             return Err(CommandError::Custom(format!(
                 "offset {} is past the end of paragraph {}, which is {rendered_len} bytes long",
@@ -139,7 +139,12 @@ impl Command for InsertImageCommand {
             run_index,
             kind: FloatingObjectKind::Image,
         });
-        *ctx.selection = Some(SelectionRange::collapsed(rendered_position));
+        // The caret goes after the picture, as Word puts it: the picture is
+        // one character of the line.
+        *ctx.selection = Some(SelectionRange::collapsed(TextPosition::new(
+            rendered_position.paragraph,
+            rendered_position.offset + '\u{fffc}'.len_utf8(),
+        )));
         Ok(())
     }
 
@@ -335,6 +340,164 @@ mod tests {
                 .as_deref()
                 .is_some_and(|uri| uri.starts_with(&expected_data_uri_prefix)));
         }
+    }
+
+    #[test]
+    fn a_picture_goes_into_a_footnote() {
+        let source = build_docx("Hello");
+        let mut document = executor::block_on(WordDocument::load(&source, &Options::default()))
+            .expect("load document");
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 5)));
+        let mut command_executor = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            command_executor
+                .execute(
+                    Box::new(
+                        crate::commands::insert_footnote::InsertFootnoteCommand::new(
+                            SelectionRange::collapsed(TextPosition::new(0, 5)),
+                            "Note".into(),
+                        ),
+                    ),
+                    &mut ctx,
+                )
+                .expect("footnote");
+        }
+        let note = (0..document.paragraph_count())
+            .find(|&index| document.is_note_paragraph_surface(index))
+            .expect("note paragraph");
+        let end = document.rendered_paragraph_len(note);
+        let range = SelectionRange::collapsed(TextPosition::new(note, end));
+        let mut selection = Some(range);
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        command_executor
+            .execute(
+                Box::new(InsertImageCommand::new(
+                    range,
+                    image_bytes("image/png"),
+                    "image/png".into(),
+                    10.0,
+                    10.0,
+                    None,
+                    None,
+                )),
+                &mut ctx,
+            )
+            .expect("picture in a note");
+        let exported = document.export_docx().expect("export");
+        let notes = String::from_utf8(part(&exported, "word/footnotes.xml").unwrap()).unwrap();
+        let rels =
+            String::from_utf8(part(&exported, "word/_rels/footnotes.xml.rels").unwrap()).unwrap();
+        let doc_rels =
+            String::from_utf8(part(&exported, "word/_rels/document.xml.rels").unwrap()).unwrap();
+        let embed = notes
+            .split("r:embed=\"")
+            .nth(1)
+            .and_then(|rest| rest.split('"').next())
+            .expect("the note's picture is embedded");
+        assert!(
+            rels.contains(&format!(r#"Id="{embed}""#)) && rels.contains("media/jade-image1.png"),
+            "the note part relates its picture: {rels}"
+        );
+        assert!(!doc_rels.contains("relationships/image"), "{doc_rels}");
+        assert!(part(&exported, "word/media/jade-image1.png").is_some());
+
+        // Reopened, the note still shows the picture.
+        let reopened =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reopen");
+        let note = (0..reopened.paragraph_count())
+            .find(|&index| reopened.is_note_paragraph_surface(index))
+            .expect("note paragraph");
+        assert!(reopened.paragraph(note).unwrap().runs.iter().any(|run| run
+            .image
+            .as_ref()
+            .is_some_and(|image| image.data_uri.is_some())));
+
+        // Undone, nothing of the picture is left.
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        command_executor.undo(&mut ctx).expect("undo");
+        let undone = document.export_docx().expect("export");
+        assert!(part(&undone, "word/media/jade-image1.png").is_none());
+        assert!(
+            !String::from_utf8(part(&undone, "word/footnotes.xml").unwrap())
+                .unwrap()
+                .contains("w:drawing")
+        );
+    }
+
+    #[test]
+    fn a_picture_goes_into_a_text_box() {
+        let source = build_docx("Hello");
+        let mut document = executor::block_on(WordDocument::load(&source, &Options::default()))
+            .expect("load document");
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 5)));
+        let mut command_executor = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut document, &mut selection);
+            command_executor
+                .execute(
+                    Box::new(crate::commands::insert_text_box::InsertTextBoxCommand::new(
+                        0, 5,
+                    )),
+                    &mut ctx,
+                )
+                .expect("text box");
+        }
+        let in_box = (0..document.paragraph_count())
+            .find(|&index| document.is_text_box_paragraph_surface(index))
+            .expect("text box paragraph");
+        let end = document.rendered_paragraph_len(in_box);
+        let range = SelectionRange::collapsed(TextPosition::new(in_box, end));
+        let mut selection = Some(range);
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        command_executor
+            .execute(
+                Box::new(InsertImageCommand::new(
+                    range,
+                    image_bytes("image/png"),
+                    "image/png".into(),
+                    10.0,
+                    10.0,
+                    None,
+                    None,
+                )),
+                &mut ctx,
+            )
+            .expect("picture in a text box");
+        let exported = document.export_docx().expect("export");
+        let xml = String::from_utf8(part(&exported, "word/document.xml").unwrap()).unwrap();
+        let in_content = xml.split("<w:txbxContent>").nth(1).expect("the box's text");
+        assert!(in_content.contains("pic:pic"), "{xml}");
+        let rels =
+            String::from_utf8(part(&exported, "word/_rels/document.xml.rels").unwrap()).unwrap();
+        assert!(rels.contains("media/jade-image1.png"), "{rels}");
+
+        // Reopened, the box still shows the picture.
+        let reopened =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reopen");
+        let in_box = (0..reopened.paragraph_count())
+            .find(|&index| reopened.is_text_box_paragraph_surface(index))
+            .expect("text box paragraph");
+        assert!(reopened
+            .paragraph(in_box)
+            .unwrap()
+            .runs
+            .iter()
+            .any(|run| run
+                .image
+                .as_ref()
+                .is_some_and(|image| image.data_uri.is_some())));
+
+        // Undone, the box is left as it was.
+        let mut ctx = CommandContext::new(&mut document, &mut selection);
+        command_executor.undo(&mut ctx).expect("undo");
+        let undone = document.export_docx().expect("export");
+        assert!(part(&undone, "word/media/jade-image1.png").is_none());
+        assert!(
+            !String::from_utf8(part(&undone, "word/document.xml").unwrap())
+                .unwrap()
+                .contains("pic:pic")
+        );
     }
 
     #[test]

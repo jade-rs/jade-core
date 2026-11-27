@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T132312179Z-86dc1009",
+  "captured_at_utc": "2026-11-16T13:23:12.1913414Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-printer-wrap-width419p9-size10p5-compat15",
+      "source": "w16-br-printer-wrap-input-snapshots\\word-windows-printer-wrap-width419p9-size10p5-compat15.docx",
+      "sha256": "e17bf7515b0b877b6a67ec3c4f2cf52e4e1f8d78f57300d05644a3cd5df9903e",
+      "pdf": "word-windows-printer-wrap-width419p9-size10p5-compat15.pdf",
+      "pdf_sha256": "576acce53646b2ffecd136f121406da868dfc7b0edf9a52f8e2de6b2eec6b24f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-wrap-width419p9-size10p5-compat15.page-001.emf",
+          "sha256": "64011bedb48aae1a26c9d6fad08ce24ff8a2d8fea383c778e2ba8a6612b031a8",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

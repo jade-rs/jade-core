@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T162118927Z-c3a8a15c",
+  "captured_at_utc": "2026-11-15T16:21:18.9319342Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-bold-balance0-compat15",
+      "source": "w16-b-calibri-fallback-autooff-input-snapshots\\word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-bold-balance0-compat15.docx",
+      "sha256": "811c000be505de5dc7c94d11ca8195b5458095395986376507b6629f545ce8a5",
+      "pdf": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-bold-balance0-compat15.pdf",
+      "pdf_sha256": "344debd9de331171b3a229e2a08fbbb4f306fac8e67797ac222a752e0bba4d75",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-bold-balance0-compat15.page-001.emf",
+          "sha256": "f31c9f78c48e7ee606147784cbfa3570461a10e0fbf9e5fd27510b6834f40844",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,10 @@ BREAKDOWN_THRESHOLD_PCT = 0.5
 # listed in its breakdown.
 FUNCTION_MIN_SHARE = 0.001
 TOP_FUNCTIONS = 8
-SCENARIO_ORDER = ["load", "layout", "repaint", "keystroke", "keystroke-marks", "export"]
+# `keystroke-band` is reported by a diagnostic step, next to `keystroke`.
+SCENARIO_ORDER = [
+    "load", "layout", "repaint", "keystroke", "keystroke-band", "keystroke-marks", "export",
+]
 
 # `path/file.rs:crate::module::function [binary]`, or `???:symbol`.
 FUNCTION_LINE = re.compile(r"^\s*([\d,]+)\s+(?:\([\s\d.]+%\)\s+)?(\S.*)$")

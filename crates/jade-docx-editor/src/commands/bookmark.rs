@@ -1017,7 +1017,7 @@ mod tests {
                 .find(|run| run.field.is_some()).expect("field run");
             prop_assert_eq!(field_run.text.as_str(), expected_display);
             match (&field_run.field.as_ref().expect("field").kind, page_reference) {
-                (RunFieldKind::PageRef { name: actual, hyperlink: true }, true) => {
+                (RunFieldKind::PageRef { name: actual, hyperlink: true, .. }, true) => {
                     prop_assert_eq!(actual, &name);
                 }
                 (RunFieldKind::Ref { name: actual, hyperlink: true, .. }, false) => {

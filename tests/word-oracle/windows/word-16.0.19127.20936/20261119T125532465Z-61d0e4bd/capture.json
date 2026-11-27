@@ -1,0 +1,312 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T125532465Z-61d0e4bd",
+  "captured_at_utc": "2026-11-19T12:55:32.4785363Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-legacy-mincho-bold-mincho-s12-m12",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-mincho-s12-m12.docx",
+      "sha256": "f36ab4ccc1cd08dc4e93a5948386343611e48f6cd9415051ef012b96d53e780d",
+      "pdf": "word-windows-legacy-mincho-bold-mincho-s12-m12.pdf",
+      "pdf_sha256": "9301a72142ce329ff0a6d6d76234afbf71b697a3391edba411217683a519d1d6",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-mincho-s12-m12.xps",
+      "xps_sha256": "e5d10707e8aa13a5e67caf227e24a3835051bf0b72d1d38c2df62222b68ffff6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-mincho-s12-m12.page-001.emf",
+          "sha256": "b5657a26f5baa3687be588c2b6f3cda990e6bafb4ee315c68a8d6e3e5ba602b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-mincho-s12-m14",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-mincho-s12-m14.docx",
+      "sha256": "55f552890d1374ce48bf7d0110d5931be40c70903da61ca4f0b1f7df944a4ca1",
+      "pdf": "word-windows-legacy-mincho-bold-mincho-s12-m14.pdf",
+      "pdf_sha256": "2eb1347424044e0b6b4118b931e2d9788d5ff9c21624ceb4d1ab51f821224654",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-mincho-s12-m14.xps",
+      "xps_sha256": "669dfbf5b40f1c1d8411ab02165088f3ec8e74709634cd16a9c481866c55ac9f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-mincho-s12-m14.page-001.emf",
+          "sha256": "b5657a26f5baa3687be588c2b6f3cda990e6bafb4ee315c68a8d6e3e5ba602b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-times-s12-m12",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-times-s12-m12.docx",
+      "sha256": "6f162ceb690d9f56815867dd8f7aab7ae27d2a7074769bb02fd3c0f60b0f081e",
+      "pdf": "word-windows-legacy-mincho-bold-times-s12-m12.pdf",
+      "pdf_sha256": "b01f0c145d81bd71aa0ea51524ac61617ab59d9a20497002f55d29a719a02dd5",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-times-s12-m12.xps",
+      "xps_sha256": "c0e22a0151a9da8e240537256a440fffad6df3a1d468b05695c1c3399ae38e6b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-times-s12-m12.page-001.emf",
+          "sha256": "b5657a26f5baa3687be588c2b6f3cda990e6bafb4ee315c68a8d6e3e5ba602b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-times-s12-m14",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-times-s12-m14.docx",
+      "sha256": "c54b5004b9a0d69c875ba534e785892104b354a1319b56d70371a33ef6c19c64",
+      "pdf": "word-windows-legacy-mincho-bold-times-s12-m14.pdf",
+      "pdf_sha256": "f51c384b9acb14220dc6ec5ba2245e77b3cc65c1885afcc084b120077edcf773",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-times-s12-m14.xps",
+      "xps_sha256": "fe64415a81925d68a69839b28a043a82c7b277015cca5b99de30280cf257d0e8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-times-s12-m14.page-001.emf",
+          "sha256": "b5657a26f5baa3687be588c2b6f3cda990e6bafb4ee315c68a8d6e3e5ba602b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-times-s12-m15",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-times-s12-m15.docx",
+      "sha256": "a9c1968e482ffb26adc6e592a8c2f945aa6453f343faa13aa09c56288718c614",
+      "pdf": "word-windows-legacy-mincho-bold-times-s12-m15.pdf",
+      "pdf_sha256": "40097d72537105c13eeeb8e3491cf914e7f01f9ef2e102ec36e31d07c07f4a31",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-times-s12-m15.xps",
+      "xps_sha256": "90365edd5604cc68f42736367668171c2d47302a133093220d2a09699b1168e7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-times-s12-m15.page-001.emf",
+          "sha256": "63b1cd0ab72b89f450eabde6c218c462ea4cea222a9252a1f709f0a7d906202e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-mincho-s20-m12",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-mincho-s20-m12.docx",
+      "sha256": "84047c1423a37c8ec2372f7896a0b3622fce24c99b7fb1a472d098441205715f",
+      "pdf": "word-windows-legacy-mincho-bold-mincho-s20-m12.pdf",
+      "pdf_sha256": "9c13030f6671e56a0f5a552e8bc774718789647367354a902ad91b840950a08a",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-mincho-s20-m12.xps",
+      "xps_sha256": "e13456faa4e59bf94f290d1a445cba8951428661360ec2b0f476b02404d31bcc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-mincho-s20-m12.page-001.emf",
+          "sha256": "e5a8dba628927bc1ade77b22fe8018710ab82e34616111381f35ed86e7530e3c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-mincho-s20-m14",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-mincho-s20-m14.docx",
+      "sha256": "ff88599329386b4c05d4dbd615849a6df2c54f8cd4383f8c308b37a60ff7e62e",
+      "pdf": "word-windows-legacy-mincho-bold-mincho-s20-m14.pdf",
+      "pdf_sha256": "0b0ea68cc770f0fba1af71ef9ea544ae8cf44dddb96d72742be8d8ebe1567d18",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-mincho-s20-m14.xps",
+      "xps_sha256": "d124e80f19412506b0977e9477fcac336046b0fc489cca60e351027e47a83e4d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-mincho-s20-m14.page-001.emf",
+          "sha256": "34646ada59626f8440cf8f75d8ec160035d03911e78976131ed0f281e266a641",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-times-s20-m12",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-times-s20-m12.docx",
+      "sha256": "86c463837124597bf04461258f6801a4e54765fc2a724a0cd471bdc6a418569a",
+      "pdf": "word-windows-legacy-mincho-bold-times-s20-m12.pdf",
+      "pdf_sha256": "15c2a9092ba1437188a40f7b9fdf5f23b5a90f7e348cfe3b4feec252b98f33ee",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-times-s20-m12.xps",
+      "xps_sha256": "065ef4eb9b1d0de5fd5cc37f186deff25ca7b70ea1401d15b08fa38f6e510489",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-times-s20-m12.page-001.emf",
+          "sha256": "e5a8dba628927bc1ade77b22fe8018710ab82e34616111381f35ed86e7530e3c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-times-s20-m14",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-times-s20-m14.docx",
+      "sha256": "3096368bafef8ff6325581b881fc24f276a4c48bd9be88c0f892dbbd015a3b87",
+      "pdf": "word-windows-legacy-mincho-bold-times-s20-m14.pdf",
+      "pdf_sha256": "eb019a84d818f55a45dc246b44c52c65c66e3777c0b86b388a25d19fab729653",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-times-s20-m14.xps",
+      "xps_sha256": "f71ea29c54beb62e12aea8c65a9b98740acdedd5c454616ea1d74b60fd425501",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-times-s20-m14.page-001.emf",
+          "sha256": "4b89a993c3904e2aae3e9666efd2cc0961391292b02c0268dca5134be697233b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mincho-bold-times-s20-m15",
+      "source": "tmp\\w19-legacy-mincho-bold-inputs\\word-windows-legacy-mincho-bold-times-s20-m15.docx",
+      "sha256": "59fb7094c53b85123c0aaf79b767b972d8b4b751d983e1ab9981dae57435221a",
+      "pdf": "word-windows-legacy-mincho-bold-times-s20-m15.pdf",
+      "pdf_sha256": "04166c7ff66ab688d75b59d5006a434e8d6b6616339e7245ad9e4f69fdb51311",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mincho-bold-times-s20-m15.xps",
+      "xps_sha256": "a8f7376c593cb5c447dc345768b2497b391c1aa9c0dfd060601b641f6ea46c64",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mincho-bold-times-s20-m15.page-001.emf",
+          "sha256": "4b89a993c3904e2aae3e9666efd2cc0961391292b02c0268dca5134be697233b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

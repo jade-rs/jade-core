@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T231659226Z-87aed8b1",
+  "captured_at_utc": "2026-11-14T23:16:59.2421682Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "2col",
+      "source": "public\\fixtures\\2col.docx",
+      "sha256": "02e7f6a0da7e08ab377c854bb0fc1b1085298900266c063a473bcab134e20ff8",
+      "pdf": "2col.pdf",
+      "pdf_sha256": "044f5f10e4984d17f9f02843c8a67a8f9b7e1de04c55e114dc6c027fe5092d1e",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "2col.page-001.emf",
+          "sha256": "e6243b883e320a73ee3873a90c3779e97ae0f16fa4a1e084d35d3b43da09b893",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "2col.page-002.emf",
+          "sha256": "75f559f2dc9c61a2768e48c6c281db405fbe5963e79bb14c9ac29d31453de0a9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

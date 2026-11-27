@@ -53,9 +53,19 @@ pub fn math_faces_for(faces: &[FontFace], configured_family: Option<&str>) -> Ve
 pub fn office_font_directories() -> Vec<PathBuf> {
     let mut directories = Vec::new();
     #[cfg(target_os = "windows")]
-    if let Some(list) = std::env::var_os("JADE_OFFICE_FONT_DIR") {
-        directories
-            .extend(std::env::split_paths(&list).filter(|path| !path.as_os_str().is_empty()));
+    {
+        if let Some(list) = std::env::var_os("JADE_OFFICE_FONT_DIR") {
+            directories
+                .extend(std::env::split_paths(&list).filter(|path| !path.as_os_str().is_empty()));
+        }
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+                let cache = PathBuf::from(local).join("Microsoft").join("FontCache");
+                directories.extend(windows_cloud_font_directories(&cache));
+            }
+        }
     }
     directories.extend(
         [
@@ -66,6 +76,29 @@ pub fn office_font_directories() -> Vec<PathBuf> {
         ]
         .map(PathBuf::from),
     );
+    directories
+}
+
+/// Office's cache generation is independent of its Word product version.
+/// Discover existing CloudFonts directories rather than assuming generation 4
+/// or recognizing individual font names. Preview fonts are not document fonts.
+#[cfg(any(target_os = "windows", test))]
+fn windows_cloud_font_directories(cache: &std::path::Path) -> Vec<PathBuf> {
+    let mut directories = Vec::new();
+    let unversioned = cache.join("CloudFonts");
+    if unversioned.is_dir() {
+        directories.push(unversioned);
+    }
+    if let Ok(entries) = std::fs::read_dir(cache) {
+        directories.extend(
+            entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path().join("CloudFonts"))
+                .filter(|path| path.is_dir()),
+        );
+    }
+    directories.sort();
+    directories.dedup();
     directories
 }
 
@@ -96,22 +129,103 @@ pub struct InstalledFace {
     /// The family it belongs to, lowercased: the typographic family name,
     /// else the family name — how CoreText groups a family's faces.
     family: String,
+    /// The legacy family used when retaining implicit Windows reference faces.
+    windows_family: String,
+}
+
+// An XPS can embed multiple subsets of the same original face. Selecting
+// its first, narrower program loses glyphs and pair kerning even when another
+// program of that exact face covers the whole run. Inspect only duplicate
+// styles on Windows; Mac retains its original first-face selection.
+fn richer_same_font_program(current: &InstalledFace, candidate: &InstalledFace) -> bool {
+    if current.path == candidate.path && current.index == candidate.index {
+        return false;
+    }
+    let (Ok(current_bytes), Ok(candidate_bytes)) =
+        (std::fs::read(&current.path), std::fs::read(&candidate.path))
+    else {
+        return false;
+    };
+    let (Ok(current_face), Ok(candidate_face)) = (
+        ttf_parser::Face::parse(&current_bytes, current.index),
+        ttf_parser::Face::parse(&candidate_bytes, candidate.index),
+    ) else {
+        return false;
+    };
+    let identity = |face: &ttf_parser::Face<'_>| {
+        let name = |id| {
+            face.names()
+                .into_iter()
+                .filter(|entry| entry.name_id == id)
+                .filter_map(|entry| entry.to_string())
+                .map(|value| value.to_lowercase())
+                .min()
+        };
+        Some((
+            name(ttf_parser::name_id::POST_SCRIPT_NAME)?,
+            name(ttf_parser::name_id::VERSION)?,
+            face.units_per_em(),
+            face.ascender(),
+            face.descender(),
+            face.line_gap(),
+        ))
+    };
+    let current_identity = identity(&current_face);
+    if current_identity.is_none() || current_identity != identity(&candidate_face) {
+        return false;
+    }
+    let current_points = unicode_points(&current_face);
+    let candidate_points = unicode_points(&candidate_face);
+    !current_points.is_empty()
+        && current_points.len() < candidate_points.len()
+        && current_points.is_subset(&candidate_points)
+}
+
+fn unicode_points(face: &ttf_parser::Face<'_>) -> BTreeSet<u32> {
+    let mut points = BTreeSet::new();
+    if let Some(cmap) = face.tables().cmap {
+        for table in cmap.subtables {
+            if table.is_unicode() {
+                table.codepoints(|point| {
+                    if table.glyph_index(point).is_some_and(|glyph| glyph.0 != 0) {
+                        points.insert(point);
+                    }
+                });
+            }
+        }
+    }
+    points
 }
 
 /// Installed faces by every name they answer to.
 #[derive(Default)]
 pub struct FontLibrary {
     by_family: HashMap<String, Vec<usize>>,
+    windows_by_family: HashMap<String, Vec<usize>>,
     by_face_name: HashMap<String, usize>,
     faces: Vec<InstalledFace>,
 }
 
 impl FontLibrary {
-    /// The faces in Office's directories and the system's, indexed once per
-    /// process.
-    pub fn system() -> &'static FontLibrary {
+    fn system_cache() -> &'static OnceLock<FontLibrary> {
         static LIBRARY: OnceLock<FontLibrary> = OnceLock::new();
-        LIBRARY.get_or_init(|| {
+        #[cfg(target_os = "windows")]
+        {
+            static WINDOWS_LIBRARY: OnceLock<FontLibrary> = OnceLock::new();
+            if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                return &WINDOWS_LIBRARY;
+            }
+        }
+        &LIBRARY
+    }
+
+    /// Office and system faces, indexed once for each layout platform. Mac
+    /// replays on Windows retain their original inventory even if a Windows
+    /// document initialized Office's cloud-font inventory first.
+    pub fn system() -> &'static FontLibrary {
+        Self::system_cache().get_or_init(|| {
             let mut database = fontdb::Database::new();
             // Office's first: where a family is in both, its faces win, as
             // they are the ones Office draws with.
@@ -157,6 +271,7 @@ impl FontLibrary {
                         .map(|(family, _)| family.to_lowercase())
                         .collect();
                     let typographic = named(ttf_parser::name_id::TYPOGRAPHIC_FAMILY);
+                    let windows_families = named(ttf_parser::name_id::FAMILY);
                     let mut face_names = named(ttf_parser::name_id::FULL_NAME);
                     face_names.extend(named(ttf_parser::name_id::POST_SCRIPT_NAME));
                     face_names.insert(info.post_script_name.to_lowercase());
@@ -168,25 +283,34 @@ impl FontLibrary {
                         families.extend(typographic);
                         face_names.extend(named(ttf_parser::name_id::FAMILY));
                     }
-                    Some((families, face_names))
+                    Some((families, windows_families, face_names))
                 })
                 .flatten();
-            let Some((families, face_names)) = names else {
+            let Some((families, windows_families, face_names)) = names else {
                 continue;
             };
             let Some(family) = info.families.first().map(|(name, _)| name.to_lowercase()) else {
                 continue;
             };
             let id = library.faces.len();
+            let windows_family = windows_families
+                .iter()
+                .next()
+                .cloned()
+                .unwrap_or_else(|| family.clone());
             library.faces.push(InstalledFace {
                 path: path.clone(),
                 index: info.index,
                 weight: info.weight.0,
                 italic: !matches!(info.style, fontdb::Style::Normal),
                 family,
+                windows_family,
             });
             for name in families {
                 library.by_family.entry(name).or_default().push(id);
+            }
+            for name in windows_families {
+                library.windows_by_family.entry(name).or_default().push(id);
             }
             for name in face_names {
                 library.by_face_name.entry(name).or_insert(id);
@@ -195,18 +319,49 @@ impl FontLibrary {
         library
     }
 
+    fn family_ids(&self, name: &str) -> Option<&[usize]> {
+        // Windows Word groups regular/bold/italic by the legacy family.
+        // Aptos Display's typographic family is Aptos; treating its legacy
+        // name as one full face could register a bold font as regular when
+        // that file happened to be indexed first. Preserve CoreText grouping
+        // for Mac, including Mac layout replays on a Windows host.
+        let ids = if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            self.windows_by_family
+                .get(name)
+                .or_else(|| self.by_family.get(name))
+        } else {
+            self.by_family.get(name)
+        };
+        ids.map(Vec::as_slice)
+    }
+
     /// The faces `name` finds, each with the weight it answers for: every
-    /// face of a family of that name (the first found of each weight and
-    /// style), else the one face of that full name as the regular, with the
+    /// face of a family of that name (one per weight/style; Windows prefers
+    /// a strictly more complete program of the same version), else the one
+    /// face of that full name as the regular, with the
     /// heavier face of its family nearest bold as the bold.
     pub fn find(&self, name: &str) -> Vec<(&InstalledFace, u16)> {
         let key = name.trim().to_lowercase();
-        if let Some(ids) = self.by_family.get(&key) {
-            let mut seen = BTreeSet::new();
-            return ids
-                .iter()
-                .map(|&id| &self.faces[id])
-                .filter(|face| seen.insert((face.weight, face.italic)))
+        if let Some(ids) = self.family_ids(&key) {
+            let windows = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+            let mut selected: Vec<&InstalledFace> = Vec::new();
+            for &id in ids {
+                let face = &self.faces[id];
+                if let Some(index) = selected.iter().position(|current| {
+                    current.weight == face.weight && current.italic == face.italic
+                }) {
+                    if windows && richer_same_font_program(selected[index], face) {
+                        selected[index] = face;
+                    }
+                } else {
+                    selected.push(face);
+                }
+            }
+            return selected
+                .into_iter()
                 .map(|face| (face, face.weight))
                 .collect();
         }
@@ -231,7 +386,7 @@ impl FontLibrary {
     /// Whether any face answers to `name`.
     pub fn has(&self, name: &str) -> bool {
         let key = name.trim().to_lowercase();
-        self.by_family.contains_key(&key) || self.by_face_name.contains_key(&key)
+        self.family_ids(&key).is_some() || self.by_face_name.contains_key(&key)
     }
 
     /// The faces to register for `families`, each under the name it was asked
@@ -266,6 +421,45 @@ impl FontLibrary {
             }));
         }
         (faces, missing)
+    }
+
+    /// Retain every supplied font program for a reference replay, including
+    /// implicit fallback faces not named in the DOCX. Named aliases come last
+    /// so their established family/style preference remains authoritative.
+    /// This does not expand the default system-font selection.
+    pub fn reference_faces_for<'a>(
+        &self,
+        families: impl IntoIterator<Item = &'a str>,
+    ) -> (Vec<FontFace>, Vec<String>) {
+        let (named, missing) = self.faces_for(families);
+        let mut all: Vec<_> = {
+            let selected: BTreeSet<_> = named
+                .iter()
+                .map(|face| (face.path.as_path(), face.index))
+                .collect();
+            self.faces
+                .iter()
+                .filter(|face| !selected.contains(&(face.path.as_path(), face.index)))
+                .map(|face| FontFace {
+                    // Extra subsets must retain their own Windows family too:
+                    // a Display subset registered under typographic `Aptos`
+                    // can otherwise shadow a correctly selected Aptos alias.
+                    family: if jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    {
+                        face.windows_family.clone()
+                    } else {
+                        face.family.clone()
+                    },
+                    weight: face.weight,
+                    italic: face.italic,
+                    path: face.path.clone(),
+                    index: face.index,
+                })
+                .collect()
+        };
+        all.extend(named);
+        (all, missing)
     }
 }
 
@@ -463,6 +657,418 @@ fn unescape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cloud_font_discovery_handles_cache_generations_without_preview_faces() {
+        let root = std::env::temp_dir().join(format!(
+            "jade-cloud-font-discovery-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        assert!(!root.exists());
+        assert!(windows_cloud_font_directories(&root).is_empty());
+        let paths = [
+            "3/CloudFonts",
+            "4/CloudFonts",
+            "4/PreviewFont",
+            "next/CloudFonts",
+        ];
+        for name in paths {
+            std::fs::create_dir_all(root.join(name)).unwrap();
+        }
+        assert_eq!(
+            windows_cloud_font_directories(&root),
+            ["3/CloudFonts", "4/CloudFonts", "next/CloudFonts"].map(|name| root.join(name))
+        );
+        for name in paths {
+            std::fs::remove_dir(root.join(name)).unwrap();
+        }
+        for name in ["3", "4", "next"] {
+            std::fs::remove_dir(root.join(name)).unwrap();
+        }
+        std::fs::remove_dir(root).unwrap();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_cloud_inventory_cache_cannot_replace_the_mac_cache() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac = FontLibrary::system_cache();
+        let before = office_font_directories();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert!(!std::ptr::eq(mac, FontLibrary::system_cache()));
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(std::ptr::eq(mac, FontLibrary::system_cache()));
+        assert_eq!(office_font_directories(), before);
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_disjoint_calibri_subsets_keep_spaces_in_the_requested_family() {
+        use jade_docx_layout::font_measurer::RegisteredFontStyle;
+        use jade_docx_layout::layout_cache::TextMeasurer;
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_docx_layout::shaping_measurer::ShapingMeasurer;
+        use std::io::{Cursor, Read};
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read_json = |path: &std::path::Path| -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+        };
+        let index = read_json(&root.join("tests/word-oracle/windows/mixed-face-observations.json"));
+        let name = "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000";
+        let fixture = index["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let manifest_path = root.join(fixture["capture"]["file"].as_str().unwrap());
+        let manifest = read_json(&manifest_path);
+        let document = manifest["documents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let xps = manifest_path
+            .parent()
+            .unwrap()
+            .join(document["xps"].as_str().unwrap());
+        let mut archive = zip::ZipArchive::new(Cursor::new(std::fs::read(xps).unwrap())).unwrap();
+        let mut programs = Vec::new();
+        for index in 0..archive.len() {
+            let mut member = archive.by_index(index).unwrap();
+            let member_name = member
+                .name()
+                .expect("valid original XPS resource name")
+                .into_owned();
+            if !member_name.to_lowercase().ends_with(".odttf") {
+                continue;
+            }
+            let stem = std::path::Path::new(&member_name)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('-', "");
+            let mut key = [0_u8; 16];
+            for (index, byte) in key.iter_mut().rev().enumerate() {
+                *byte = u8::from_str_radix(&stem[index * 2..index * 2 + 2], 16).unwrap();
+            }
+            let mut data = Vec::new();
+            member.read_to_end(&mut data).unwrap();
+            for (index, byte) in data.iter_mut().take(32).enumerate() {
+                *byte ^= key[index % 16];
+            }
+            programs.push(data);
+        }
+        let family = |data: &[u8], name: &str| {
+            ttf_parser::Face::parse(data, 0)
+                .unwrap()
+                .names()
+                .into_iter()
+                .any(|entry| {
+                    entry.name_id == ttf_parser::name_id::FAMILY
+                        && entry.to_string().as_deref() == Some(name)
+                })
+        };
+        let covers = |data: &[u8], ch: char| {
+            ttf_parser::Face::parse(data, 0)
+                .unwrap()
+                .glyph_index(ch)
+                .is_some()
+        };
+        let foreign = programs
+            .iter()
+            .find(|data| family(data, "Arial") && covers(data, 'A') && covers(data, ' '))
+            .unwrap();
+        let space = programs
+            .iter()
+            .find(|data| family(data, "Calibri") && covers(data, ' ') && !covers(data, 'A'))
+            .unwrap();
+        let letters = programs
+            .iter()
+            .find(|data| family(data, "Calibri") && covers(data, 'A') && !covers(data, ' '))
+            .unwrap();
+        for order in [[space, letters], [letters, space]] {
+            let mut combined = ShapingMeasurer::new(12.0);
+            combined
+                .register_font_bytes("Foreign", 400, RegisteredFontStyle::Normal, foreign)
+                .unwrap();
+            for data in order {
+                combined
+                    .register_font_bytes("Calibri", 400, RegisteredFontStyle::Normal, data)
+                    .unwrap();
+            }
+            for (text, data) in [(" ", space), ("A", letters), ("g", letters)] {
+                let mut isolated = ShapingMeasurer::new(12.0);
+                isolated
+                    .register_font_bytes("Calibri", 400, RegisteredFontStyle::Normal, data)
+                    .unwrap();
+                let expected = isolated.measure_text(text, "12pt Calibri").unwrap();
+                for descriptor in ["12pt Calibri", "12pt CALIBRI"] {
+                    let actual = combined.measure_text(text, descriptor).unwrap();
+                    assert!((actual-expected).abs()<1e-9, "{text:?}/{descriptor}: disjoint original subsets must precede foreign fallback: {actual} vs {expected}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_original_subsets_select_the_complete_face_and_preserve_mac() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use std::io::{Cursor, Read};
+        let previous = word_layout_platform();
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read_json = |path: &std::path::Path| -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+        };
+        let index = read_json(
+            &root.join("tests/word-oracle/windows/legacy-justification-observations.json"),
+        );
+        let name = "word-windows-legacy-font-times-s12-m15-manual-w3000";
+        let fixture = index["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let manifest_path = root.join(fixture["capture"]["file"].as_str().unwrap());
+        let manifest = read_json(&manifest_path);
+        let document = manifest["documents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let xps = manifest_path
+            .parent()
+            .unwrap()
+            .join(document["xps"].as_str().unwrap());
+        let mut archive = zip::ZipArchive::new(Cursor::new(std::fs::read(xps).unwrap())).unwrap();
+        let mut programs = Vec::new();
+        for index in 0..archive.len() {
+            let mut member = archive.by_index(index).unwrap();
+            let member_name = member
+                .name()
+                .expect("valid original XPS resource name")
+                .into_owned();
+            if !member_name.to_lowercase().ends_with(".odttf") {
+                continue;
+            }
+            let stem = std::path::Path::new(&member_name)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('-', "");
+            let mut key = [0_u8; 16];
+            for (index, byte) in key.iter_mut().rev().enumerate() {
+                *byte = u8::from_str_radix(&stem[index * 2..index * 2 + 2], 16).unwrap();
+            }
+            let mut data = Vec::new();
+            member.read_to_end(&mut data).unwrap();
+            for (index, byte) in data.iter_mut().take(32).enumerate() {
+                *byte ^= key[index % 16];
+            }
+            let face = ttf_parser::Face::parse(&data, 0).unwrap();
+            if !face.names().into_iter().any(|entry| {
+                entry.name_id == ttf_parser::name_id::FAMILY
+                    && entry.to_string().as_deref() == Some("Times New Roman")
+            }) {
+                continue;
+            }
+            let points = unicode_points(&face);
+            programs.push((points, data));
+        }
+        programs.sort_by_key(|(points, _)| points.len());
+        let (small, large) = (programs.first().unwrap(), programs.last().unwrap());
+        assert!(small.0.len() < large.0.len() && small.0.is_subset(&large.0));
+        let directory = std::env::temp_dir().join(format!(
+            "jade-original-font-subsets-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&directory).unwrap();
+        let small_path = directory.join("first-narrow.ttf");
+        let large_path = directory.join("second-complete.ttf");
+        std::fs::write(&small_path, &small.1).unwrap();
+        std::fs::write(&large_path, &large.1).unwrap();
+        let mut library = FontLibrary::default();
+        for path in [&small_path, &large_path] {
+            library.faces.push(InstalledFace {
+                path: path.clone(),
+                index: 0,
+                weight: 400,
+                italic: false,
+                family: "times new roman".into(),
+                windows_family: "times new roman".into(),
+            });
+        }
+        library
+            .by_family
+            .insert("times new roman".into(), vec![0, 1]);
+        library
+            .windows_by_family
+            .insert("times new roman".into(), vec![0, 1]);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let before = library.faces_for(["Times New Roman"]).0;
+        assert_eq!(before[0].path, small_path);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let windows = library.faces_for(["Times New Roman"]).0;
+        assert_eq!(windows.len(), 1);
+        assert_eq!(windows[0].path, large_path);
+        let references = library.reference_faces_for(["Times New Roman"]).0;
+        assert_eq!(references.len(), 2);
+        assert!(references.iter().any(|face| face.path == small_path));
+        assert!(references.iter().any(|face| face.path == large_path));
+        library
+            .windows_by_family
+            .get_mut("times new roman")
+            .unwrap()
+            .reverse();
+        assert_eq!(library.faces_for(["Times New Roman"]).0[0].path, large_path);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(library.faces_for(["Times New Roman"]).0, before);
+        set_word_layout_platform(previous);
+        std::fs::remove_file(small_path).unwrap();
+        std::fs::remove_file(large_path).unwrap();
+        std::fs::remove_dir(directory).unwrap();
+    }
+
+    #[test]
+    fn windows_legacy_family_keeps_bold_and_regular_faces_without_changing_mac() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut library = FontLibrary::default();
+        for (path, weight) in [("display-bold.ttf", 700), ("display-regular.ttf", 400)] {
+            library.faces.push(InstalledFace {
+                path: PathBuf::from(path),
+                index: 0,
+                weight,
+                italic: false,
+                family: "aptos".into(),
+                windows_family: "aptos display".into(),
+            });
+        }
+        library.by_family.insert("aptos".into(), vec![0, 1]);
+        library.by_face_name.insert("aptos display".into(), 0);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac_before = library.faces_for(["Aptos Display"]).0;
+        library
+            .windows_by_family
+            .insert("aptos display".into(), vec![0, 1]);
+        assert_eq!(library.faces_for(["Aptos Display"]).0, mac_before);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let windows = library.faces_for(["Aptos Display"]).0;
+        assert_eq!(windows.len(), 2);
+        assert_eq!(windows[0].weight, 700);
+        assert_eq!(windows[0].path, PathBuf::from("display-bold.ttf"));
+        assert_eq!(windows[1].weight, 400);
+        assert_eq!(windows[1].path, PathBuf::from("display-regular.ttf"));
+        assert!(library.has("Aptos Display"));
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(library.faces_for(["Aptos Display"]).0, mac_before);
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_reference_subsets_keep_legacy_families_and_mac_grouping() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut library = FontLibrary::default();
+        for (path, family) in [
+            ("aptos.ttf", "aptos"),
+            ("display.ttf", "aptos display"),
+            ("aptos-subset.ttf", "aptos"),
+            ("display-subset.ttf", "aptos display"),
+        ] {
+            library.faces.push(InstalledFace {
+                path: PathBuf::from(path),
+                index: 0,
+                weight: 400,
+                italic: false,
+                family: "aptos".into(),
+                windows_family: family.into(),
+            });
+        }
+        library.by_family.insert("aptos".into(), vec![0, 1, 2, 3]);
+        library.by_face_name.insert("aptos display".into(), 1);
+        library.windows_by_family.insert("aptos".into(), vec![0, 2]);
+        library
+            .windows_by_family
+            .insert("aptos display".into(), vec![1, 3]);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac_before = library.reference_faces_for(["Aptos", "Aptos Display"]);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (windows, missing) = library.reference_faces_for(["Aptos", "Aptos Display"]);
+        assert!(missing.is_empty());
+        assert_eq!(windows.len(), 4);
+        assert_eq!(windows[0].family, "aptos");
+        assert_eq!(windows[0].path, PathBuf::from("aptos-subset.ttf"));
+        assert_eq!(windows[1].family, "aptos display");
+        assert_eq!(windows[1].path, PathBuf::from("display-subset.ttf"));
+        assert_eq!(windows[2].family, "Aptos");
+        assert_eq!(windows[3].family, "Aptos Display");
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            library.reference_faces_for(["Aptos", "Aptos Display"]),
+            mac_before
+        );
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn reference_faces_retain_implicit_and_same_style_subset_programs() {
+        use super::*;
+        let mut library = FontLibrary::default();
+        for (path, family) in [
+            ("named.ttf", "requested"),
+            ("second-subset.ttf", "requested"),
+            ("implicit-emoji.ttf", "implicit emoji"),
+        ] {
+            library.faces.push(InstalledFace {
+                path: PathBuf::from(path),
+                index: 0,
+                weight: 400,
+                italic: false,
+                family: family.into(),
+                windows_family: family.into(),
+            });
+        }
+        library.by_family.insert("requested".into(), vec![0, 1]);
+        library.by_family.insert("implicit emoji".into(), vec![2]);
+        let (ordinary, _) = library.faces_for(["Requested"]);
+        assert_eq!(ordinary.len(), 1);
+        let (reference, missing) = library.reference_faces_for(["Requested", "Missing"]);
+        assert_eq!(missing, ["Missing"]);
+        assert_eq!(reference.len(), 3);
+        assert_eq!(reference[0].path, PathBuf::from("second-subset.ttf"));
+        assert_eq!(reference[1].path, PathBuf::from("implicit-emoji.ttf"));
+        assert_eq!(reference[2], ordinary[0]);
+        assert_eq!(library.faces_for(["Requested"]).0, ordinary);
+    }
+
     use super::*;
 
     #[test]

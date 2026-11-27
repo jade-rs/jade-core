@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T144251366Z-391eac2e",
+  "captured_at_utc": "2026-11-17T14:42:51.3698230Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-styles-calibri-size14-italic-compat14",
+      "source": "w17-q-numeric-styles-input-snapshots\\word-windows-numeric-styles-calibri-size14-italic-compat14.docx",
+      "sha256": "2b7a6d2520d38e6310ecca75b269785458dc24979a52439024b368190cd96806",
+      "pdf": "word-windows-numeric-styles-calibri-size14-italic-compat14.pdf",
+      "pdf_sha256": "a916781dc319cc6a0c0b0514f24655f4f8034790c4261c19956a46bffa352859",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-styles-calibri-size14-italic-compat14.page-001.emf",
+          "sha256": "3c3d2f3392b55f1682a96c152541153df8a3989cf622a0b58fed45f9e13e4660",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

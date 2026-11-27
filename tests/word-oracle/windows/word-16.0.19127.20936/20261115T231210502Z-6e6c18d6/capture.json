@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T231210502Z-6e6c18d6",
+  "captured_at_utc": "2026-11-15T23:12:10.5059619Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-printer-metric-mincho-size40-regular-compat15",
+      "source": "..\\w16-s-printer-metric-input-snapshots\\word-windows-printer-metric-mincho-size40-regular-compat15.docx",
+      "sha256": "b1cc28db6bdd8d5777890a512d678fa732dc07fe0cfa0ca838c5d5c4e9d9b39c",
+      "pdf": "word-windows-printer-metric-mincho-size40-regular-compat15.pdf",
+      "pdf_sha256": "50e0c3308f0c25dbd5b2f3ff2d08c82f1be1e20f8dd85175fc85cf01799fb465",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metric-mincho-size40-regular-compat15.page-001.emf",
+          "sha256": "df7730669763db6d2d6e59e28367d4ede9a228cd97d75dd70f40fce5e00e9a1d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

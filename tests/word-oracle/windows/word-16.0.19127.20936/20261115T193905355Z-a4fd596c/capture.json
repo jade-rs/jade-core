@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T193905355Z-a4fd596c",
+  "captured_at_utc": "2026-11-15T19:39:05.3600621Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-language-arial-val-ja-zh-ko-compat15",
+      "source": "..\\w16-q-lang-input-snapshots\\word-windows-edge-language-arial-val-ja-zh-ko-compat15.docx",
+      "sha256": "d6b40215b327e06d3213443485599971c0dd98f7d698b122f43691774a8a202e",
+      "pdf": "word-windows-edge-language-arial-val-ja-zh-ko-compat15.pdf",
+      "pdf_sha256": "c02e80fa98d85d1f2bfeadf39a42879bd590ef8f19a69c9d80efea061142156d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-language-arial-val-ja-zh-ko-compat15.page-001.emf",
+          "sha256": "e8915924bf28663e64c3d7f86cfad88178ecd4818bc8b8d76cbff2f07793f53b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

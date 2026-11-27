@@ -216,25 +216,12 @@ impl WordDocument {
                 properties.children.insert(0, XmlNode::Element(fresh));
             }
         })?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self.document_mut().ok_or("document is unavailable")?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .footnote_beneath_text = Some(beneath);
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .footnote_beneath_text = Some(beneath);
-            if let Some(last) = document.sections.last_mut() {
-                last.properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .footnote_beneath_text = Some(beneath);
-            }
-        }
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
+            properties.footnote_beneath_text = Some(beneath)
+        });
         Ok(true)
     }
 
@@ -410,10 +397,7 @@ impl WordDocument {
             .bookmarks
             .iter()
             .find(|bookmark| bookmark.name == name)?;
-        let paragraph = self.bookmark_surface_index(bookmark.end_paragraph)?;
-        let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
-        let model = TextPosition::new(paragraph, bookmark.end_offset.min(length));
-        Some(self.model_to_rendered_text_position(model))
+        self.bookmark_end(bookmark, self.live_bookmark_markers().as_ref())
     }
 
     // ---- note separators ----------------------------------------------------
@@ -2055,7 +2039,13 @@ impl WordDocument {
                         previous = None;
                         continue;
                     };
-                    let RunFieldKind::PageRef { name, .. } = &field.kind else {
+                    // A `\p` result is relative text, not a page number.
+                    let RunFieldKind::PageRef {
+                        name,
+                        relative_position: false,
+                        ..
+                    } = &field.kind
+                    else {
                         previous = None;
                         continue;
                     };

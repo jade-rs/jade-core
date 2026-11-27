@@ -1,0 +1,454 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T172333613Z-feff32c1",
+  "captured_at_utc": "2026-11-18T17:23:33.6262658Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-printer-metrics-bold-s14-X-m14-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bold-s14-X-m14-p0.docx",
+      "sha256": "5c905be9759bdb0d2b7c9313a15675fd15001bbf4e36db77ff91c271418b3e85",
+      "pdf": "word-windows-printer-metrics-bold-s14-X-m14-p0.pdf",
+      "pdf_sha256": "80e2792b15e29665bcee5f8f84e4651e4bdb36cbcd686ca0cd77e4d2dca5db3a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bold-s14-X-m14-p0.page-001.emf",
+          "sha256": "0d993bb5d9a18a1805835c6da4f50808cbeb27ec09fe6a77b7a347dd64dc0b5c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bold-s14-X-m14-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bold-s14-X-m14-p1.docx",
+      "sha256": "2f52f7681aa2c75bfc5f3f2af9c302371995c73d1bef731046ebd5a2cbc7824c",
+      "pdf": "word-windows-printer-metrics-bold-s14-X-m14-p1.pdf",
+      "pdf_sha256": "3d2d78d072d433509a1ee620c95c9764a7725c4768caf6b57b486b445b049e57",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bold-s14-X-m14-p1.page-001.emf",
+          "sha256": "0d993bb5d9a18a1805835c6da4f50808cbeb27ec09fe6a77b7a347dd64dc0b5c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bold-s14-X-m15-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bold-s14-X-m15-p0.docx",
+      "sha256": "b0a1a341d5aafa933e3e0459c8272e555389254b840c7369e7a92fd7ba11bc1e",
+      "pdf": "word-windows-printer-metrics-bold-s14-X-m15-p0.pdf",
+      "pdf_sha256": "f96d6e133c9dc34329513819f163a971b2936fc0cfcba314c2a34a6e918fd003",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bold-s14-X-m15-p0.page-001.emf",
+          "sha256": "0d993bb5d9a18a1805835c6da4f50808cbeb27ec09fe6a77b7a347dd64dc0b5c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bold-s14-X-m15-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bold-s14-X-m15-p1.docx",
+      "sha256": "ed93585148294380fd6e5d4fb308e36382c58ad81d7a7e02da9605edd09f53bb",
+      "pdf": "word-windows-printer-metrics-bold-s14-X-m15-p1.pdf",
+      "pdf_sha256": "12c3954eb234ed97f0b3e992ae1c43a17696f99c68b403fb767e8ef3ae2b4f21",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bold-s14-X-m15-p1.page-001.emf",
+          "sha256": "0d993bb5d9a18a1805835c6da4f50808cbeb27ec09fe6a77b7a347dd64dc0b5c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bolditalic-s15-X-m14-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bolditalic-s15-X-m14-p0.docx",
+      "sha256": "ca192c35c50d4440ff4e6385cb80c4cab487bf0a69efeab2b64a90d7d13db041",
+      "pdf": "word-windows-printer-metrics-bolditalic-s15-X-m14-p0.pdf",
+      "pdf_sha256": "804b46b0c2fbf25ce97b9d6fb35cc00749aac4ad56cd139e1714179319750beb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bolditalic-s15-X-m14-p0.page-001.emf",
+          "sha256": "70855b2fc6fa6bca2e25f4a188658f13cb02d902fc7da622253e9ec77c14b7f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bolditalic-s15-X-m14-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bolditalic-s15-X-m14-p1.docx",
+      "sha256": "bfc1788cdce9323cbad19ee84ad9ad397d1972f559238128b1a6f2ccde500c04",
+      "pdf": "word-windows-printer-metrics-bolditalic-s15-X-m14-p1.pdf",
+      "pdf_sha256": "55310650432f00960addbe834b122e1a750a1f9a0cbce88c6468498683c3a43e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bolditalic-s15-X-m14-p1.page-001.emf",
+          "sha256": "70855b2fc6fa6bca2e25f4a188658f13cb02d902fc7da622253e9ec77c14b7f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bolditalic-s15-X-m15-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bolditalic-s15-X-m15-p0.docx",
+      "sha256": "4702d78e48015f34ac84492c8ef768e6a8f29c46bf01037e42c8591c355ebc0a",
+      "pdf": "word-windows-printer-metrics-bolditalic-s15-X-m15-p0.pdf",
+      "pdf_sha256": "d365dde44305335a9c1d8e557db0fe9bece647db1eed6697656dc429d9196fca",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bolditalic-s15-X-m15-p0.page-001.emf",
+          "sha256": "70855b2fc6fa6bca2e25f4a188658f13cb02d902fc7da622253e9ec77c14b7f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-bolditalic-s15-X-m15-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-bolditalic-s15-X-m15-p1.docx",
+      "sha256": "0e25bac1f6f9d4a0a33ec2a2612db5a5e8d623ed18954fbeb1b58242177e2847",
+      "pdf": "word-windows-printer-metrics-bolditalic-s15-X-m15-p1.pdf",
+      "pdf_sha256": "7b638f90d7430e6f3be57e7077a8727dfea5740fd1b6e025878c69f09d3e2efe",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-bolditalic-s15-X-m15-p1.page-001.emf",
+          "sha256": "70855b2fc6fa6bca2e25f4a188658f13cb02d902fc7da622253e9ec77c14b7f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-one-m14-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-one-m14-p0.docx",
+      "sha256": "f6fe4f72689f6d14ac88040651cea0aa3acb0d50b287c0eff961146f42848a6a",
+      "pdf": "word-windows-printer-metrics-regular-s16-one-m14-p0.pdf",
+      "pdf_sha256": "ef7cbd15a9e2b78b6f99c92dba4dd372e5a47e33a1ec77789445e132e7f46dac",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-one-m14-p0.page-001.emf",
+          "sha256": "2d3a5dc368926524957b83ac814f7c1ebcdfc0f9a8a7ad8ae216ee661ac7a8d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-one-m14-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-one-m14-p1.docx",
+      "sha256": "dcaeaa2bb9cc91035a5ba4443e7eb08664b2083a45ed0ba01b97065e80617e09",
+      "pdf": "word-windows-printer-metrics-regular-s16-one-m14-p1.pdf",
+      "pdf_sha256": "981ca758856e804d7aadbea8a0db2807e94e8e8d35358fe0d95be108f55b34de",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-one-m14-p1.page-001.emf",
+          "sha256": "2d3a5dc368926524957b83ac814f7c1ebcdfc0f9a8a7ad8ae216ee661ac7a8d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-hyphen-m14-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-hyphen-m14-p0.docx",
+      "sha256": "4769d27e4e59217e1749de89bbba4a986be9e595884775683d8395378204d6fd",
+      "pdf": "word-windows-printer-metrics-regular-s16-hyphen-m14-p0.pdf",
+      "pdf_sha256": "1449a8fcd664e36d9ea6b4e837b706e169accf0d9a8e77e64f33216e75d4576e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-hyphen-m14-p0.page-001.emf",
+          "sha256": "a474ee0bff829a04a17b1bd70583db4f7548e11aba1458793db78844ad19f71d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-hyphen-m14-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-hyphen-m14-p1.docx",
+      "sha256": "07a290920ea62a3f7e9d8a39eb2c95401657608f7dfb8f21b810a9208dbeb876",
+      "pdf": "word-windows-printer-metrics-regular-s16-hyphen-m14-p1.pdf",
+      "pdf_sha256": "317ec3cc4876a3dae9f6ed3aa32e45df43ef38201c7ca23eded5603a8b991c51",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-hyphen-m14-p1.page-001.emf",
+          "sha256": "64c9e6f624ff86a5e0d2e867ded5b6bc130f7231a6e10826e0b7bbfb398cc642",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-one-m15-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-one-m15-p0.docx",
+      "sha256": "90fb48761ab3db770215a404bcf5ecd02342fa10cab8eb032b94d436d8d59b93",
+      "pdf": "word-windows-printer-metrics-regular-s16-one-m15-p0.pdf",
+      "pdf_sha256": "3cdaf8476b52168206c174bb520c070a5a75c083e23eead04b543086e924eee4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-one-m15-p0.page-001.emf",
+          "sha256": "2d3a5dc368926524957b83ac814f7c1ebcdfc0f9a8a7ad8ae216ee661ac7a8d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-one-m15-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-one-m15-p1.docx",
+      "sha256": "6448f8a06b33a1ec7e97001ed7e2061d0bae9f4ae9e007e585081457177baedc",
+      "pdf": "word-windows-printer-metrics-regular-s16-one-m15-p1.pdf",
+      "pdf_sha256": "230dd5c71490a758502263384e6ef4904b9071985fd4c143ca91d3aa0fcef280",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-one-m15-p1.page-001.emf",
+          "sha256": "2d3a5dc368926524957b83ac814f7c1ebcdfc0f9a8a7ad8ae216ee661ac7a8d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-hyphen-m15-p0",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-hyphen-m15-p0.docx",
+      "sha256": "9904e00ec5d0bca99aca98c4c10aa56c7fe699000b7eb3588f27045a3ea1782f",
+      "pdf": "word-windows-printer-metrics-regular-s16-hyphen-m15-p0.pdf",
+      "pdf_sha256": "ed479b7acb2e485d5b7748e05a0b46a7c46b211e395d751d5b66cf4540c3aae4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-hyphen-m15-p0.page-001.emf",
+          "sha256": "c0ac5907f281a6712e1cafe4342f65f2a3dbf4edb91a631a1e629249f44392c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-printer-metrics-regular-s16-hyphen-m15-p1",
+      "source": "tmp\\w18-printer-controls-inputs\\word-windows-printer-metrics-regular-s16-hyphen-m15-p1.docx",
+      "sha256": "400a20661a95dde677c40f36ed8498dbb39e890202cfbcc8b641474e4af36eb6",
+      "pdf": "word-windows-printer-metrics-regular-s16-hyphen-m15-p1.pdf",
+      "pdf_sha256": "3cebc19de43822117003d02ae8519aba6706076335f4530c375895577586d5fb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metrics-regular-s16-hyphen-m15-p1.page-001.emf",
+          "sha256": "c0ac5907f281a6712e1cafe4342f65f2a3dbf4edb91a631a1e629249f44392c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

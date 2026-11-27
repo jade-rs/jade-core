@@ -895,7 +895,7 @@ impl ContentHash {
 
 /// Computes a content hash for the given hashable value.
 pub fn compute_content_hash<T: Hash>(value: &T) -> ContentHash {
-    let mut hasher = FxHasher::default();
+    let mut hasher = crate::key_hasher::CacheKeyHasher::default();
     value.hash(&mut hasher);
     ContentHash(hasher.finish())
 }
@@ -909,7 +909,7 @@ pub fn compute_paragraph_hash(
     text: &str,
     properties: Option<&ParagraphHashableProps>,
 ) -> ContentHash {
-    let mut hasher = FxHasher::default();
+    let mut hasher = crate::key_hasher::CacheKeyHasher::default();
     text.hash(&mut hasher);
     if let Some(props) = properties {
         props.hash(&mut hasher);
@@ -1006,8 +1006,21 @@ pub struct ParagraphLayoutResult {
     pub end_last_line_baseline: f64,
     /// Spacing-after already included in end_y, consumed by the next paragraph.
     pub trailing_spacing_after: Option<f64>,
+    /// How much of `trailing_spacing_after` the paragraph actually took (a
+    /// space-after clamped at the page foot takes less, a suppressed one
+    /// nothing). Restored on replay for section `w:vAlign="both"`; `NaN`
+    /// when not recorded (a plain `f64` keeps the cached entry small).
+    pub trailing_spacing_after_consumed: f64,
     /// Height of this paragraph.
     pub height: f64,
+    /// Vertical extent, relative to `start_y`, of the erasure a line of this
+    /// paragraph painted behind its overflow past the right edge, when one
+    /// did. The erasure follows the line's clip, past its ink, so a band
+    /// redraw of the paragraph must cover it.
+    pub overflow_erasure: Option<(f64, f64)>,
+    /// Whether the paragraph painted marks below its lines' measured ink: a
+    /// wave underline's crests or an under-dot emphasis mark.
+    pub ink_below_lines: bool,
 }
 
 impl ParagraphLayoutResult {
@@ -1039,7 +1052,10 @@ impl ParagraphLayoutResult {
             start_last_line_baseline,
             end_last_line_baseline,
             trailing_spacing_after: None,
+            trailing_spacing_after_consumed: f64::NAN,
             height: end_y - start_y,
+            overflow_erasure: None,
+            ink_below_lines: false,
         }
     }
 
@@ -1161,6 +1177,14 @@ impl ParagraphLayoutCache {
         }
 
         self.entries[paragraph_index] = Some(result);
+    }
+
+    /// Forgets the entries of paragraphs `range`.
+    pub fn remove_range(&mut self, range: std::ops::Range<usize>) {
+        let end = range.end.min(self.entries.len());
+        if let Some(entries) = self.entries.get_mut(range.start..end) {
+            entries.fill(None);
+        }
     }
 
     /// Invalidates all cached entries from the given paragraph index onwards.

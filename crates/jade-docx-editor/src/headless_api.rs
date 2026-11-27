@@ -33,7 +33,7 @@ use crate::commands::insert_text::InsertTextCommand;
 use crate::commands::insert_toc::{InsertTableOfContentsCommand, UpdateTableOfContentsCommand};
 use crate::commands::merge_table_cells::{MergeTableCellsCommand, TableCellSelection};
 use crate::commands::replace_equation::ReplaceEquationCommand;
-use crate::commands::resize_table_column::ResizeTableColumnCommand;
+use crate::commands::resize_table_column::{NestedColumnResizeGeometry, ResizeTableColumnCommand};
 use crate::commands::resize_table_row::ResizeTableRowCommand;
 use crate::commands::set_bold::SetBoldCommand;
 use crate::commands::set_character_style::SetCharacterStyleCommand;
@@ -108,6 +108,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_reader::docx_xml::{XmlElement, XmlNode};
 use jade_docx_reader::styles::StyleDefinition;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[derive(thiserror::Error, Debug)]
@@ -372,10 +373,7 @@ fn validate_text_offset(
                 index,
                 source: CommandError::Custom(format!("paragraph {paragraph} does not exist")),
             })?;
-    let text_len = crate::word_document::paragraph_text_len(model_paragraph);
-    let rendered_len = word_doc
-        .model_to_rendered_text_position(TextPosition::new(paragraph, text_len))
-        .offset;
+    let rendered_len = word_doc.rendered_paragraph_len(paragraph);
     if offset > rendered_len {
         return Err(HeadlessApiApplyError::Command {
             index,
@@ -752,6 +750,17 @@ fn snapshot_delete_effect(
             })
         }
     }
+}
+
+// InsertTextCommand folds CRLF to one model line break; snapshot coordinates
+// must advance by the same UTF-8 byte length after applying that command.
+fn normalized_inserted_text_len(text: &str) -> usize {
+    text.len()
+        - text
+            .as_bytes()
+            .windows(2)
+            .filter(|pair| *pair == b"\r\n")
+            .count()
 }
 
 fn snapshot_effect(
@@ -1658,7 +1667,7 @@ fn applied_snapshot_transform(
                     Some(AppliedSnapshotTransform::TextInsert {
                         original_at,
                         current_at,
-                        inserted_len: text.len(),
+                        inserted_len: normalized_inserted_text_len(text),
                     })
                 }
                 HeadlessCommand::InsertCitation { .. } => {
@@ -1686,7 +1695,7 @@ fn applied_snapshot_transform(
             current_start,
             current_end,
             inserted_len: match command {
-                HeadlessCommand::ReplaceRange { text, .. } => text.len(),
+                HeadlessCommand::ReplaceRange { text, .. } => normalized_inserted_text_len(text),
                 HeadlessCommand::DeleteText { .. } => 0,
                 HeadlessCommand::InsertCitation { .. } => inserted_len.unwrap_or_default(),
                 _ => 0,
@@ -1755,6 +1764,7 @@ pub fn apply_snapshot_headless_commands_with_executor_to_document(
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
+    ensure_roundtrip_xml(word_doc)?;
     refuse_locked_edits(word_doc, &request.commands)?;
     if let Some(selection) =
         type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
@@ -1970,6 +1980,15 @@ fn try_apply_headless_text_command(
             // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
             // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
             let original_end_offset = *end_offset;
+            // Normalize before comparing unchanged prefixes/suffixes, so a
+            // replacement with equivalent line endings remains a history no-op.
+            let normalized_text;
+            let text = if text.contains('\r') {
+                normalized_text = text.replace("\r\n", "\n").replace('\r', "\n");
+                &normalized_text
+            } else {
+                text
+            };
             let (start_offset, end_offset, text) = trimmed_replacement(
                 word_doc,
                 *start_paragraph,
@@ -1980,6 +1999,43 @@ fn try_apply_headless_text_command(
             );
             let range =
                 range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
+            // The inline pictures and equations the range holds go with its text, as in
+            // Word; the text edit then covers the range without them.
+            let objects = if word_doc.revision_session().is_none() {
+                crate::commands::inline_objects::inline_objects_in_range(word_doc, range)
+            } else {
+                Vec::new()
+            };
+            if !objects.is_empty() {
+                use crate::commands::inline_objects::DeleteInlineObjectsCommand;
+                let text_range = DeleteInlineObjectsCommand::range_without(&objects, range);
+                let (text_start, text_end) = text_range.normalized();
+                *selection = Some(range);
+                let inner: Option<(Box<dyn Command>, SelectionRange)> = if text_start == text_end
+                    && text.is_empty()
+                {
+                    None
+                } else {
+                    let command: Box<dyn Command> = Box::new(
+                        InsertTextCommand::new(text_range, text.to_owned(), None)
+                            .deleting_selected_tables(),
+                    );
+                    let command: Box<dyn Command> = if text_start.paragraph != text_end.paragraph {
+                        Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
+                    } else {
+                        command
+                    };
+                    Some((command, text_range))
+                };
+                let mut ctx = CommandContext::new(word_doc, selection);
+                command_executor
+                    .execute(
+                        Box::new(DeleteInlineObjectsCommand::new(objects, inner, text_start)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                return Ok(true);
+            }
             if start_paragraph == end_paragraph && start_offset == end_offset && text.is_empty() {
                 // Even when the document needs no mutation, typing has
                 // consumed the selection. Leaving it active makes the
@@ -2064,7 +2120,60 @@ pub fn apply_headless_commands_with_executor_to_document(
     selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
-    apply_headless_commands(word_doc, command_executor, selection, request, false)
+    apply_headless_commands(word_doc, command_executor, selection, request, false, None)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ResizeMeasurement {
+    BeforeInsertion,
+    BeforeResize,
+}
+
+type MeasureColumnResize<'a> = dyn FnMut(
+        &WordDocument,
+        usize,
+        usize,
+        ResizeMeasurement,
+    ) -> Result<Option<Rc<NestedColumnResizeGeometry>>, CommandError>
+    + 'a;
+
+fn execute_column_resize(
+    word_doc: &mut WordDocument,
+    executor: &mut CommandExecutor,
+    selection: &mut Option<SelectionRange>,
+    index: usize,
+    mut resize: ResizeTableColumnCommand,
+    geometry: Option<Rc<NestedColumnResizeGeometry>>,
+) -> Result<(), HeadlessApiApplyError> {
+    if let Some(geometry) = geometry {
+        resize = resize.with_nested_geometry(geometry);
+    }
+    executor
+        .execute(
+            Box::new(resize),
+            &mut CommandContext::new(word_doc, selection),
+        )
+        .map_err(|source| HeadlessApiApplyError::Command { index, source })
+}
+
+/// Applies one request, measuring column widths just before a resize and,
+/// for a right-edge resize after text insertion, before the insertion run.
+/// The callback receives the command index and target table order at each stage.
+pub fn apply_headless_commands_with_resize_measurement(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    request: &HeadlessEditRequest,
+    measure: &mut MeasureColumnResize<'_>,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    apply_headless_commands(
+        word_doc,
+        command_executor,
+        selection,
+        request,
+        false,
+        Some(measure),
+    )
 }
 
 /// Apply sequential commands with the DOCX interchange safety restrictions.
@@ -2075,7 +2184,23 @@ pub fn apply_protected_headless_commands_with_executor_to_document(
     selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
-    apply_headless_commands(word_doc, command_executor, selection, request, true)
+    apply_headless_commands(word_doc, command_executor, selection, request, true, None)
+}
+
+/// Builds the round-trip tree a deferred load left out: saving patches it,
+/// so an edit made without it would reach the model and never the file.
+#[inline]
+fn ensure_roundtrip_xml(word_doc: &mut WordDocument) -> Result<(), HeadlessApiApplyError> {
+    if word_doc.raw_document.is_some() {
+        return Ok(());
+    }
+    word_doc
+        .ensure_roundtrip_xml()
+        .map(|_| ())
+        .map_err(|error| HeadlessApiApplyError::Command {
+            index: 0,
+            source: CommandError::Custom(error.to_string()),
+        })
 }
 
 fn apply_headless_commands(
@@ -2084,10 +2209,12 @@ fn apply_headless_commands(
     mut selection: Option<SelectionRange>,
     request: &HeadlessEditRequest,
     protected: bool,
+    mut measure: Option<&mut MeasureColumnResize<'_>>,
 ) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
+    ensure_roundtrip_xml(word_doc)?;
     refuse_locked_edits(word_doc, &request.commands)?;
     if !protected {
         if let Some(selection) =
@@ -2101,15 +2228,89 @@ fn apply_headless_commands(
         if protected {
             validate_protected_edit(word_doc, index, command)?;
         }
+        if matches!(
+            command,
+            HeadlessCommand::InsertText { .. } | HeadlessCommand::ReplaceRange { .. }
+        ) {
+            if let Some(measure) = measure.as_deref_mut() {
+                if let Some(order) = right_edge_resize_after_insertions(&request.commands, index) {
+                    measure(word_doc, index, order, ResizeMeasurement::BeforeInsertion)
+                        .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                }
+            }
+            try_apply_headless_text_command(
+                word_doc,
+                command_executor,
+                &mut selection,
+                index,
+                command,
+            )?;
+            continue;
+        }
+        let geometry = match (measure.as_deref_mut(), command) {
+            (
+                Some(measure),
+                HeadlessCommand::ResizeTableColumnBetween {
+                    table_order_index, ..
+                }
+                | HeadlessCommand::ResizeTableColumnRightEdge {
+                    table_order_index, ..
+                },
+            ) => measure(
+                word_doc,
+                index,
+                *table_order_index,
+                ResizeMeasurement::BeforeResize,
+            )
+            .map_err(|source| HeadlessApiApplyError::Command { index, source })?,
+            _ => None,
+        };
+        selection = apply_headless_command(
+            word_doc,
+            command_executor,
+            selection,
+            index,
+            command,
+            geometry,
+            protected,
+        )?;
+    }
+    Ok(selection)
+}
+
+fn right_edge_resize_after_insertions(commands: &[HeadlessCommand], start: usize) -> Option<usize> {
+    let inserts_text =
+        |command: &HeadlessCommand| matches!(command, HeadlessCommand::InsertText { .. });
+    if !inserts_text(&commands[start]) || (start > 0 && inserts_text(&commands[start - 1])) {
+        return None;
+    }
+    let HeadlessCommand::ResizeTableColumnRightEdge {
+        table_order_index, ..
+    } = commands[start..]
+        .iter()
+        .find(|command| !inserts_text(command))?
+    else {
+        return None;
+    };
+    Some(*table_order_index)
+}
+
+// Text edits and layout measurement run outside the larger dispatch stack frame.
+#[inline(never)]
+fn apply_headless_command(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: Option<SelectionRange>,
+    index: usize,
+    command: &HeadlessCommand,
+    geometry: Option<Rc<NestedColumnResizeGeometry>>,
+    protected: bool,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    let selection = {
+        let mut selection = selection;
         match command {
             HeadlessCommand::InsertText { .. } | HeadlessCommand::ReplaceRange { .. } => {
-                try_apply_headless_text_command(
-                    word_doc,
-                    command_executor,
-                    &mut selection,
-                    index,
-                    command,
-                )?;
+                unreachable!("text edits are handled before dispatch");
             }
             HeadlessCommand::InsertPositionalTab {
                 paragraph,
@@ -2235,14 +2436,49 @@ fn apply_headless_commands(
                 let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
                 selection = Some(range);
 
+                // Backspace after an inline picture, or Delete before one,
+                // removes it: it is one character of the line, as in Word.
+                let beside = (repeat == 1)
+                    .then(|| {
+                        crate::commands::inline_objects::inline_object_beside_caret(
+                            word_doc,
+                            range.focus,
+                            matches!(direction, DeleteDirection::Backward),
+                        )
+                    })
+                    .flatten();
                 // One command, one history step, however many characters and
                 // paragraph boundaries the run covers.
+                // An inline equation likewise goes whole.
+                let equation = (repeat == 1 && beside.is_none())
+                    .then(|| {
+                        crate::commands::inline_objects::inline_equation_beside_caret(
+                            word_doc,
+                            range.focus,
+                            matches!(direction, DeleteDirection::Backward),
+                        )
+                    })
+                    .flatten();
+                let command: Box<dyn Command> = match (beside, equation) {
+                    (Some((object, caret)), _) => Box::new(
+                        crate::commands::inline_objects::DeleteInlineObjectsCommand::new(
+                            vec![crate::commands::inline_objects::InlineObject::Drawing(
+                                object,
+                            )],
+                            None,
+                            caret,
+                        ),
+                    ),
+                    (None, Some((run_index, caret))) => Box::new(
+                        crate::commands::inline_objects::DeleteInlineEquationCommand::new(
+                            run_index, caret,
+                        ),
+                    ),
+                    (None, None) => Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
+                };
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
-                    .execute(
-                        Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
-                        &mut ctx,
-                    )
+                    .execute(command, &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
             HeadlessCommand::InsertParagraphBreak {
@@ -3738,7 +3974,7 @@ fn apply_headless_commands(
                 // An empty id or target list selects nothing: skip it rather
                 // than record an undo step that changes nothing.
                 if ids.is_empty() || targets.as_ref().is_some_and(RevisionTargets::is_empty) {
-                    continue;
+                    return Ok(selection);
                 }
                 let kind_filter = kind.as_ref().map(revision_kind_from_filter);
                 let (start_paragraph, end_paragraph) = (*start_paragraph, *end_paragraph);
@@ -4173,25 +4409,7 @@ fn apply_headless_commands(
                 outline_min,
                 outline_max,
             } => {
-                let options = crate::document::TocOptions {
-                    outline_min: *outline_min,
-                    outline_max: *outline_max,
-                    hyperlinks: true,
-                    hide_page_numbers: false,
-                    hide_page_number_levels: None,
-                    custom_style_levels: Vec::new(),
-                    page_number_separator: None,
-                    preserve_tabs: false,
-                    preserve_line_breaks: false,
-                    bookmark_name: None,
-                    caption_label: None,
-                    omit_caption_label_and_number: false,
-                    use_toc_entry_fields: false,
-                    toc_entry_identifier: None,
-                    toc_entry_levels: None,
-                    sequence_page_number: None,
-                    use_applied_outline_levels: true,
-                };
+                let options = crate::document::TocOptions::headings(*outline_min, *outline_max);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(
@@ -5147,35 +5365,39 @@ fn apply_headless_commands(
                 new_left_width,
                 new_right_width,
             } => {
-                let mut ctx = CommandContext::new(word_doc, &mut selection);
-                command_executor
-                    .execute(
-                        Box::new(ResizeTableColumnCommand::between_columns(
-                            *table_order_index,
-                            *left_column_index,
-                            *new_left_width,
-                            *new_right_width,
-                        )),
-                        &mut ctx,
-                    )
-                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                let resize = ResizeTableColumnCommand::between_columns(
+                    *table_order_index,
+                    *left_column_index,
+                    *new_left_width,
+                    *new_right_width,
+                );
+                execute_column_resize(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    resize,
+                    geometry,
+                )?;
             }
             HeadlessCommand::ResizeTableColumnRightEdge {
                 table_order_index,
                 column_index,
                 new_width,
             } => {
-                let mut ctx = CommandContext::new(word_doc, &mut selection);
-                command_executor
-                    .execute(
-                        Box::new(ResizeTableColumnCommand::table_right_edge(
-                            *table_order_index,
-                            *column_index,
-                            *new_width,
-                        )),
-                        &mut ctx,
-                    )
-                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                let resize = ResizeTableColumnCommand::table_right_edge(
+                    *table_order_index,
+                    *column_index,
+                    *new_width,
+                );
+                execute_column_resize(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    resize,
+                    geometry,
+                )?;
             }
             HeadlessCommand::ResizeTableRowBetween {
                 table_order_index,
@@ -5491,7 +5713,8 @@ fn apply_headless_commands(
                 )?;
             }
         }
-    }
+        selection
+    };
 
     Ok(selection)
 }
@@ -8331,6 +8554,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -8358,6 +8582,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -8563,6 +8788,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -8686,6 +8912,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -8742,6 +8969,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -8824,6 +9052,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -8850,6 +9079,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -8943,6 +9173,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -9196,6 +9427,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -9220,6 +9452,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -9244,6 +9477,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -9281,6 +9515,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -9326,6 +9561,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -9389,6 +9625,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -11095,6 +11332,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -14119,7 +14357,13 @@ mod tests {
             },
         )
         .expect("formatted the note");
-        assert_eq!(italic(&word_doc), vec![("\tnote".to_string(), Some(true))]);
+        assert_eq!(
+            italic(&word_doc),
+            vec![
+                (" ".to_string(), Some(true)),
+                ("note".to_string(), Some(true))
+            ]
+        );
         let reloaded = executor::block_on(WordDocument::load(
             &word_doc.export_docx().expect("export"),
             &Options::default(),

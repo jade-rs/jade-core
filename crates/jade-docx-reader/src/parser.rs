@@ -944,19 +944,29 @@ impl DocumentParser {
                         }
                         b"w:pgBorders" => {
                             if parsing_section_props {
-                                // Capture `w:offsetFrom` from the container before
-                                // reading the child edge elements.
-                                let offset_from = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|a| a.key.as_ref() == b"w:offsetFrom")
-                                    .map(|a| {
-                                        String::from_utf8_lossy(&a.value)
-                                            .trim()
-                                            .to_ascii_lowercase()
-                                    });
+                                // Capture the container attributes
+                                // (`w:offsetFrom`, `w:display`, `w:zOrder`)
+                                // before reading the child edge elements.
+                                let mut offset_from = None;
+                                let mut display = None;
+                                let mut z_order = None;
+                                for attribute in e.attributes().flatten() {
+                                    let value = || {
+                                        String::from_utf8_lossy(&attribute.value).trim().to_string()
+                                    };
+                                    match attribute.key.as_ref() {
+                                        b"w:offsetFrom" => {
+                                            offset_from = Some(value().to_ascii_lowercase())
+                                        }
+                                        b"w:display" => display = Some(value()),
+                                        b"w:zOrder" => z_order = Some(value()),
+                                        _ => {}
+                                    }
+                                }
                                 if let Ok(mut borders) = Self::parse_page_borders(reader) {
                                     borders.offset_from = offset_from;
+                                    borders.display = display;
+                                    borders.z_order = z_order;
                                     if !borders.is_empty() {
                                         if let Some(section) = current_section_props.as_mut() {
                                             section.page_borders = Some(borders);
@@ -1113,6 +1123,7 @@ impl DocumentParser {
                                 hyperlink: hyperlink_stack.last().cloned(),
                                 node_id: None,
                                 text_node_id: None,
+                                text_controls: None,
                                 revision_node_id: None,
                                 comment_reference_ids: Vec::new(),
                                 footnote_reference_ids: Vec::new(),
@@ -1274,6 +1285,7 @@ impl DocumentParser {
                                     hyperlink: hyperlink_stack.last().cloned(),
                                     node_id: None,
                                     text_node_id: None,
+                                    text_controls: None,
                                     revision_node_id: None,
                                     comment_reference_ids: Vec::new(),
                                     footnote_reference_ids: Vec::new(),
@@ -1911,6 +1923,7 @@ impl DocumentParser {
                                         hyperlink: hyperlink_stack.last().cloned(),
                                         node_id: None,
                                         text_node_id: None,
+                                        text_controls: None,
                                         revision_node_id: None,
                                         comment_reference_ids: Vec::new(),
                                         footnote_reference_ids: Vec::new(),
@@ -2434,24 +2447,48 @@ impl DocumentParser {
                         }
                     }
                     b"w:footnoteReference" => {
+                        let mut id = None;
+                        let mut custom_mark = false;
                         for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"w:id" {
-                                if let Some(ref mut run) = current_run {
-                                    run.footnote_reference_ids
-                                        .push(String::from_utf8_lossy(&attr.value).to_string());
+                            match attr.key.as_ref() {
+                                b"w:id" => {
+                                    id = Some(String::from_utf8_lossy(&attr.value).to_string())
                                 }
-                                break;
+                                b"w:customMarkFollows" => {
+                                    custom_mark = crate::document::ooxml_on(&attr.value)
+                                }
+                                _ => {}
+                            }
+                        }
+                        if let Some(id) = id {
+                            if custom_mark {
+                                document.custom_mark_footnotes.insert(id.clone());
+                            }
+                            if let Some(ref mut run) = current_run {
+                                run.footnote_reference_ids.push(id);
                             }
                         }
                     }
                     b"w:endnoteReference" => {
+                        let mut id = None;
+                        let mut custom_mark = false;
                         for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"w:id" {
-                                if let Some(ref mut run) = current_run {
-                                    run.endnote_reference_ids
-                                        .push(String::from_utf8_lossy(&attr.value).to_string());
+                            match attr.key.as_ref() {
+                                b"w:id" => {
+                                    id = Some(String::from_utf8_lossy(&attr.value).to_string())
                                 }
-                                break;
+                                b"w:customMarkFollows" => {
+                                    custom_mark = crate::document::ooxml_on(&attr.value)
+                                }
+                                _ => {}
+                            }
+                        }
+                        if let Some(id) = id {
+                            if custom_mark {
+                                document.custom_mark_endnotes.insert(id.clone());
+                            }
+                            if let Some(ref mut run) = current_run {
+                                run.endnote_reference_ids.push(id);
                             }
                         }
                     }
@@ -3561,7 +3598,7 @@ impl DocumentParser {
                                 // below instead of leaking into the paragraph.
                                 if !text_to_push.is_empty() {
                                     paragraph_text_len += text_to_push.len();
-                                    run.text.push_str(&text_to_push);
+                                    run.append_source_text(&text_to_push);
                                 }
                             } else {
                                 // Field result text is suppressed from the run
@@ -4847,27 +4884,20 @@ impl DocumentParser {
         template.node_id = None;
         template.text_node_id = None;
 
-        let mut buffer = String::new();
-
-        for ch in run.text.chars() {
+        let mut start = 0;
+        for (offset, ch) in run.text.char_indices() {
             if ch == '\n' {
-                if !buffer.is_empty() {
-                    let mut text_run = template.clone();
-                    text_run.text = std::mem::take(&mut buffer);
-                    segments.push(text_run);
+                if start < offset {
+                    segments.push(template.with_text_range(start..offset));
                 }
-                let mut break_run = template.clone();
-                break_run.text = "\n".to_string();
-                segments.push(break_run);
-            } else {
-                buffer.push(ch);
+                let end = offset + ch.len_utf8();
+                segments.push(template.with_text_range(offset..end));
+                start = end;
             }
         }
 
-        if !buffer.is_empty() {
-            let mut trailing = template;
-            trailing.text = buffer;
-            segments.push(trailing);
+        if start < run.text.len() {
+            segments.push(template.with_text_range(start..run.text.len()));
         }
 
         if segments.is_empty() {
@@ -7189,7 +7219,12 @@ impl DocumentParser {
         };
         let values: Vec<f64> = value
             .split(',')
-            .filter_map(|part| Self::points_str_to_px(part.trim()))
+            .filter_map(|part| {
+                let part = part.trim();
+                // A bare `0` needs no unit.
+                Self::points_str_to_px(part)
+                    .or_else(|| (part.parse::<f64>().ok() == Some(0.0)).then_some(0.0))
+            })
             .collect();
         if let [left, top, right, bottom] = values.as_slice() {
             insets.left_px = left.max(0.0);
@@ -7230,6 +7265,9 @@ impl DocumentParser {
         let mut dist_bottom = None;
         let mut dist_left = None;
         let mut dist_right = None;
+        // Children of a `v:group` size and place themselves in the group's
+        // coordinate space (`coordsize` / `coordorigin`), not CSS px.
+        let mut group_depth = 0usize;
 
         loop {
             match reader.next_event(&mut buf) {
@@ -7239,6 +7277,7 @@ impl DocumentParser {
                         Self::apply_ole_object_attributes(&mut image, e);
                     }
                     match e.name().as_ref() {
+                        b"v:group" => group_depth += 1,
                         b"v:shape" => {
                             let mut style_value: Option<String> = None;
                             for attr in e.attributes().flatten() {
@@ -7293,7 +7332,7 @@ impl DocumentParser {
                                 }
                             }
                             if let Some(style_str) = style_value {
-                                let parsed = Self::parse_vml_style(&style_str);
+                                let parsed = Self::parse_vml_style(&style_str, group_depth > 0);
                                 is_absolute |= parsed.is_absolute;
                                 width_px = parsed.width_px.or(width_px);
                                 height_px = parsed.height_px.or(height_px);
@@ -7466,7 +7505,7 @@ impl DocumentParser {
                                 }
                             }
                             if let Some(style_str) = style_value {
-                                let parsed = Self::parse_vml_style(&style_str);
+                                let parsed = Self::parse_vml_style(&style_str, group_depth > 0);
                                 is_absolute |= parsed.is_absolute;
                                 width_px = parsed.width_px.or(width_px);
                                 height_px = parsed.height_px.or(height_px);
@@ -7568,6 +7607,9 @@ impl DocumentParser {
                 }
                 Ok(Event::End(ref e)) => {
                     depth = depth.saturating_sub(1);
+                    if e.name().as_ref() == b"v:group" {
+                        group_depth = group_depth.saturating_sub(1);
+                    }
                     if depth == 0 && e.name().as_ref() == b"w:pict" {
                         break;
                     }
@@ -7666,11 +7708,15 @@ impl DocumentParser {
         image.layout.kind = RunImageKind::Inline;
         image.width_px = width_hint_px;
         image.height_px = height_hint_px;
+        let mut group_depth = 0usize;
 
         loop {
             match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
-                    Self::apply_vml_shape_style_to_image(&mut image, e);
+                    Self::apply_vml_shape_style_to_image(&mut image, e, group_depth > 0);
+                    if e.name().as_ref() == b"v:group" {
+                        group_depth += 1;
+                    }
                     Self::apply_vml_imagedata_attributes(&mut image, e);
                     if e.name().as_ref() == b"o:OLEObject" {
                         Self::apply_ole_object_attributes(&mut image, e);
@@ -7678,14 +7724,17 @@ impl DocumentParser {
                     depth = depth.saturating_add(1);
                 }
                 Ok(Event::Empty(ref e)) => {
-                    Self::apply_vml_shape_style_to_image(&mut image, e);
+                    Self::apply_vml_shape_style_to_image(&mut image, e, group_depth > 0);
                     Self::apply_vml_imagedata_attributes(&mut image, e);
                     if e.name().as_ref() == b"o:OLEObject" {
                         Self::apply_ole_object_attributes(&mut image, e);
                     }
                 }
-                Ok(Event::End(_)) => {
+                Ok(Event::End(ref e)) => {
                     depth = depth.saturating_sub(1);
+                    if e.name().as_ref() == b"v:group" {
+                        group_depth = group_depth.saturating_sub(1);
+                    }
                     if depth == 0 {
                         break;
                     }
@@ -7747,7 +7796,11 @@ impl DocumentParser {
         }
     }
 
-    fn apply_vml_shape_style_to_image(image: &mut RunImage, element: &BytesStart<'_>) {
+    fn apply_vml_shape_style_to_image(
+        image: &mut RunImage,
+        element: &BytesStart<'_>,
+        in_group: bool,
+    ) {
         let mut style_value: Option<String> = None;
         for attr in element.attributes().flatten() {
             if attr.key.as_ref() == b"style" {
@@ -7756,7 +7809,7 @@ impl DocumentParser {
         }
 
         if let Some(style_str) = style_value {
-            let parsed = Self::parse_vml_style(&style_str);
+            let parsed = Self::parse_vml_style(&style_str, in_group);
             if parsed.is_absolute {
                 image.layout.kind = RunImageKind::Floating;
             }
@@ -7826,7 +7879,17 @@ impl DocumentParser {
         }
     }
 
-    fn parse_vml_style(style: &str) -> ParsedVmlStyle {
+    /// Reads a VML `style`.  `in_group` marks a `v:group` child, whose bare
+    /// numbers are group coordinate units rather than CSS px and whose
+    /// alignment keywords are not applied.
+    fn parse_vml_style(style: &str, in_group: bool) -> ParsedVmlStyle {
+        let length = |value: &str| {
+            if in_group {
+                Self::points_str_to_px(value)
+            } else {
+                Self::vml_css_length_to_px(value)
+            }
+        };
         let mut is_absolute = false;
         let mut width_px = None;
         let mut height_px = None;
@@ -7834,6 +7897,8 @@ impl DocumentParser {
         let mut offset_y = None;
         let mut relative_from_h = None;
         let mut relative_from_v = None;
+        let mut align_h = None;
+        let mut align_v = None;
         let mut rotation_deg = None;
         let mut text_vertical_alignment = None;
         let mut dist_top = None;
@@ -7849,17 +7914,21 @@ impl DocumentParser {
             if let Some(rest) = part.strip_prefix("position:") {
                 is_absolute = rest.trim().eq_ignore_ascii_case("absolute");
             } else if let Some(rest) = part.strip_prefix("width:") {
-                width_px = Self::points_str_to_px(rest.trim());
+                width_px = length(rest).filter(|width| *width >= 0.0);
             } else if let Some(rest) = part.strip_prefix("height:") {
-                height_px = Self::points_str_to_px(rest.trim());
+                height_px = length(rest).filter(|height| *height >= 0.0);
             } else if let Some(rest) = part.strip_prefix("margin-left:") {
-                offset_x = Self::points_str_to_px(rest.trim());
+                offset_x = length(rest);
             } else if let Some(rest) = part.strip_prefix("margin-top:") {
-                offset_y = Self::points_str_to_px(rest.trim());
+                offset_y = length(rest);
             } else if let Some(rest) = part.strip_prefix("mso-position-horizontal-relative:") {
                 relative_from_h = Some(rest.trim().to_string());
             } else if let Some(rest) = part.strip_prefix("mso-position-vertical-relative:") {
                 relative_from_v = Some(rest.trim().to_string());
+            } else if let Some(rest) = part.strip_prefix("mso-position-horizontal:") {
+                align_h = Self::vml_position_align(rest, true);
+            } else if let Some(rest) = part.strip_prefix("mso-position-vertical:") {
+                align_v = Self::vml_position_align(rest, false);
             } else if let Some(rest) = part.strip_prefix("rotation:") {
                 rotation_deg = rest.trim().parse::<f64>().ok();
             } else if let Some(rest) = part.strip_prefix("v-text-anchor:") {
@@ -7879,12 +7948,25 @@ impl DocumentParser {
             }
         }
 
+        // Word aligns only an absolutely positioned shape by keyword; a group
+        // child is placed by the group.
+        let aligns = is_absolute && !in_group;
         ParsedVmlStyle {
             is_absolute,
             width_px,
             height_px,
-            position_h: Self::build_position(relative_from_h, offset_x, true),
-            position_v: Self::build_position(relative_from_v, offset_y, false),
+            position_h: Self::vml_position(
+                relative_from_h,
+                offset_x,
+                align_h.filter(|_| aligns),
+                true,
+            ),
+            position_v: Self::vml_position(
+                relative_from_v,
+                offset_y,
+                align_v.filter(|_| aligns),
+                false,
+            ),
             rotation_deg,
             text_vertical_alignment,
             dist_top,
@@ -7892,6 +7974,62 @@ impl DocumentParser {
             dist_left,
             dist_right,
         }
+    }
+
+    /// Maps VML's `mso-position-horizontal` / `mso-position-vertical` keyword
+    /// to the lowercased `wp:align` value it corresponds to.  `absolute` (the
+    /// default) and any unknown keyword yield `None`, so the object keeps its
+    /// `margin-left` / `margin-top` offset.
+    fn vml_position_align(value: &str, horizontal: bool) -> Option<&'static str> {
+        let value = value.trim();
+        let keywords: &[&'static str] = if horizontal {
+            &["left", "center", "right", "inside", "outside"]
+        } else {
+            &["top", "center", "bottom", "inside", "outside"]
+        };
+        keywords
+            .iter()
+            .copied()
+            .find(|keyword| value.eq_ignore_ascii_case(keyword))
+    }
+
+    /// The floating position from a VML frame, offset and alignment keyword.
+    /// The keyword overrides the `margin-left` / `margin-top` offset in Word:
+    /// the object is aligned within its relative frame, as DrawingML's
+    /// `wp:align` is.  The renderer has a real extent only for the page, the
+    /// margin box and margin areas and (horizontally) the column, so for the
+    /// paragraph, line and character frames the offset is kept instead.
+    fn vml_position(
+        relative: Option<String>,
+        offset: Option<f64>,
+        align: Option<&'static str>,
+        horizontal: bool,
+    ) -> Option<ImagePosition> {
+        let Some(align) = align else {
+            return Self::build_position(relative, offset, horizontal);
+        };
+        let aligned = Self::build_position(relative.clone(), Some(0.0), horizontal)?;
+        let has_extent = matches!(
+            aligned.relative_from.as_deref(),
+            Some(
+                "page"
+                    | "margin"
+                    | "leftMargin"
+                    | "rightMargin"
+                    | "insideMargin"
+                    | "outsideMargin"
+                    | "topMargin"
+                    | "bottomMargin"
+            )
+        ) || (horizontal && aligned.relative_from.as_deref() == Some("column"));
+        if !has_extent {
+            return Self::build_position(relative, offset, horizontal);
+        }
+        Some(ImagePosition {
+            offset_px: None,
+            align: Some(align.to_string()),
+            ..aligned
+        })
     }
 
     fn parse_vml_wrap_mode(element: &BytesStart<'_>) -> Option<WrapMode> {
@@ -7911,6 +8049,15 @@ impl DocumentParser {
         })
     }
 
+    /// Builds a floating position from VML's `mso-position-*-relative` and
+    /// `margin-left` / `margin-top`, naming the frame as DrawingML's
+    /// `relativeFrom` does so the renderer resolves both alike.  VML calls the
+    /// column and paragraph `text` (its default when the property is absent),
+    /// the character `char`, and the margin areas `*-margin-area`; values are
+    /// matched case-insensitively.  A margin area that does not exist on the
+    /// axis (a left or right margin vertically, a top or bottom one
+    /// horizontally) is the body box, `margin`; vertical `char` is the line,
+    /// and any other unknown value is the axis default, `text`.
     fn build_position(
         relative: Option<String>,
         offset: Option<f64>,
@@ -7920,32 +8067,34 @@ impl DocumentParser {
             return None;
         }
 
-        let mut position = ImagePosition::default();
-        if let Some(relative) = relative {
-            position.relative_from = Some(match relative.as_str() {
-                "margin" => "margin".to_string(),
-                "page" => "page".to_string(),
-                "leftMargin" => {
-                    if horizontal {
-                        "leftMargin".to_string()
-                    } else {
-                        "margin".to_string()
-                    }
-                }
-                "rightMargin" => {
-                    if horizontal {
-                        "rightMargin".to_string()
-                    } else {
-                        "margin".to_string()
-                    }
-                }
-                "line" => "line".to_string(),
-                "paragraph" => "paragraph".to_string(),
-                _ => relative,
-            });
-        }
-        position.offset_px = offset;
-        Some(position)
+        let relative = relative
+            .map(|relative| relative.trim().to_ascii_lowercase())
+            .unwrap_or_else(|| "text".to_string());
+        let frame = match (relative.as_str(), horizontal) {
+            ("margin", _) => "margin",
+            ("page", _) => "page",
+            ("text", true) => "column",
+            ("text", false) => "paragraph",
+            ("char", true) => "character",
+            ("char" | "line", false) => "line",
+            ("left-margin-area" | "leftmargin", true) => "leftMargin",
+            ("right-margin-area" | "rightmargin", true) => "rightMargin",
+            ("inner-margin-area" | "insidemargin", _) => "insideMargin",
+            ("outer-margin-area" | "outsidemargin", _) => "outsideMargin",
+            ("top-margin-area" | "topmargin", false) => "topMargin",
+            ("bottom-margin-area" | "bottommargin", false) => "bottomMargin",
+            ("left-margin-area" | "leftmargin" | "right-margin-area" | "rightmargin", false)
+            | ("top-margin-area" | "topmargin" | "bottom-margin-area" | "bottommargin", true) => {
+                "margin"
+            }
+            (_, true) => "column",
+            (_, false) => "paragraph",
+        };
+        Some(ImagePosition {
+            relative_from: Some(frame.to_string()),
+            offset_px: offset,
+            ..ImagePosition::default()
+        })
     }
 
     /// Normalises colour strings from DrawingML / VML into canonical `#RRGGBB`
@@ -7959,14 +8108,40 @@ impl DocumentParser {
         }
     }
 
+    /// Converts a VML length with a CSS unit (`pt`, `in`, `cm`, `mm`, `pc`,
+    /// `px`) to CSS pixels.  A unitless number yields `None` here; VML
+    /// attributes such as `strokeweight` and `inset` give it different default
+    /// units, and style properties use [`Self::vml_css_length_to_px`].
     fn points_str_to_px(value: &str) -> Option<f64> {
         let trimmed = value.trim_end_matches(';').trim();
-        if let Some(points) = trimmed.strip_suffix("pt") {
-            if let Ok(val) = points.trim().parse::<f64>() {
-                return Some(val * 96.0 / 72.0);
-            }
-        }
-        None
+        let (number, px_per_unit) = [
+            ("pt", 96.0 / 72.0),
+            ("in", 96.0),
+            ("cm", 96.0 / 2.54),
+            ("mm", 96.0 / 25.4),
+            ("pc", 16.0),
+            ("px", 1.0),
+        ]
+        .into_iter()
+        .find_map(|(unit, scale)| {
+            let len = trimmed.len().checked_sub(unit.len())?;
+            (trimmed.is_char_boundary(len) && trimmed[len..].eq_ignore_ascii_case(unit))
+                .then(|| (&trimmed[..len], scale))
+        })?;
+        let value = number.trim().parse::<f64>().ok()?;
+        value.is_finite().then_some(value * px_per_unit)
+    }
+
+    /// A length in a VML `style` attribute: a unit as [`Self::points_str_to_px`]
+    /// accepts, or a bare number, which CSS (and so VML's style) reads as px.
+    fn vml_css_length_to_px(value: &str) -> Option<f64> {
+        let trimmed = value.trim_end_matches(';').trim();
+        Self::points_str_to_px(trimmed).or_else(|| {
+            trimmed
+                .parse::<f64>()
+                .ok()
+                .filter(|value| value.is_finite())
+        })
     }
 
     /// Populates `RunImage` fields for width, height, relationship id, and
@@ -7997,16 +8172,24 @@ impl DocumentParser {
                     *has_embed = true;
                 }
             }
-            b"wp:effectExtent" if image.layout.kind == RunImageKind::Inline => {
-                if let Some(bottom) = element
-                    .attributes()
-                    .flatten()
-                    .find(|attr| attr.key.as_ref() == b"b")
-                    .and_then(|attr| Self::parse_f64_attr(&attr))
-                    .filter(|value| value.is_finite() && *value > 0.0)
-                    .map(Self::emu_to_px)
-                {
-                    image.layout.options_mut().inline_effect_bottom = Some(bottom);
+            b"wp:effectExtent" => {
+                let mut extent = EffectExtent::default();
+                for attr in element.attributes().flatten() {
+                    let edge = match attr.key.as_ref() {
+                        b"l" => &mut extent.left,
+                        b"t" => &mut extent.top,
+                        b"r" => &mut extent.right,
+                        b"b" => &mut extent.bottom,
+                        _ => continue,
+                    };
+                    if let Some(value) = Self::parse_f64_attr(&attr) {
+                        *edge = Self::emu_to_px(value);
+                    }
+                }
+                // Effect insets are never negative (see `EffectExtent::clamped`).
+                let extent = extent.clamped();
+                if extent != EffectExtent::default() {
+                    image.layout.options_mut().effect_extent = Some(extent);
                 }
             }
             b"wp:extent" | b"a:ext" => {
@@ -9653,6 +9836,7 @@ impl DocumentParser {
                         hyperlink,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -10263,11 +10447,15 @@ impl DocumentParser {
                     .iter()
                     .map(|t| t.trim_matches('"'))
                     .find(|t| !t.is_empty() && !t.starts_with('\\'))?;
+                let has_switch = |switch: &str| {
+                    raw_tokens[name_idx + 1..]
+                        .iter()
+                        .any(|token| token.eq_ignore_ascii_case(switch))
+                };
                 Some(RunFieldKind::PageRef {
                     name: name.to_string(),
-                    hyperlink: raw_tokens[name_idx + 1..]
-                        .iter()
-                        .any(|token| token.eq_ignore_ascii_case("\\h")),
+                    hyperlink: has_switch("\\h"),
+                    relative_position: has_switch("\\p"),
                 })
             }
             "NOTEREF" => {
@@ -10857,6 +11045,7 @@ impl DocumentParser {
             | RunFieldKind::PageRef {
                 name,
                 hyperlink: true,
+                ..
             }
             | RunFieldKind::NoteRef {
                 name,
@@ -18169,6 +18358,54 @@ mod tests {
     }
 
     #[test]
+    fn parses_page_border_display_space_and_z_order() {
+        // `w:display` picks the section pages that carry the frame, each
+        // edge's `w:space` places it, and `w:zOrder` stacks it against text
+        // (§17.6.10).
+        let body = r#"
+    <w:p><w:r><w:t>Cover</w:t></w:r></w:p>
+    <w:sectPr>
+      <w:pgBorders w:zOrder="back" w:display="firstPage" w:offsetFrom="text">
+        <w:top w:val="single" w:sz="4" w:space="1" w:color="auto"/>
+        <w:left w:val="single" w:sz="4" w:space="4" w:color="auto"/>
+        <w:bottom w:val="single" w:sz="4" w:space="10" w:color="auto"/>
+        <w:right w:val="single" w:sz="4" w:space="31" w:color="auto"/>
+      </w:pgBorders>
+    </w:sectPr>
+"#;
+        let document = parse_document_from_body(body);
+        let borders = document
+            .default_section
+            .as_ref()
+            .and_then(|props| props.page_borders.as_ref())
+            .expect("page borders");
+        assert_eq!(borders.display.as_deref(), Some("firstPage"));
+        assert_eq!(borders.z_order.as_deref(), Some("back"));
+        assert_eq!(borders.offset_from.as_deref(), Some("text"));
+        let spaces = [&borders.top, &borders.left, &borders.bottom, &borders.right]
+            .map(|edge| edge.as_ref().and_then(|edge| edge.space));
+        assert_eq!(spaces, [Some(1), Some(4), Some(10), Some(31)]);
+
+        // The model survives serialization, and absent attributes stay absent.
+        let json = serde_json::to_string(borders).expect("serialize");
+        let back: crate::document::PageBorders = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(&back, borders);
+        let plain = parse_document_from_body(
+            r#"<w:sectPr><w:pgBorders><w:top w:val="single" w:sz="4"/></w:pgBorders></w:sectPr>"#,
+        );
+        let plain = plain
+            .default_section
+            .as_ref()
+            .and_then(|props| props.page_borders.as_ref())
+            .expect("plain page borders");
+        assert_eq!(
+            (plain.display.as_deref(), plain.z_order.as_deref()),
+            (None, None)
+        );
+        assert!(!serde_json::to_string(plain).unwrap().contains("display"));
+    }
+
+    #[test]
     fn section_without_page_borders_has_none() {
         let body = r#"
     <w:p><w:r><w:t>No border</w:t></w:r></w:p>
@@ -21066,6 +21303,31 @@ mod tests {
     }
 
     #[test]
+    fn soft_break_split_rebases_literal_controls_and_keeps_optional_controls_distinct() {
+        let body = "<w:p><w:r><w:t>日\u{ad}a</w:t><w:br/><w:t>b\u{ad}c</w:t><w:softHyphen/><w:t>d</w:t></w:r></w:p>";
+        let doc = parse_document_from_body(body);
+        let paragraph = doc.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        assert_eq!(paragraph.runs.len(), 3);
+        assert_eq!(paragraph.runs[0].text, "日\u{ad}a");
+        assert!(paragraph.runs[0].is_literal_soft_hyphen(3));
+        assert_eq!(paragraph.runs[1].text, "\n");
+        assert!(paragraph.runs[1].text_controls.is_none());
+        assert_eq!(paragraph.runs[2].text, "b\u{ad}c\u{ad}d");
+        assert!(paragraph.runs[2].is_literal_soft_hyphen(1));
+        assert!(!paragraph.runs[2].is_literal_soft_hyphen(4));
+        assert_eq!(
+            paragraph.runs[2]
+                .text_controls
+                .as_ref()
+                .unwrap()
+                .literal_soft_hyphens,
+            [1]
+        );
+    }
+
+    #[test]
     fn soft_break_split_keeps_reference_ids_on_one_run() {
         let run = Run {
             text: "first\nsecond".to_string(),
@@ -21077,6 +21339,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: vec!["1".to_string()],
             footnote_reference_ids: vec!["2".to_string()],
@@ -22523,6 +22786,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "_Ref456".to_string(),
                 hyperlink: true,
+                relative_position: false,
             }
         );
         // REF/PAGEREF results remain in the editable run text so selection
@@ -22553,6 +22817,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "heading2".to_string(),
                 hyperlink: false,
+                relative_position: false,
             }
         );
         assert_eq!(field.cached_text, None);
@@ -22654,6 +22919,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "_Toc1".to_string(),
                 hyperlink: true,
+                relative_position: false,
             }
         );
         assert_eq!(field.cached_text, None);
@@ -22847,6 +23113,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "_Toc214570704".to_string(),
                 hyperlink: true,
+                relative_position: false,
             }
         );
         assert_eq!(pageref.cached_text, None);

@@ -149,6 +149,11 @@ pub trait Painter {
     }
     /// Sets the baseline the y coordinate of text operations refers to.
     fn set_text_baseline(&self, value: &str);
+    /// Physical text resolution of an explicit print/export target. Screen
+    /// painters leave this unset; layout retains logical font metrics.
+    fn text_output_dpi(&self) -> Option<f64> {
+        None
+    }
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
     /// Draws a span with additional invisible shaping context when supported.
     /// Text extraction should retain the source text.
@@ -186,6 +191,16 @@ pub trait Painter {
     /// per-line advance decisions. This exists for painting-time adjustments
     /// that need the width of what is about to be drawn.
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error>;
+
+    /// Source-face ASCII advances at a 1000-pixel GDI em for physical Windows text.
+    /// Backends without exact source-font metrics retain their existing drawing path.
+    fn measure_windows_pdf_ascii_widths(
+        &self,
+        _text: &str,
+    ) -> Result<Option<Vec<f64>>, Self::Error> {
+        Ok(None)
+    }
+
     /// Full metrics for `text` under the current font.
     ///
     /// Separate from [`Self::measure_text_width`] because the renderer reads
@@ -308,6 +323,27 @@ pub trait Painter {
     fn use_fill_style_for_stroke(&self);
 
     // ---- optional fast paths ----------------------------------------------
+
+    /// Whether this surface can attempt prepared font glyphs as vector text.
+    /// Callers must keep their original outline and font state otherwise.
+    fn supports_font_glyphs(&self) -> bool {
+        false
+    }
+
+    /// Preserves a prepared outline glyph as selectable vector text when the
+    /// backend can prove the current face has the exact supplied font bytes
+    /// and the Unicode maps to this glyph. Otherwise the caller paints its
+    /// original outline. Raster backends keep the default outline path.
+    fn try_fill_font_glyph(
+        &self,
+        _text: &str,
+        _program: &std::sync::Arc<[u8]>,
+        _glyph: u16,
+        _font_units_scale: f64,
+        _origin: (f64, f64),
+    ) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
 
     /// Draws a run of single-code-unit glyphs at explicit x positions in one
     /// call, using the font already set.

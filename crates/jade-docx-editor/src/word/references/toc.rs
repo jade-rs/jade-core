@@ -273,70 +273,205 @@ pub trait WordToc: WordSession {
 
     /// OK: the table built as the dialog says, after the caret's paragraph
     /// or over the table it was opened on — one undo step.
+    ///
+    /// As 目次の更新 does, the session lays the document out through its
+    /// end first and the entries get the number their heading's page
+    /// displays at that layout (with its known limit: the pages are those
+    /// from before the table went in). A session without page labels keeps
+    /// the generated placeholders.
     fn apply_toc_dialog(&mut self, dialog: &TocDialog) -> Result<(), String> {
-        let options = dialog.options();
-        let leader = dialog.leader.token().to_string();
-        let replacing = dialog.replacing;
         let after = self
             .selection_range()
             .map(|range| range.normalized().0.paragraph)
             .unwrap_or(0);
-        edit_document(self, "table_of_contents", true, move |document, _| {
-            match replacing {
-                Some(index) => document.replace_table_of_contents(index, &options, &leader),
-                None => document.insert_table_of_contents_with_leader(after, &options, &leader),
+        self.build_toc(
+            "table_of_contents",
+            dialog.replacing,
+            after,
+            dialog.options(),
+            dialog.leader.token().to_string(),
+        )
+    }
+
+    /// A table of contents built from `options` with `leader`'s tabs:
+    /// over the `replacing`-th table, or after paragraph `after` — one undo
+    /// step named `name`. The session lays the document out through its end
+    /// first, and the entries get the number their heading's page displays
+    /// at that layout; one whose page it did not reach keeps the number it
+    /// had (a new table's, the generated placeholder). A session without
+    /// page labels keeps the generated placeholders.
+    ///
+    /// Known limit, as [`Self::update_toc`]'s: the pages are those from
+    /// before the table went in.
+    fn build_toc(
+        &mut self,
+        name: &'static str,
+        replacing: Option<usize>,
+        after: usize,
+        options: TocOptions,
+        leader: String,
+    ) -> Result<(), String> {
+        let after = after.min(self.word_document().paragraph_count().saturating_sub(1));
+        self.complete_layout();
+        let labels = self.has_page_labels().then(|| self.paragraph_page_labels());
+        let removed = replacing
+            .and_then(|index| {
+                self.word_document()
+                    .tables_of_contents()
+                    .into_iter()
+                    .nth(index)
+            })
+            .map_or(0, |block| block.end + 1 - block.start);
+        edit_document(self, name, true, move |document, _| {
+            let (index, previous) = match replacing {
+                Some(index) => {
+                    let previous = if labels.is_some() {
+                        toc_page_results_at(document, index)
+                    } else {
+                        HashMap::new()
+                    };
+                    document.replace_table_of_contents(index, &options, &leader)?;
+                    (Some(index), previous)
+                }
+                None => {
+                    let count = document.tables_of_contents().len();
+                    document.insert_table_of_contents_with_leader(after, &options, &leader)?;
+                    // The new table, when it is a block of its own right
+                    // after the caret's paragraph. Inserted inside another
+                    // table (the caret in a table of figures), it is nested
+                    // in that one's field, and no table is relabelled.
+                    let tables = document.tables_of_contents();
+                    let index = (tables.len() == count + 1)
+                        .then(|| tables.iter().position(|block| block.start == after + 1))
+                        .flatten();
+                    (index, HashMap::new())
+                }
+            };
+            if let (Some(labels), Some(index)) = (&labels, index) {
+                label_rebuilt_toc(document, index, removed, &previous, |paragraph| {
+                    labels.get(&paragraph).cloned()
+                })?;
             }
-            .map(|_| ())
+            Ok(())
         })
     }
 
     /// 目次の更新: the table at the caret (or the first) made again, or —
     /// `page_numbers_only` — its page numbers brought up to date with its
     /// entries left as they are. One undo step.
-    fn update_toc(&mut self, page_numbers_only: bool) -> Result<(), String> {
+    ///
+    /// The session lays the document out through its end first
+    /// ([`WordSession::complete_layout`]). Returns how many entries were
+    /// left without a page number because their page was still not laid
+    /// out (a session that cannot complete its layout): an update that
+    /// wrote every number returns 0.
+    fn update_toc(&mut self, page_numbers_only: bool) -> Result<usize, String> {
         let index = self
             .toc_to_update()
             .ok_or_else(|| "更新する目次がありません".to_string())?;
+        self.update_toc_at(index, page_numbers_only)
+    }
+
+    /// [`Self::update_toc`] of the `index`-th table of contents (tables of
+    /// figures among them).
+    fn update_toc_at(&mut self, index: usize, page_numbers_only: bool) -> Result<usize, String> {
+        if index >= self.word_document().tables_of_contents().len() {
+            return Err("更新する目次がありません".to_string());
+        }
+        self.complete_layout();
+        let labelled = self.has_page_labels();
         if !page_numbers_only {
-            return edit_document(
+            // The rebuilt entries' PAGEREFs get the number their heading's
+            // page displays at the last layout, as Word writes it. A
+            // session without that layout keeps the generated "1"
+            // placeholders, which the renderer resolves on screen.
+            //
+            // Known limit: the session cannot lay the rebuilt document out
+            // again inside this edit, so these are the pages from before
+            // the rebuild. When the table's new length moves headings to
+            // other pages, the numbers are stale until the next update of
+            // page numbers (Word lays out again first).
+            let labels = if labelled {
+                self.paragraph_page_labels()
+            } else {
+                HashMap::new()
+            };
+            let before = self.word_document().tables_of_contents()[index].clone();
+            let skipped = std::rc::Rc::new(std::cell::Cell::new(0));
+            let counted = std::rc::Rc::clone(&skipped);
+            edit_document(
                 self,
                 "update_table_of_contents",
                 true,
-                move |document, _| document.update_table_of_contents_at(index).map(|_| ()),
-            );
+                move |document, _| {
+                    let previous = if labelled {
+                        toc_page_results_at(document, index)
+                    } else {
+                        HashMap::new()
+                    };
+                    document.update_table_of_contents_at(index)?;
+                    counted.set(0);
+                    if !labelled {
+                        return Ok(());
+                    }
+                    let (left, _) = label_rebuilt_toc(
+                        document,
+                        index,
+                        before.end + 1 - before.start,
+                        &previous,
+                        |paragraph| labels.get(&paragraph).cloned(),
+                    )?;
+                    counted.set(left);
+                    Ok(())
+                },
+            )?;
+            return Ok(skipped.get());
         }
-        // Each entry's bookmark, and the page its paragraph is on now.
+        // Each entry's bookmark, and the number the page its paragraph is on
+        // now displays (its section's restart and format, as Word writes;
+        // the physical page without a layout's labels). An entry on a page
+        // the layout did not reach is left as it is.
         let document = self.word_document();
         let block = document.tables_of_contents()[index].clone();
-        let model = document.document.as_ref();
+        let mut skipped = 0;
         let mut pages = HashMap::new();
-        for paragraph in block.start..=block.end {
-            let Some(entry) = document.paragraph(paragraph) else {
-                continue;
+        for (name, paragraph) in toc_page_references(document, &block) {
+            let label = match self.paragraph_page(paragraph) {
+                Some(page) => match self.page_label(page) {
+                    Some(label) => Some(label.text),
+                    None if labelled => None,
+                    None => Some(page.to_string()),
+                },
+                None => None,
             };
-            for run in &entry.runs {
-                let Some(RunFieldKind::PageRef { name, .. }) =
-                    run.field.as_ref().map(|field| &field.kind)
-                else {
-                    continue;
-                };
-                let page = model
-                    .and_then(|model| {
-                        model
-                            .bookmarks
-                            .iter()
-                            .find(|bookmark| &bookmark.name == name)
-                    })
-                    .and_then(|_| document.bookmark_position(name))
-                    .and_then(|position| self.paragraph_page(position.paragraph));
-                if let Some(page) = page {
-                    pages.insert(name.clone(), page.to_string());
+            match label {
+                Some(label) => {
+                    pages.insert(name, label);
                 }
+                None if labelled => skipped += 1,
+                None => {}
             }
         }
         edit_document(self, "update_page_numbers", true, move |document, _| {
             document.refresh_toc_page_numbers(index, &pages).map(|_| ())
-        })
+        })?;
+        Ok(skipped)
+    }
+
+    /// The label of the page each laid-out paragraph starts on, by
+    /// paragraph index, for the paragraphs on labelled pages.
+    fn paragraph_page_labels(&self) -> HashMap<usize, String> {
+        let mut by_page: HashMap<usize, Option<String>> = HashMap::new();
+        (0..self.word_document().paragraph_count())
+            .filter_map(|paragraph| {
+                let page = self.paragraph_page(paragraph)?;
+                let label = by_page
+                    .entry(page)
+                    .or_insert_with(|| self.page_label(page).map(|label| label.text))
+                    .clone()?;
+                Some((paragraph, label))
+            })
+            .collect()
     }
 
     /// 手動作成目次: a 目次 heading and a line per level to type over.
@@ -376,6 +511,149 @@ pub trait WordToc: WordSession {
 }
 
 impl<T: WordSession + ?Sized> WordToc for T {}
+
+/// Where a paragraph of the document after a table of contents was
+/// rebuilt (or inserted) as `after` was at the last layout: the table's
+/// own paragraphs are new (`None`), those after it moved by the change in
+/// its length (`removed` paragraphs it had before; 0 for a new table).
+pub(crate) fn paragraph_before_rebuild(
+    paragraph: usize,
+    after: &crate::word_document::FieldBlock,
+    removed: usize,
+) -> Option<usize> {
+    if paragraph < after.start {
+        Some(paragraph)
+    } else if paragraph > after.end {
+        Some(paragraph - (after.end + 1 - after.start) + removed)
+    } else {
+        None
+    }
+}
+
+/// Writes the page numbers of the `index`-th table of contents, just
+/// rebuilt or inserted over `removed` paragraphs, from `label_of`: the
+/// label, at the last layout, of the page a paragraph (in that layout's
+/// numbering) starts on. An entry without a label (a page the layout did
+/// not reach) gets its number from `previous` (bookmark → the result the
+/// table had, [`toc_page_results_at`]), or stays as generated. Returns
+/// how many entries had no label, and how many numbers it changed.
+pub(crate) fn label_rebuilt_toc(
+    document: &mut crate::word_document::WordDocument,
+    index: usize,
+    removed: usize,
+    previous: &HashMap<String, String>,
+    label_of: impl Fn(usize) -> Option<String>,
+) -> Result<(usize, usize), String> {
+    let after = document
+        .tables_of_contents()
+        .into_iter()
+        .nth(index)
+        .ok_or_else(|| "no table of contents found to update".to_string())?;
+    let mut left = 0;
+    let mut pages = HashMap::new();
+    for (name, paragraph) in toc_page_references(document, &after) {
+        match paragraph_before_rebuild(paragraph, &after, removed).and_then(&label_of) {
+            Some(label) => {
+                pages.insert(name, label);
+            }
+            None => {
+                left += 1;
+                if let Some(result) = previous.get(&name) {
+                    pages.insert(name, result.clone());
+                }
+            }
+        }
+    }
+    let changed = document.refresh_toc_page_numbers(index, &pages)?;
+    Ok((left, changed))
+}
+
+/// The page numbers the `index`-th table of contents shows now, by its
+/// entries' bookmarks: each page-number PAGEREF's result (not `\p`'s).
+pub(crate) fn toc_page_results_at(
+    document: &crate::word_document::WordDocument,
+    index: usize,
+) -> HashMap<String, String> {
+    let mut results: HashMap<String, String> = HashMap::new();
+    let Some(block) = document.tables_of_contents().into_iter().nth(index) else {
+        return results;
+    };
+    for paragraph in block.start..=block.end {
+        let Some(entry) = document.paragraph(paragraph) else {
+            continue;
+        };
+        // A result split over formatted runs is one field: the runs share
+        // the name and the source field.
+        let mut current = None;
+        for run in &entry.runs {
+            let Some(field) = run.field.as_ref() else {
+                current = None;
+                continue;
+            };
+            let RunFieldKind::PageRef {
+                name,
+                relative_position: false,
+                ..
+            } = &field.kind
+            else {
+                current = None;
+                continue;
+            };
+            let key = (name.clone(), field.source_field_id);
+            let text = if run.text.is_empty() {
+                field.cached_text.clone().unwrap_or_default()
+            } else {
+                run.text.clone()
+            };
+            if current.as_ref() == Some(&key) {
+                if let Some(result) = results.get_mut(name) {
+                    result.push_str(&text);
+                }
+            } else {
+                results.entry(name.clone()).or_insert(text);
+                current = Some(key);
+            }
+        }
+    }
+    results
+}
+
+/// The table's page-number PAGEREFs (not `\p`, which keeps its saved
+/// relative text) and the paragraph each one's bookmark starts in.
+fn toc_page_references(
+    document: &crate::word_document::WordDocument,
+    block: &crate::word_document::FieldBlock,
+) -> Vec<(String, usize)> {
+    let model = document.document.as_ref();
+    let mut references = Vec::new();
+    for paragraph in block.start..=block.end {
+        let Some(entry) = document.paragraph(paragraph) else {
+            continue;
+        };
+        for run in &entry.runs {
+            let Some(RunFieldKind::PageRef {
+                name,
+                relative_position: false,
+                ..
+            }) = run.field.as_ref().map(|field| &field.kind)
+            else {
+                continue;
+            };
+            let target = model
+                .filter(|model| {
+                    model
+                        .bookmarks
+                        .iter()
+                        .any(|bookmark| &bookmark.name == name)
+                })
+                .and_then(|_| document.bookmark_position(name));
+            if let Some(position) = target {
+                references.push((name.clone(), position.paragraph));
+            }
+        }
+    }
+    references
+}
 
 #[cfg(test)]
 mod tests {

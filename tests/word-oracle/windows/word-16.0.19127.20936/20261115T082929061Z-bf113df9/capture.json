@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T082929061Z-bf113df9",
+  "captured_at_utc": "2026-11-15T08:29:29.0643636Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-tiers-yu20-cjk6-space1-both-balance1-compat15",
+      "source": "..\\w15-o-justification-tiers-input-snapshots\\word-windows-edge-justify-tiers-yu20-cjk6-space1-both-balance1-compat15.docx",
+      "sha256": "cc8d97acb7a20be954203429e7e33c0204479c32ffe61b60479a73d7756ea8b9",
+      "pdf": "word-windows-edge-justify-tiers-yu20-cjk6-space1-both-balance1-compat15.pdf",
+      "pdf_sha256": "cf064812a7b7889402ca6c78560408932ed913b4110e98d12308e059c9d9f1a1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-tiers-yu20-cjk6-space1-both-balance1-compat15.page-001.emf",
+          "sha256": "42f9f4da038e74ae4c112cc2262b589021244ad53c7e34944a7ef9d6aee62c7d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

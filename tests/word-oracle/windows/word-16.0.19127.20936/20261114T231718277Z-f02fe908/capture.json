@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T231718277Z-f02fe908",
+  "captured_at_utc": "2026-11-14T23:17:18.2814682Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "char-spacing",
+      "source": "public\\fixtures\\char-spacing.docx",
+      "sha256": "6064f2d4aa131ac92bc583e1e0c119e955b3d32af49222cf640801ab3a04e2c1",
+      "pdf": "char-spacing.pdf",
+      "pdf_sha256": "bcb285d6c8c4afb22787dead9411c48f604e67e5bf5fc87309a3860097a1c5e8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "char-spacing.page-001.emf",
+          "sha256": "a824bad9f9b2dbe5496fd95aa237972cac9085f0d008d7d9ac295754c91fb761",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1663 @@
+{
+  "schema": 1,
+  "purpose": "Original Windows Word length controls:36 EMF/dualXPS and31 independently validated PDF cases required. Five PDF coordinate mismatches remain pending with strict text/page/order/finite checks. No generated expectations.",
+  "parent_index": {
+    "file": "tests/word-oracle/windows/y-length-observations.json",
+    "sha256": "3b2a1cc6387b8644dbe6d0216585b0a963c71ef0f4939d824317c25368c26305"
+  },
+  "secondary_parent_index": {
+    "file": "tests/word-oracle/windows/positive-kerning-observations.json",
+    "sha256": "4b71a6e8935246b8f1c19215b2fcda108c80c23481e3dedd6c88be49f7826f46"
+  },
+  "mac_parent_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/manifest.json",
+    "sha256": "5bdf55d8189ea1e0fff9df8a8b3e39765eddf41d0e1eb5a8302b9d74bd680e75"
+  },
+  "mac_parent_reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114.3",
+    "osVersion": "27.0.1 (26A434)",
+    "export": "Print > PDF > Save as PDF",
+    "pdfSha256": "0cfaa13cafca33030c441fc58558543b6ccd4f2819e499d205202c6ed64fa1b8",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261120T075539650Z-d0a32184",
+  "font_facts": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/word-output-font-facts.json",
+    "sha256": "ae9960c76ad9f85ceb48be5761cfa03dce9b151bd99c06f74bca030a23d6823e"
+  },
+  "original_capture": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/original-capture.zip",
+    "sha256": "a650e3fb3721cc684578662f3a6ac8f5ff398df13ef14b4aa4a76d8936b140ef"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z1-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z1-m14.docx",
+        "sha256": "86b2a1a54ff5756bf8dc6f04d25a47a6970767728727cd47d17725f26fc92a34"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 1,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 4,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 4,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z2-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z2-m14.docx",
+        "sha256": "c2051f63df6a23bfd2b7830f390e0e0f99a64b2dd871e8df8cdfe72dbfd306f4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 2,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 8,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 8,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z3-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z3-m14.docx",
+        "sha256": "aac5684e111a840d202aa0b6bfebb4d9aebf7eb16dab1504424a8ff96ab89ef1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 3,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 12,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 12,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z4-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z4-m14.docx",
+        "sha256": "08b619464d90611eb8eaf9c3559833bbf5347b4579dfcc38b9189cb2a855814a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 4,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 16,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 16,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z7-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z7-m14.docx",
+        "sha256": "cd8901e8899bbe624df1223d6b1d26ca552e3ad78b1f71100e194f332133df8f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 7,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 28,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 28,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z8-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z8-m14.docx",
+        "sha256": "fe538daa63f081760db9705fbb5d26ed8b1f9ef2e627b0cc69edc24dac21be4b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 8,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 32,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 32,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z12-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z12-m14.docx",
+        "sha256": "5ec2f731ac44ae515bced197358b743ecc8d6aca661f2bf4b7427251db4d0980"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 12,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 48,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 48,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z15-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z15-m14.docx",
+        "sha256": "e77872cf48451e5928a13b45568c89d8a0ab384d948a6ec00177a838d9407552"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 15,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 60,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 60,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z16-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z16-m14.docx",
+        "sha256": "660c8fa69c3022dd1cc1c8a49e6269eef15dcffd77cf1064d24617a588bb95d4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 16,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 64,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 64,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z17-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z17-m14.docx",
+        "sha256": "22bab316c17b1f97000d9e9f8dff473a345305dca4607560a60fba221d6758b2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 17,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 68,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 68,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z31-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z31-m14.docx",
+        "sha256": "5dc7fab738d88367099b025397a04a276065ac62cac4e2d2ca2e684c0675eadb"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 31,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 124,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 124,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z32-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z32-m14.docx",
+        "sha256": "0e0c0febb9471c85c587568358cc00b38d204348f0196f534ff07ea00f6eaf53"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 32,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 128,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 128,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z33-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z33-m14.docx",
+        "sha256": "5188f4b7e33990e53756ed349f30b84974ebd87140d6782a7bf84e8e4cf0a761"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 33,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 132,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 132,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z47-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z47-m14.docx",
+        "sha256": "efffd0c472f8c8bbe033a25185fd66000ba862f9892c41ac780a385fda3ca310"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 47,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 188,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 188,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z48-m14.docx",
+        "sha256": "498621e16a727532a64c3144e2cc32da503fd861f384d9c014abc898d6802d57"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z49-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z49-m14.docx",
+        "sha256": "485aa99b7fdcd68cfd9157be289ab4fc1f6b387890ba1f28d077f63271b3d539"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 49,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 196,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 196,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z64-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z64-m14.docx",
+        "sha256": "561ad605d37ff90b9ffc072f9b1d62d3870e7721c76092a478b4da21fd42d63e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 64,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 256,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 256,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z65-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z65-m14.docx",
+        "sha256": "5f13a668de5425f9a455038aa428e8a238edded099429b63cbe19b7cbaf40503"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "character": "Z",
+        "length": 65,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 260,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 260,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y1-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y1-m14.docx",
+        "sha256": "9f2e352cac64f6c44c782a3159301c8eeae237ffe3f9cf92db90186f5a60722d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 1,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 2,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 2,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y2-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y2-m14.docx",
+        "sha256": "458a8efe7460d91f961c63ef7466467cff87af2ef542d52af380d17d58df78bc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 2,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 4,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 4,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y3-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y3-m14.docx",
+        "sha256": "585f635157f4a4c262435689c1f81788685d5e8d3353abfecd84ef6718612bd8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 3,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 6,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 6,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y4-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y4-m14.docx",
+        "sha256": "14333665d0384341badaaed08f1ea38bf4606dc264ddd088e544552d83e74262"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 4,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 8,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 8,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y7-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y7-m14.docx",
+        "sha256": "cf38b788b935414480baf856eea3715dee24a7b1d6097029d1c88fdf0a356078"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 7,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 14,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 14,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y8-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y8-m14.docx",
+        "sha256": "0387abe494d2d16cd5573f66c10461f83f624726c5f6b9705ccdd9ee7ca95235"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 8,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 16,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 16,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y12-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y12-m14.docx",
+        "sha256": "038f37f38ad1757cd916ef315f38c87f09b27555b1a4656e41f43f4daccb8ca8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 12,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 24,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 24,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y15-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y15-m14.docx",
+        "sha256": "4ceeed2d3d1f627049e8f941f33d551b52eaae32e0279d45c4d4211cdd48b963"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 15,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 30,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 30,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y16-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y16-m14.docx",
+        "sha256": "03441e7ed943e47e22de035faa75ed84faf22c3559d0ba680eef39ddab722cd7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 16,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 32,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 32,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y17-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y17-m14.docx",
+        "sha256": "d0be611fb5cae7f5500040caa82cc061f9cf1ecc0d5abfc4973d354e882e5d51"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 17,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 34,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 34,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y31-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y31-m14.docx",
+        "sha256": "b228511b5d72368fb1c17041097ca60fe0ba169e32798650537fae97ece41da2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 31,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 62,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 62,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y32-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y32-m14.docx",
+        "sha256": "594ddff91132fafb7f45c85d929342c7efcb1e0ded6aed54dfc560fefb196ca0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 32,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 64,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 64,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y33-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y33-m14.docx",
+        "sha256": "79f0a089488f4e036cfb32effca314213cdf692a235ff33324e45e30d2274704"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 33,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 66,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 66,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "device-remainder-print"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y47-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y47-m14.docx",
+        "sha256": "ee85d514dac828a87d726b372216e8daf263eb5c5495e3485c766ba0b3b7aa36"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 47,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 94,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 94,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y48-m14.docx",
+        "sha256": "a328ae704b85f940c0b1869e92c93e85d5ae3a09865be9bfd1b84482fdc0101b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 48,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 96,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 96,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y49-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y49-m14.docx",
+        "sha256": "703127d37022ee77638ca75dc2c3dc55040111b5a0bb2471780b354320a4461e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 49,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 98,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 98,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y64-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y64-m14.docx",
+        "sha256": "04e0a21482b8ceb7d79981e96def678d347458219829461f0b2ff275551201ac"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 64,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 128,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 128,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y65-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y65-m14.docx",
+        "sha256": "f73887bc946573622ddf427da3459fb442d3287d2fae600c295c5796bf56a49b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/capture.json",
+        "sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+        "sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+          "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933"
+        },
+        "parent_name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "character": "y",
+        "length": 65,
+        "paragraphs": 2,
+        "expected_non_whitespace_glyphs": 130,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 130,
+      "screen_gate_promotion": "device-remainder-screen",
+      "xps_gate_promotion": "device-remainder-xps",
+      "coordinate_gate_promotion": "pending"
+    }
+  ]
+}

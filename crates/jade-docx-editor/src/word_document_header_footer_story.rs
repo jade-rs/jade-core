@@ -229,8 +229,11 @@ impl WordDocument {
         Ok(())
     }
 
-    /// Whether `section`'s story is linked to the previous section's — it has
-    /// no reference of its own. The first section is never linked.
+    /// Whether `section`'s story is linked to the previous section's: it has
+    /// no reference of its own, or its reference reaches the same part the
+    /// previous section shows — a section break copies the section it splits,
+    /// references and all, and the two then show and change one story, as
+    /// Word's 前と同じ does. The first section is never linked.
     pub fn header_footer_linked(
         &self,
         section: usize,
@@ -244,12 +247,21 @@ impl WordDocument {
         if section == 0 {
             return Ok(false);
         }
-        Ok(document
+        let Some(own) = document
             .sections
             .get(section)
             .and_then(|range| range.properties.as_ref())
             .and_then(|properties| section_hf_reference(properties, role, variant))
-            .is_none())
+        else {
+            return Ok(true);
+        };
+        let Some(previous) = hf_reference_for_section(document, section - 1, role, variant) else {
+            return Ok(false);
+        };
+        Ok(own == previous
+            || self
+                .hf_part_path_for_reference(&own)
+                .is_some_and(|path| self.hf_part_path_for_reference(&previous) == Some(path)))
     }
 
     /// 前と同じヘッダー/フッター: linked, `section` drops its own reference
@@ -719,6 +731,9 @@ impl WordDocument {
         variant: &str,
         bytes: &[u8],
     ) -> Result<bool, String> {
+        // The story's reference is written into the tree; without it the
+        // export would save the document as it was loaded.
+        self.ensure_roundtrip_xml().map_err(|error| error.to_string())?;
         self.validate_story_section_index(section)?;
         let role = parse_role(role)?;
         let variant = parse_variant(variant)?;

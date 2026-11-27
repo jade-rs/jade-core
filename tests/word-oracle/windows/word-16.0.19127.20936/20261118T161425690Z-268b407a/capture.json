@@ -1,0 +1,666 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T161425690Z-268b407a",
+  "captured_at_utc": "2026-11-18T16:14:25.7160836Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-X48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-X48-m14.docx",
+      "sha256": "b4dc775b38cd07457c4c5154de50ed911f03015417cc66af5dd64236c492bc3c",
+      "pdf": "word-windows-aptos-nominal-bold-s14-X48-m14.pdf",
+      "pdf_sha256": "eaa19e61dcb2e6a05b116e5dfebaf7b2e6500d35c89ece49012c2ee0b40f5394",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-X48-m14.page-001.emf",
+          "sha256": "0d993bb5d9a18a1805835c6da4f50808cbeb27ec09fe6a77b7a347dd64dc0b5c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-a48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-a48-m14.docx",
+      "sha256": "df8adb6f68a0c58c88fb7a85ec9bf27a7fcd5286450409c3cc75fc6e3066d47a",
+      "pdf": "word-windows-aptos-nominal-bold-s14-a48-m14.pdf",
+      "pdf_sha256": "5ff7bc20b2d21d4577b8b55fe25884d4851b8d2fd53dfbdf229e40fb52ed4df1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-a48-m14.page-001.emf",
+          "sha256": "75a27ea2ac501c576fff415cea7ed3d4232be3a02090cc2bdd401c3b454257c6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-one48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-one48-m14.docx",
+      "sha256": "1d87763daf2f59235e3dbe7d141511c71fb51969ad61a9e40165cf627f66618d",
+      "pdf": "word-windows-aptos-nominal-bold-s14-one48-m14.pdf",
+      "pdf_sha256": "7ff8e64e554317400bfd6c23fc094a9e196fede0b39c17ceb469fbb9925fcc21",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-one48-m14.page-001.emf",
+          "sha256": "76fce6feadb7a5caade7ee3a1625909dc56383222e5b0d2fc3f10b291186e23b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-hyphen48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-hyphen48-m14.docx",
+      "sha256": "5c153e9339f3fe3d55fd799f2152278dbd177ab831851a74d958067178e6ff5c",
+      "pdf": "word-windows-aptos-nominal-bold-s14-hyphen48-m14.pdf",
+      "pdf_sha256": "4fd7a116a739a8b6e7de6a6079ba8fb139abc386d71e2f970ef8b7f95f46806b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-hyphen48-m14.page-001.emf",
+          "sha256": "ddf46de52f71c6eb5bf67a80cddd1da9d5f7303f03ac77a71cbd03eaed39f090",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-X48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-X48-m15.docx",
+      "sha256": "9ab19f3aa1ede3914e477d43d64e48d0cff13ee929970344eee27000f8aba1e8",
+      "pdf": "word-windows-aptos-nominal-bold-s14-X48-m15.pdf",
+      "pdf_sha256": "528155f8e884b441028c5ccfa25727a40ab5d99cfd4d829e92751e1a870b5090",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-X48-m15.page-001.emf",
+          "sha256": "0d993bb5d9a18a1805835c6da4f50808cbeb27ec09fe6a77b7a347dd64dc0b5c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-a48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-a48-m15.docx",
+      "sha256": "1aa7902020e33055635f9d95f11c5b430f58bb49f20567d6fcd084dd84f16b07",
+      "pdf": "word-windows-aptos-nominal-bold-s14-a48-m15.pdf",
+      "pdf_sha256": "9aff0650f6564ddea9d6b3f129806d63126eb7746844ce3b4ccdcc0fd3de06dc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-a48-m15.page-001.emf",
+          "sha256": "75a27ea2ac501c576fff415cea7ed3d4232be3a02090cc2bdd401c3b454257c6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-one48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-one48-m15.docx",
+      "sha256": "700490567aaaf56c7017c40f3b5501caa9826b95b5c413f8d5b84a31387a711c",
+      "pdf": "word-windows-aptos-nominal-bold-s14-one48-m15.pdf",
+      "pdf_sha256": "8427c778d5c1b15af9813c26d9e5e8fd3aac74c187693504de4d142d3bbd7d17",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-one48-m15.page-001.emf",
+          "sha256": "76fce6feadb7a5caade7ee3a1625909dc56383222e5b0d2fc3f10b291186e23b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bold-s14-hyphen48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bold-s14-hyphen48-m15.docx",
+      "sha256": "1aafe0974317a1d283b109d5577f9ce4708614bbd25ead82b0d6a081cfce5c24",
+      "pdf": "word-windows-aptos-nominal-bold-s14-hyphen48-m15.pdf",
+      "pdf_sha256": "f489828db2ba95738178d08e015fb7e76ebb700f630e66fedcb7cb89ad0e3b30",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bold-s14-hyphen48-m15.page-001.emf",
+          "sha256": "4a622a66a86b9c7135cf7a4e9bec874285127984af1d9ebbf693f3fdaed6310d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-X48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-X48-m14.docx",
+      "sha256": "0061f251b039ff51e86c58f78ecc810756f9fa03294f6841f0e967ccfcc55a18",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-X48-m14.pdf",
+      "pdf_sha256": "1cd87be378f9cb059b9446889aba7c1ac25d4fdcf4dfb031e25516f5bf5d2038",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-X48-m14.page-001.emf",
+          "sha256": "70855b2fc6fa6bca2e25f4a188658f13cb02d902fc7da622253e9ec77c14b7f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-a48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-a48-m14.docx",
+      "sha256": "47e479175e3d8437d184c019ade3ff738f2d06548975d84d6c35f9cbedb25241",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-a48-m14.pdf",
+      "pdf_sha256": "4660f2aa2dadd6ea7485988f364e966e81e4b83e12a7a5a23a7fecf6d2eaa810",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-a48-m14.page-001.emf",
+          "sha256": "1ef3c9d22f980970aa3466a55beddac8c05fbd2bd21239045bfa48721a799d77",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-one48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-one48-m14.docx",
+      "sha256": "9242a221b7166bd397f239fd9e23983d571160d6b16f4637dfedf13e8ffb3339",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-one48-m14.pdf",
+      "pdf_sha256": "39aba00c4844dbd660b14eb80608eae7777a7f02f43e79ea6412e2ec03d00dd2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-one48-m14.page-001.emf",
+          "sha256": "ce4f8fcfddcb5d45a55c2897e222928f51971be3428aaf80603e782be812dd9a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14.docx",
+      "sha256": "181ba050e2f9786030f317eea846ddaacbce091ba3a23e4043e7d7f43c934124",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14.pdf",
+      "pdf_sha256": "8b60acdabadbeb4dd2d37b71e36c1d683e0384478d3007a8128e5bb04fcde04a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14.page-001.emf",
+          "sha256": "1ed1bccacd41c3650f8615aead43a8a6266c1b8d33345f06479adf0d749b21cd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-X48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-X48-m15.docx",
+      "sha256": "03deb3ce171baec9e651ee62cc04e1f99c764d53911f601a8da23fd37153fe32",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-X48-m15.pdf",
+      "pdf_sha256": "a66f886926649c3172282e6f100f98abc06c1794984eb2e2b15b33f760ca1701",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-X48-m15.page-001.emf",
+          "sha256": "70855b2fc6fa6bca2e25f4a188658f13cb02d902fc7da622253e9ec77c14b7f0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-a48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-a48-m15.docx",
+      "sha256": "f1ce9b85818a38ecb26c987c5d8a09fe41d9de52271f7e78fc70d27c7237768c",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-a48-m15.pdf",
+      "pdf_sha256": "653baf3bd18d6c74354e7d2f762423061452798efbada62cf9b71d418fec2f8a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-a48-m15.page-001.emf",
+          "sha256": "1ef3c9d22f980970aa3466a55beddac8c05fbd2bd21239045bfa48721a799d77",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-one48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-one48-m15.docx",
+      "sha256": "24c4181a9a1322eb48b81c5a06cce320ae2cb9bdb247cf3e5714fb185ae8ba2e",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-one48-m15.pdf",
+      "pdf_sha256": "5c2d85a5de426cbafd15d8e449c4f0cdf55ba88d64189e6b9c7d0136de6001c3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-one48-m15.page-001.emf",
+          "sha256": "ce4f8fcfddcb5d45a55c2897e222928f51971be3428aaf80603e782be812dd9a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15.docx",
+      "sha256": "535568478816a380b1e4ba22224a06446925995bf55e3be201dc4167e4af5f19",
+      "pdf": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15.pdf",
+      "pdf_sha256": "8fdedc8241ebe0b9ed3a2f46f7122fa50afc08288d7ac6d163e5c26e915931e5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15.page-001.emf",
+          "sha256": "e77f56cdf9d5eb32d5cc307e32cc634e4891dbf6993870675c1ab960237421a9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-X48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-X48-m14.docx",
+      "sha256": "6bbfbdf23f8d394ca4cf6221da533cb7f367c83836d95675a6452ac6169c427a",
+      "pdf": "word-windows-aptos-nominal-regular-s16-X48-m14.pdf",
+      "pdf_sha256": "5b86c48b5fb59be993183e5201e93d327a7f412d1b08259695232568758c3d39",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-X48-m14.page-001.emf",
+          "sha256": "72095b52e782c3103f89134862b8a7af0cef43560770e1f9691efd6c8292fff4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-a48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-a48-m14.docx",
+      "sha256": "672f386d31e6c08c0422a1d73f353458c5927204d3723d84d15007cce2fd15c3",
+      "pdf": "word-windows-aptos-nominal-regular-s16-a48-m14.pdf",
+      "pdf_sha256": "428781553d0c179846903ecd384806759815dfd6716c54b4261a12e1128fe0d5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-a48-m14.page-001.emf",
+          "sha256": "2b33a13986220bb3232b99690ddbb454f5defd2902f4b1c5dfa82af31c9a7b0e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-one48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-one48-m14.docx",
+      "sha256": "cd7cfac8078fde9bc3a627995363007663461c203ba9e6c11dfb994ae1473db1",
+      "pdf": "word-windows-aptos-nominal-regular-s16-one48-m14.pdf",
+      "pdf_sha256": "d3d1fac1f53413120e043b5d41b726129b0ced84a342a8ae7c40c1af075e7615",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-one48-m14.page-001.emf",
+          "sha256": "2d3a5dc368926524957b83ac814f7c1ebcdfc0f9a8a7ad8ae216ee661ac7a8d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-hyphen48-m14",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-hyphen48-m14.docx",
+      "sha256": "1b3622a2e622bf6bd184a3a096f26aea7f093eaf0272e10cf3f3f5c2ffed67dd",
+      "pdf": "word-windows-aptos-nominal-regular-s16-hyphen48-m14.pdf",
+      "pdf_sha256": "91577d4f82d2fad7dc3a5dc05ccb7232330e425cf8c70914fb9d84955c2d73d3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-hyphen48-m14.page-001.emf",
+          "sha256": "64c9e6f624ff86a5e0d2e867ded5b6bc130f7231a6e10826e0b7bbfb398cc642",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-X48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-X48-m15.docx",
+      "sha256": "7ebcc2480c7510a2678bb766b15117ecab38706c101af23adc3c816c03a2707f",
+      "pdf": "word-windows-aptos-nominal-regular-s16-X48-m15.pdf",
+      "pdf_sha256": "7c5e99d47462b4edc4862ef10048cdef4761c23df4416f1db5a077ab319cfb10",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-X48-m15.page-001.emf",
+          "sha256": "72095b52e782c3103f89134862b8a7af0cef43560770e1f9691efd6c8292fff4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-a48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-a48-m15.docx",
+      "sha256": "e41d956a56fe23128931b24b15ebde9b3744824929ce36b9311ced5612ec11f9",
+      "pdf": "word-windows-aptos-nominal-regular-s16-a48-m15.pdf",
+      "pdf_sha256": "e58c75e8775ea3ff2cad80698eac6d827c75d8a764af5f4dad90280be3e86958",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-a48-m15.page-001.emf",
+          "sha256": "2b33a13986220bb3232b99690ddbb454f5defd2902f4b1c5dfa82af31c9a7b0e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-one48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-one48-m15.docx",
+      "sha256": "bfd0e505590c902577ae033d631ea5d6b3b924fffdb12873b507749ec0e538fc",
+      "pdf": "word-windows-aptos-nominal-regular-s16-one48-m15.pdf",
+      "pdf_sha256": "48ac5502f6fe0a95e622634bd5b57768ca49c699e4f274ca945d85102b1bb689",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-one48-m15.page-001.emf",
+          "sha256": "2d3a5dc368926524957b83ac814f7c1ebcdfc0f9a8a7ad8ae216ee661ac7a8d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-nominal-regular-s16-hyphen48-m15",
+      "source": "..\\w18aptosnom-inputs\\word-windows-aptos-nominal-regular-s16-hyphen48-m15.docx",
+      "sha256": "4b3a1b92ccb97b4e7dfd6adf76b21c2de3b23d5c525a7c119bee4d3723d98eca",
+      "pdf": "word-windows-aptos-nominal-regular-s16-hyphen48-m15.pdf",
+      "pdf_sha256": "5d5e519854efdd04fc12855228a352ac3bbdc259ba22e5340c0bd15331399b9e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-nominal-regular-s16-hyphen48-m15.page-001.emf",
+          "sha256": "c0ac5907f281a6712e1cafe4342f65f2a3dbf4edb91a631a1e629249f44392c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

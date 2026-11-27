@@ -7,7 +7,8 @@ use super::paragraph_undo::{commented_body_paragraph, ParagraphRangeUndo};
 use super::raw_xml_undo::RawXmlUndo;
 use super::text_edit::{
     append_rebased_tail_comment_anchors, apply_run_properties, apply_text_edit,
-    normalize_break_runs, range_contains_deleted_revision, rebase_comment_anchors_for_edit,
+    insert_after_inline_objects, insert_after_note_references, normalize_break_runs,
+    range_contains_deleted_revision, rebase_comment_anchors_for_edit,
     split_runs_at_preserving_source, unprotected_spans, CommentAnchors,
 };
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
@@ -17,6 +18,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 /// Command that inserts plain text at the current caret position. When the
 /// selection spans characters it behaves like a replacement (the original range
 /// is removed and the inserted text takes its place).
+/// CRLF and lone CR inputs become LF model soft breaks, matching browser paste.
 pub struct InsertTextCommand {
     range: SelectionRange,
     text: String,
@@ -47,6 +49,13 @@ impl InsertTextCommand {
         inline_properties: Option<RunProperties>,
     ) -> Self {
         let paragraph_index = range.focus.paragraph;
+        // Match browser paste normalization. A literal CR in w:t is read by
+        // Word as a space; model line breaks must serialize as w:br instead.
+        let text = if text.contains('\r') {
+            text.replace("\r\n", "\n").replace('\r', "\n")
+        } else {
+            text
+        };
         Self {
             range,
             text,
@@ -84,6 +93,17 @@ impl InsertTextCommand {
     fn apply_edit(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let previous_selection = *ctx.selection;
         let (start, end) = self.range.normalized();
+        // A collapsed caret right after a reference mark: the model offset
+        // is the mark's own, and the text goes behind it.
+        let after_mark = start == end
+            && !self.text.is_empty()
+            && ctx.document.rendered_position_follows_reference_mark(start);
+        // A caret right after an inline picture: the text goes behind it.
+        let after_objects = if start == end && !self.text.is_empty() {
+            ctx.document.rendered_objects_before_caret(start)
+        } else {
+            0
+        };
         let start = ctx.document.rendered_to_model_text_position(start);
         let end = ctx.document.rendered_to_model_text_position(end);
 
@@ -690,18 +710,40 @@ impl InsertTextCommand {
                 previous_runs
             } else {
                 let zero_width = ctx.document.zero_width_runs(start.paragraph);
+                let equations_are_objects = ctx.document.equations_are_objects(start.paragraph).0;
                 let paragraph = ctx
                     .document
                     .paragraph_mut(start.paragraph)
                     .ok_or(CommandError::ParagraphUnavailable)?;
                 let previous_runs = paragraph.runs.clone();
-                apply_text_edit(
+                let typed_behind_object = insert_after_inline_objects(
                     &mut paragraph.runs,
                     start_offset,
-                    end_offset,
+                    after_objects,
+                    equations_are_objects,
                     &self.text,
                     &zero_width,
                 );
+                let typed_behind_mark = !typed_behind_object
+                    && after_mark
+                    && insert_after_note_references(
+                        &mut paragraph.runs,
+                        start_offset,
+                        &self.text,
+                        &zero_width,
+                    );
+                if !typed_behind_mark && !typed_behind_object {
+                    if after_mark {
+                        paragraph.runs = previous_runs.clone();
+                    }
+                    apply_text_edit(
+                        &mut paragraph.runs,
+                        start_offset,
+                        end_offset,
+                        &self.text,
+                        &zero_width,
+                    );
+                }
                 rebase_comment_anchors_for_edit(
                     paragraph,
                     start_offset,
@@ -1592,6 +1634,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -1628,6 +1671,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1647,6 +1691,7 @@ mod tests {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -1683,6 +1728,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -1708,6 +1754,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),

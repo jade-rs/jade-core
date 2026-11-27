@@ -257,9 +257,19 @@ fn check_step(
 }
 
 fn check_sequence(operations: &[Operation]) {
-    let bytes = package(rich_body(), "");
+    check_sequence_for_body(rich_body(), operations);
+}
+
+fn check_sequence_for_body(body: &str, operations: &[Operation]) {
+    let bytes = package(body, "");
     let mut actual = open_bytes(&bytes);
     let mut reference = open_bytes(&bytes);
+    // As the shell's idle pass leaves them: the node ids in table metadata
+    // come with the round-trip tree, which one edit path would otherwise
+    // build and the other not.
+    for document in [&mut actual, &mut reference] {
+        document.ensure_roundtrip_xml().unwrap();
+    }
     let initial_pixels: Vec<_> = (0..actual.page_count())
         .map(|page| actual.page_pixels(page))
         .collect();
@@ -358,6 +368,48 @@ fn grouped_partial_edits_preserve_redo_after_rejection_and_empty_typing() {
         Operation::Insert(0, 0, "先頭".into(), 1),
         Operation::CompleteLayout,
     ]);
+}
+
+// Reduced from the actual Windows CI failure (seed 61758c6c2447c520...).
+#[test]
+fn pending_pages_are_current_when_a_later_edit_expands_the_viewport() {
+    check_sequence(&[
+        Operation::Replace(5, 0, 0, String::new(), 1),
+        Operation::Replace(2, 0, 10, String::new(), 1),
+        Operation::Replace(4, 0, 0, "日".into(), 2),
+    ]);
+}
+
+fn table_free_body() -> String {
+    // Preserve paragraph text and indices while separating deferred-page
+    // correctness from the neighboring-table safety fallback.
+    let (before, table) = rich_body().split_once("<w:tbl>").unwrap();
+    let (_, after) = table.split_once("</w:tbl>").unwrap();
+    format!("{before}<w:p/><w:p><w:r><w:t>cell 日本語</w:t></w:r></w:p>{after}")
+}
+
+#[test]
+fn pending_pages_without_neighboring_tables_preserve_retained_pixels() {
+    check_sequence_for_body(
+        &table_free_body(),
+        &[
+            Operation::Replace(5, 0, 0, String::new(), 1),
+            Operation::Replace(2, 0, 10, String::new(), 1),
+            Operation::Replace(4, 0, 0, "日".into(), 2),
+        ],
+    );
+}
+
+#[test]
+fn pending_pages_include_earlier_offscreen_text_when_the_viewport_expands() {
+    check_sequence_for_body(
+        &table_free_body(),
+        &[
+            Operation::Replace(5, 0, 0, "pending".into(), 1),
+            Operation::Replace(2, 0, 10, String::new(), 1),
+            Operation::Replace(4, 0, 0, "日".into(), 2),
+        ],
+    );
 }
 
 proptest! {

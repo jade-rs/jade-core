@@ -1,5 +1,5 @@
 //! Capture the native renderer's unaligned glyph origins in PDF points.
-//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables] [--password-file file] [--fonts-directory directory]
+//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables | --painted-table-headers] [--password-file file] [--fonts-directory directory] [--line-details] [--without-formatting-marks]
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_native_render::{
     system_fonts, FontFace, NativeDocument, PdfExportOptions, PdfRenderingMode,
@@ -29,8 +29,18 @@ fn main() {
             assert!(directory.is_dir(), "font directory does not exist");
             directory
         });
+    let line_details = args.iter().any(|arg| arg == "--line-details");
+    args.retain(|arg| arg != "--line-details");
+    let without_formatting_marks = args.iter().any(|arg| arg == "--without-formatting-marks");
+    args.retain(|arg| arg != "--without-formatting-marks");
     let unclipped_tables = args.iter().any(|arg| arg == "--unclipped-tables");
     args.retain(|arg| arg != "--unclipped-tables");
+    let painted_table_headers = args.iter().any(|arg| arg == "--painted-table-headers");
+    args.retain(|arg| arg != "--painted-table-headers");
+    assert!(
+        !(unclipped_tables && painted_table_headers),
+        "choose one table glyph projection"
+    );
     assert!(args.len() >= 3, "document.docx output.json [mac|windows]");
     set_word_layout_platform(if args.get(3).map(String::as_str) == Some("mac") {
         WordLayoutPlatform::Mac
@@ -56,7 +66,11 @@ fn main() {
         input
     };
     let render_input_sha256 = format!("{:x}", Sha256::digest(&bytes));
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // A downloaded CI probe can replay the same repository fonts on the
+    // capture machine. Normal CI/local builds retain their existing root.
+    let root = std::env::var_os("JADE_WORD_ORACLE_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
     let fallback: Vec<_> = [(400, "Regular"), (700, "Bold")]
         .into_iter()
         .map(|(weight, style)| FontFace {
@@ -70,26 +84,34 @@ fn main() {
     let faces = if let Some(directory) = fonts_directory {
         // A replay can use only the fonts embedded in its original Word PDF,
         // independently of which Office fonts the CI host has installed.
+        // Keep implicit Word fallbacks as well as DOCX-named aliases.
         let library = system_fonts::FontLibrary::in_directories(&[directory]);
         let families = system_fonts::word_families(&bytes);
-        let (reference_faces, _) = library.faces_for(families.iter().map(String::as_str));
+        let (reference_faces, _) = library.reference_faces_for(families.iter().map(String::as_str));
         assert!(
             !reference_faces.is_empty(),
-            "no document fonts in reference directory"
+            "no usable fonts in reference directory"
         );
         fallback.into_iter().chain(reference_faces).collect()
     } else {
         system_fonts::word_document_faces(&bytes, &fallback)
     };
     let mut doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+    if without_formatting_marks {
+        doc.set_formatting_marks(false).unwrap();
+    }
     let snapshot = if unclipped_tables {
         doc.capture_full_layout_debug_unclipped_tables().unwrap()
+    } else if painted_table_headers {
+        doc.capture_full_layout_debug_painted_table_headers()
+            .unwrap()
     } else {
         doc.capture_full_layout_debug().unwrap()
     };
     assert!(snapshot.complete, "incomplete glyph capture");
     let mut lines = snapshot.body_lines;
     lines.extend(snapshot.auxiliary_lines.into_iter().map(|entry| entry.line));
+    let detailed_lines = line_details.then(|| serde_json::to_value(&lines).unwrap());
     let mut glyphs = Vec::new();
     for line in lines {
         for fragment in line.fragments {
@@ -106,7 +128,10 @@ fn main() {
             }
         }
     }
-    let result = json!({"input_sha256": input_sha256, "render_input_sha256": render_input_sha256, "password_provided": password_file.is_some(), "page_count": doc.page_count(), "table_glyph_projection": if unclipped_tables {"unclipped"} else {"visible"}, "glyphs": glyphs, "fonts": faces.iter().map(|f| json!({"family": f.family, "path": f.path, "index": f.index, "weight": f.weight, "italic": f.italic})).collect::<Vec<_>>()});
+    let mut result = json!({"input_sha256": input_sha256, "render_input_sha256": render_input_sha256, "password_provided": password_file.is_some(), "page_count": doc.page_count(), "table_glyph_projection": if unclipped_tables {"unclipped"} else if painted_table_headers {"painted-headers"} else {"visible"}, "glyphs": glyphs, "fonts": faces.iter().map(|f| json!({"family": f.family, "path": f.path, "index": f.index, "weight": f.weight, "italic": f.italic})).collect::<Vec<_>>()});
+    if let Some(lines) = detailed_lines {
+        result["line_details"] = lines;
+    }
     std::fs::write(&args[2], serde_json::to_vec_pretty(&result).unwrap()).unwrap();
     if let Some(pdf_path) = args.get(4) {
         let pdf = doc

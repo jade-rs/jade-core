@@ -33,6 +33,7 @@ mod edit_offset;
 pub mod format_image;
 pub mod format_text_box;
 pub mod hyperlink;
+pub mod inline_objects;
 pub mod insert_blank_page;
 pub mod insert_caption;
 pub mod insert_chart;
@@ -44,6 +45,7 @@ pub mod insert_field;
 pub mod insert_footnote;
 pub mod insert_image;
 pub mod insert_index;
+pub mod insert_manual_page_break;
 pub mod insert_ole_object;
 pub mod insert_paragraph_break;
 pub mod insert_positional_tab;
@@ -55,6 +57,7 @@ pub mod insert_text;
 pub mod insert_text_box;
 pub mod insert_toc;
 pub mod merge_table_cells;
+pub mod paragraph_format;
 pub(crate) mod paragraph_property_sync;
 pub(crate) mod paragraph_undo;
 pub mod range_notes;
@@ -102,6 +105,7 @@ pub mod set_typography;
 pub mod set_watermark;
 pub mod snapshot_edit;
 pub mod split_table;
+pub mod table_format;
 mod table_range;
 pub mod table_structure;
 pub(crate) mod text_edit;
@@ -277,7 +281,10 @@ impl Command for TrackedParagraphFormats {
     fn redo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let before = ctx.document.paragraph_formats();
         self.inner.redo(ctx)?;
-        let session = ctx.document.revision_session().cloned().unwrap_or_default();
+        let session = ctx
+            .document
+            .recording_revision_session()
+            .unwrap_or_default();
         self.records = ctx.document.track_paragraph_format_changes(
             before,
             session.author.as_deref(),
@@ -306,18 +313,32 @@ fn apply_tracking_formatting(
 
 /// Runs `step` with formatting edits recorded as tracked changes while the
 /// document has a revision session open.
+/// Builds the round-trip tree a deferred load left out before a command
+/// touches the document: saving patches the tree, so an edit made without it
+/// would reach the model and never the file.
+#[inline]
+fn ensure_roundtrip_xml(ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+    if ctx.document.raw_document.is_some() {
+        return Ok(());
+    }
+    ctx.document
+        .ensure_roundtrip_xml()
+        .map(|_| ())
+        .map_err(|error| CommandError::Custom(error.to_string()))
+}
+
 fn tracking_formatting(
     ctx: &mut CommandContext<'_>,
     step: impl FnOnce(&mut CommandContext<'_>) -> CommandResult<()>,
 ) -> CommandResult<()> {
-    let stamp = ctx
-        .document
-        .revision_session()
-        .map(|session| text_edit::FormatRevisionStamp {
-            author: session.author.clone(),
-            date: session.date.clone(),
-            next_id: ctx.document.revision_id_counter(),
-        });
+    let stamp =
+        ctx.document
+            .recording_revision_session()
+            .map(|session| text_edit::FormatRevisionStamp {
+                author: session.author,
+                date: session.date,
+                next_id: ctx.document.revision_id_counter(),
+            });
     let tracking = stamp.is_some();
     let (result, next_id) = text_edit::with_format_revision(stamp, || step(ctx));
     if let Some(next_id) = next_id.filter(|_| tracking) {
@@ -359,10 +380,8 @@ impl CommandExecutor {
         mut command: Box<dyn Command>,
         ctx: &mut CommandContext<'_>,
     ) -> CommandResult<()> {
+        ensure_roundtrip_xml(ctx)?;
         let before = if command.tracks_formatting() && ctx.document.revision_session().is_some() {
-            ctx.document
-                .ensure_roundtrip_xml()
-                .map_err(|error| CommandError::Custom(error.to_string()))?;
             ctx.document.snapshot_including_package().map(|snapshot| {
                 let paragraphs = ctx.document.formatting_before();
                 (snapshot, paragraphs, *ctx.selection)
@@ -388,7 +407,10 @@ impl CommandExecutor {
             .map(|_| ctx.document.paragraph_formats());
         apply_tracking_formatting(command.as_mut(), ctx)?;
         if let Some(before) = paragraph_formats {
-            let session = ctx.document.revision_session().cloned().unwrap_or_default();
+            let session = ctx
+                .document
+                .recording_revision_session()
+                .unwrap_or_default();
             let records = ctx.document.track_paragraph_format_changes(
                 before,
                 session.author.as_deref(),
@@ -599,6 +621,7 @@ impl CommandExecutor {
             Some(cmd) => cmd,
             None => return Ok(None),
         };
+        ensure_roundtrip_xml(ctx)?;
         let footprint = command.history_render_footprint();
         command.undo(ctx)?;
         self.redo_stack.push(command);
@@ -615,6 +638,7 @@ impl CommandExecutor {
             Some(cmd) => cmd,
             None => return Ok(None),
         };
+        ensure_roundtrip_xml(ctx)?;
         let footprint = command.history_render_footprint();
         tracking_formatting(ctx, |ctx| command.redo(ctx))?;
         if command.should_record_history() {
@@ -680,6 +704,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T181034242Z-a3fff334",
+  "captured_at_utc": "2026-11-17T18:10:34.2452132Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-run-boundary-default-features-compat15",
+      "source": "w18-u-aptos-run-boundaries-input-snapshots\\word-windows-aptos-run-boundary-default-features-compat15.docx",
+      "sha256": "23cd36ae9b441b54055b493da243ff7b9140d87d1deb7c8d6e7be41e73681040",
+      "pdf": "word-windows-aptos-run-boundary-default-features-compat15.pdf",
+      "pdf_sha256": "49034f0d581ab7e1d1e81b5b1eccd37cd3d8ee4984f4d69f97c8bb28df43a11e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-run-boundary-default-features-compat15.page-001.emf",
+          "sha256": "db60a9a9383d47abaffc39b43f8c232b145ae82dce9c70f0cab407c6a58289e6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T074224377Z-af636bd2",
+  "captured_at_utc": "2026-11-17T07:42:24.3816960Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-ms-gothic-size20-cjk-digit-de-implicit-compat15",
+      "source": "w17-k-ms-auto-space-input-snapshots\\word-windows-ms-gothic-size20-cjk-digit-de-implicit-compat15.docx",
+      "sha256": "38eff2b196aeed9e02f9f3c9b32986298478f209d5334fdf9bce599d85155d6d",
+      "pdf": "word-windows-ms-gothic-size20-cjk-digit-de-implicit-compat15.pdf",
+      "pdf_sha256": "7097f1f2999a2ef6978ef91912fa22271f70eecae44a4938783ad1e8b1c64dbb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-gothic-size20-cjk-digit-de-implicit-compat15.page-001.emf",
+          "sha256": "85f9506cf7ec0c5eace31469646fc389cfc79cb6601f3ae111aa3ec573149a79",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

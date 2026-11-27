@@ -8,8 +8,8 @@ use super::{ChartSeries, XmlElement, MAX_CACHE_POINTS};
 
 pub(super) fn open(package: &OpcPackage, part: &str, root: &XmlElement) -> Option<Workbook> {
     let id = root.child("externalData")?.attr("id")?;
-    let xml = package.part_str(&rels_part_name(part)).ok()??;
-    let relationships = parse_relationships(&xml).ok()?;
+    let xml = package.part_text(&rels_part_name(part)).ok()??;
+    let relationships = parse_relationships(xml).ok()?;
     let relationship = relationships.relationship(id)?;
     if relationship.external || !relationship.relationship_type.ends_with("/package") {
         return None;

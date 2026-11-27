@@ -131,6 +131,127 @@ struct NoteNumberingSettingsJs {
     restart: String,
 }
 
+/// Commands that rewrite a footnote or endnote by id, from the notes list
+/// rather than at the caret: the note and its references can sit on any
+/// page, so the edit is dirty from the document start and the caret
+/// paragraph's height says nothing about what moved.
+fn rewrites_notes_by_id(command: &HeadlessCommand) -> bool {
+    matches!(
+        command,
+        HeadlessCommand::UpdateFootnote { .. }
+            | HeadlessCommand::DeleteFootnote { .. }
+            | HeadlessCommand::UpdateEndnote { .. }
+            | HeadlessCommand::DeleteEndnote { .. }
+            | HeadlessCommand::ConvertFootnoteToEndnote { .. }
+            | HeadlessCommand::ConvertEndnoteToFootnote { .. }
+    )
+}
+
+/// Whether a body command batch is dirty from the document start, whatever
+/// the selection: a cover page goes before everything, and a note command
+/// by id can move notes and references on any page.
+fn headless_edit_is_dirty_from_document_start(commands: &[HeadlessCommand]) -> bool {
+    commands.iter().any(|command| {
+        matches!(command, HeadlessCommand::InsertCoverPage { .. }) || rewrites_notes_by_id(command)
+    })
+}
+
+/// Whether a body command reshapes layout beyond the edited paragraph's own
+/// height, so the edit drops the layout from its dirty paragraph and
+/// repaints fully instead of arming fast replay (see the call site).
+fn headless_command_is_structural(command: &HeadlessCommand) -> bool {
+    matches!(
+        command,
+        HeadlessCommand::InsertTable { .. }
+        | HeadlessCommand::InsertTableOfContents { .. }
+        | HeadlessCommand::InsertCaption { .. }
+        | HeadlessCommand::InsertBibliography { .. }
+        | HeadlessCommand::InsertBlankPage { .. }
+        | HeadlessCommand::InsertCoverPage { .. }
+        | HeadlessCommand::InsertField { .. }
+        | HeadlessCommand::InsertEquation { .. }
+        | HeadlessCommand::ReplaceEquation { .. }
+        | HeadlessCommand::InsertDateTimeField { .. }
+        | HeadlessCommand::InsertEnclosedCharacter { .. }
+        | HeadlessCommand::InsertTableFormula { .. }
+        | HeadlessCommand::UpdateTableFormulas
+        | HeadlessCommand::InsertIndex { .. }
+        | HeadlessCommand::UpdateTableOfContents
+        | HeadlessCommand::SetParagraphStyle { .. }
+        | HeadlessCommand::SetCharacterStyle { .. }
+        | HeadlessCommand::SetDropCap { .. }
+        | HeadlessCommand::SetHeaderFooterVariants { .. }
+        | HeadlessCommand::SetHeaderFooterLink { .. }
+        // The Office-parity dialogs: each reflows past the edited
+        // paragraph (pagination, typography, grid snapping, ruby line
+        // height) or reshapes the body (sections, tables).
+        | HeadlessCommand::SetParagraphOptions { .. }
+        | HeadlessCommand::SetParagraphPagination { .. }
+        | HeadlessCommand::SetParagraphTypography { .. }
+        | HeadlessCommand::SetParagraphSnapToGrid { .. }
+        | HeadlessCommand::SetJapaneseTypography { .. }
+        | HeadlessCommand::SetRuby { .. }
+        | HeadlessCommand::SetSectionLayout { .. }
+        | HeadlessCommand::SetHyphenation { .. }
+        | HeadlessCommand::SetTableCellSpacing { .. }
+        | HeadlessCommand::SetTableCellTextDirection { .. }
+        | HeadlessCommand::SetTableIndent { .. }
+        | HeadlessCommand::SetTablePosition { .. }
+        | HeadlessCommand::ConvertTextToTable { .. }
+        | HeadlessCommand::ConvertTableToText { .. }
+        | HeadlessCommand::SortTable { .. }
+        | HeadlessCommand::InsertTableRow { .. }
+        | HeadlessCommand::DeleteTableRow { .. }
+        | HeadlessCommand::InsertTableColumn { .. }
+        | HeadlessCommand::DeleteTableColumn { .. }
+        | HeadlessCommand::DeleteTableCell { .. }
+        | HeadlessCommand::InsertTableCell { .. }
+        | HeadlessCommand::DeleteTable { .. }
+        // Accepting/rejecting revisions rewrites runs across the whole
+        // document (deleted runs vanish, inserted runs stay), reflowing
+        // every paragraph after the change. Treat it as a structural
+        // edit so the full document is re-laid-out and re-snapshotted
+        // rather than fast-replayed from the caret paragraph.
+        | HeadlessCommand::AcceptRevisions { .. }
+        | HeadlessCommand::RejectRevisions { .. }
+        // Page size/orientation/margins change the body box geometry,
+        // so every page must be re-laid-out and re-snapshotted.
+        | HeadlessCommand::SetPageOrientation { .. }
+        | HeadlessCommand::SetPageSize { .. }
+        | HeadlessCommand::SetPageMargins { .. }
+        | HeadlessCommand::SetPageColumns { .. }
+        | HeadlessCommand::SetPageBorders { .. }
+        | HeadlessCommand::SetWatermark { .. }
+        | HeadlessCommand::SetDocumentTheme { .. }
+        | HeadlessCommand::InsertSectionBreak { .. }
+        | HeadlessCommand::SetPageBackgroundColor { .. }
+        // Comment add/update/delete/resolve change comment ranges and
+        // markers within paragraphs; re-lay-out and re-snapshot the
+        // whole document so the highlight bands update everywhere.
+        | HeadlessCommand::AddComment { .. }
+        | HeadlessCommand::UpdateComment { .. }
+        | HeadlessCommand::DeleteComment { .. }
+        | HeadlessCommand::ResolveComment { .. }
+        // Line spacing changes the height of every selected paragraph,
+        // so downstream content reflows — re-lay-out, don't fast-replay
+        // off the focus paragraph's height alone.
+        | HeadlessCommand::SetParagraphLineSpacing { .. }
+        | HeadlessCommand::SetParagraphMetrics { .. }
+        // A pasted line break adds a paragraph after the anchor, and a
+        // replacement across paragraphs removes some; neither shows in
+        // the anchor paragraph's height.
+        | HeadlessCommand::InsertParagraphBreak { .. }
+    ) || rewrites_notes_by_id(command)
+        || matches!(
+            command,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph,
+                end_paragraph,
+                ..
+            } if start_paragraph != end_paragraph
+        )
+}
+
 fn note_kind_is_footnote(kind: &str) -> Result<bool, JsValue> {
     match kind {
         "footnote" => Ok(true),
@@ -230,6 +351,9 @@ struct CanvasDocumentState {
     /// Body caret/selection to restore when the header/footer session closes.
     /// Switching between header/footer stories must keep the original range.
     hf_body_selection: Option<SelectionRange>,
+    /// A single click in the body ends header/footer editing (and places the
+    /// body caret there). Off by default: Word needs a body double-click.
+    hf_exit_on_body_click: bool,
     /// Other end of a header/footer selection (Shift+arrows, drag). A
     /// selection exists when this and the cursor sit on the same segment.
     hf_selection_anchor: Option<HfEditCursor>,
@@ -237,6 +361,9 @@ struct CanvasDocumentState {
     hf_redo_stack: Vec<HfHistoryEntry>,
     hf_history_revision: u64,
     hf_provisional_recording: bool,
+    /// Pages a pass settled that no payload has reported yet
+    /// ([`word_session::KeptPages`]).
+    kept_settled_pages: word_session::KeptPages,
 }
 
 /// Updates the user's live formatting-mark preference. While a clean page
@@ -274,6 +401,73 @@ fn set_page_export_render_mode(
         options.show_crop_marks = true;
     }
     (options.show_formatting_marks, options.show_crop_marks)
+}
+
+/// The part of one page a header/footer edit changed, in page CSS pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct HfDirtyBand {
+    /// 0-based physical page.
+    page: usize,
+    y: f64,
+    height: f64,
+}
+
+/// A header/footer edit's dirty-region inputs taken before its render.
+struct HfDirtyBefore {
+    bands: Vec<HfDirtyBand>,
+    /// The active page's measured header and footer heights.
+    extent: Option<(Option<f64>, Option<f64>)>,
+}
+
+/// Whether two renders measured the same header and footer heights, so the
+/// body between them kept its edges.
+fn same_hf_extent(
+    before: Option<(Option<f64>, Option<f64>)>,
+    after: Option<(Option<f64>, Option<f64>)>,
+) -> bool {
+    let same = |a: Option<f64>, b: Option<f64>| match (a, b) {
+        (Some(a), Some(b)) => (a - b).abs() <= 0.01,
+        (None, None) => true,
+        _ => false,
+    };
+    match (before, after) {
+        (Some((header_a, footer_a)), Some((header_b, footer_b))) => {
+            same(header_a, header_b) && same(footer_a, footer_b)
+        }
+        (None, None) => true,
+        _ => false,
+    }
+}
+
+/// One dirty band per page: the union of the bands before and after the edit,
+/// or the whole page when the edit moved the body.
+fn merge_hf_dirty_bands(
+    before: Vec<HfDirtyBand>,
+    after: Vec<HfDirtyBand>,
+    body_moved: bool,
+    page_height: f64,
+) -> Vec<HfDirtyBand> {
+    let mut bands: Vec<HfDirtyBand> = Vec::new();
+    for band in before.into_iter().chain(after) {
+        let band = if body_moved {
+            HfDirtyBand {
+                y: 0.0,
+                height: page_height,
+                ..band
+            }
+        } else {
+            band
+        };
+        match bands.iter_mut().find(|known| known.page == band.page) {
+            Some(known) => {
+                let bottom = (known.y + known.height).max(band.y + band.height);
+                known.y = known.y.min(band.y);
+                known.height = bottom - known.y;
+            }
+            None => bands.push(band),
+        }
+    }
+    bands
 }
 
 fn command_mutates_header_footer_stories(name: &str) -> bool {
@@ -573,6 +767,25 @@ fn current_field_datetime() -> FieldDateTime {
         minute: now.get_minutes(),
         second: now.get_seconds(),
         weekday: now.get_day(),
+    }
+}
+
+/// The page's local wall clock and its offset from UTC, read from one `Date`
+/// so the two agree across a minute or DST boundary.
+fn current_host_time() -> crate::revision_clock::HostTime {
+    let now = js_sys::Date::new_0();
+    crate::revision_clock::HostTime {
+        local: crate::field_datetime::FieldDateTime {
+            year: now.get_full_year() as i32,
+            month: now.get_month() + 1,
+            day: now.get_date(),
+            hour: now.get_hours(),
+            minute: now.get_minutes(),
+            second: now.get_seconds(),
+            weekday: now.get_day(),
+        },
+        // getTimezoneOffset is minutes *west* of UTC.
+        utc_offset_seconds: -(now.get_timezone_offset() as i64) * 60,
     }
 }
 
@@ -1607,7 +1820,14 @@ impl OffscreenDocumentView {
     /// alive until the edit's render has run.
     #[must_use]
     fn drop_renderer_document_cache(&self) -> RendererDocumentCacheGuard {
-        self.renderer.borrow_mut().drop_document_cache();
+        {
+            let mut renderer = self.renderer.borrow_mut();
+            renderer.drop_document_cache();
+            // The document changes: what its passes draw wrong is new, so
+            // the renderer counts the STYLEREF repaints from here, as the
+            // native host's edits do.
+            renderer.note_style_reference_edit();
+        }
         RendererDocumentCacheGuard {
             renderer: Rc::clone(&self.renderer),
             state: Rc::clone(&self.state),
@@ -1710,6 +1930,9 @@ impl OffscreenDocumentView {
         };
         let anchor_page = anchor_page_index.saturating_add(1).max(1);
         let mut renderer = self.renderer.borrow_mut();
+        // The edit may change the story's height, moving the body area on
+        // pages past the bounded repaint below; the render checks that.
+        renderer.begin_header_footer_edit();
         renderer.set_editing_mode(mode);
         Self::ensure_visible_page_range_for_edit(&mut renderer, lazy_mode, anchor_page);
         if lazy_mode {
@@ -1719,23 +1942,77 @@ impl OffscreenDocumentView {
         renderer.mark_full_repaint();
     }
 
-    fn hf_dirty_regions_to_js(&self, mode: EditingMode) -> JsValue {
+    /// What a header/footer edit's dirty regions need from before its render:
+    /// the story bands as they were painted (a story that shrinks leaves its
+    /// old lines to clear) and the active page's measured story heights.
+    fn hf_dirty_before(&self, mode: EditingMode) -> HfDirtyBefore {
+        HfDirtyBefore {
+            bands: self.hf_dirty_bands(mode),
+            extent: self.hf_active_page_extent(),
+        }
+    }
+
+    /// The active page's measured header and footer heights, which decide
+    /// where its body starts and ends.
+    fn hf_active_page_extent(&self) -> Option<(Option<f64>, Option<f64>)> {
+        let page = self.state.borrow().hf_edit_cursor?.page_index;
+        Some(self.renderer.borrow().header_footer_extent_for_page(page))
+    }
+
+    /// The dirty regions of a header/footer edit, after its render.
+    ///
+    /// The regions are normally the edited story's band, before and after the
+    /// edit. When the edit changed the story's height, the body moved with it
+    /// (Word pushes the body down under a growing header, and up over a
+    /// growing footer), so every page in range is dirty as a whole: a presenter
+    /// that copies only the changed rectangles (WebGPU) otherwise kept the body
+    /// where it was, with the header's new lines painted over its first lines.
+    fn hf_dirty_regions_to_js(&self, mode: EditingMode, before: HfDirtyBefore) -> JsValue {
+        let after = self.hf_dirty_bands(mode);
+        let body_moved = !same_hf_extent(before.extent, self.hf_active_page_extent());
+        let page_height = self.renderer.borrow().page_height_css().max(1.0);
+        let page_width = self.renderer.borrow().page_width().max(1.0);
+        let array = Array::new();
+        for band in merge_hf_dirty_bands(before.bands, after, body_moved, page_height) {
+            let obj = Object::new();
+            let _ = Reflect::set(&obj, &JsValue::from_str("x"), &JsValue::from_f64(0.0));
+            let _ = Reflect::set(&obj, &JsValue::from_str("y"), &JsValue::from_f64(band.y));
+            let _ = Reflect::set(
+                &obj,
+                &JsValue::from_str("width"),
+                &JsValue::from_f64(page_width),
+            );
+            let _ = Reflect::set(
+                &obj,
+                &JsValue::from_str("height"),
+                &JsValue::from_f64(band.height),
+            );
+            let _ = Reflect::set(
+                &obj,
+                &JsValue::from_str("page"),
+                &JsValue::from_f64(band.page as f64),
+            );
+            array.push(&obj);
+        }
+        array.into()
+    }
+
+    /// The edited story's band on each page in range, with the current layout.
+    fn hf_dirty_bands(&self, mode: EditingMode) -> Vec<HfDirtyBand> {
         let state = self.state.borrow();
         let Some(cursor) = state.hf_edit_cursor else {
-            return Array::new().into();
+            return Vec::new();
         };
         drop(state);
 
         let renderer = self.renderer.borrow();
-        let page_width = renderer.page_width().max(1.0);
         let page_height = renderer.page_height_css().max(1.0);
         let page_range = renderer.visible_page_range().clone().unwrap_or_else(|| {
             cursor.page_index.saturating_add(1)..=cursor.page_index.saturating_add(1)
         });
-        let array = Array::new();
+        let mut bands = Vec::new();
         for page_1idx in page_range {
             let page = page_1idx.saturating_sub(1);
-            let obj = Object::new();
             let (y, height) = match mode {
                 EditingMode::Header => (0.0, renderer.header_edit_boundary_for_page(page)),
                 EditingMode::Footer => {
@@ -1754,35 +2031,18 @@ impl OffscreenDocumentView {
                 }
                 EditingMode::Body => (0.0, page_height),
             };
-            let _ = Reflect::set(&obj, &JsValue::from_str("x"), &JsValue::from_f64(0.0));
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("y"),
-                &JsValue::from_f64(y.max(0.0)),
-            );
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("width"),
-                &JsValue::from_f64(page_width),
-            );
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("height"),
-                &JsValue::from_f64(height.max(1.0)),
-            );
-            let _ = Reflect::set(
-                &obj,
-                &JsValue::from_str("page"),
-                &JsValue::from_f64(page as f64),
-            );
-            array.push(&obj);
+            bands.push(HfDirtyBand {
+                page,
+                y: y.max(0.0),
+                height: height.max(1.0),
+            });
         }
-        array.into()
+        bands
     }
 
     async fn finish_hf_edit_result_async(&self, mode: EditingMode) -> Result<JsValue, JsValue> {
         let lazy_mode = self.state.borrow().lazy_mode;
-        let dirty_regions = self.hf_dirty_regions_to_js(mode);
+        let dirty_before = self.hf_dirty_before(mode);
         if lazy_mode {
             let snapshots = self.capture_hf_active_page_after_render().await?;
             self.store_paged_images(snapshots);
@@ -1791,6 +2051,7 @@ impl OffscreenDocumentView {
             let snapshots = self.capture_pages_after_render().await?;
             self.store_paged_images(snapshots);
         }
+        let dirty_regions = self.hf_dirty_regions_to_js(mode, dirty_before);
 
         let result = Object::new();
         Reflect::set(&result, &JsValue::from_str("size"), &self.canvas_size()?)?;
@@ -1860,8 +2121,7 @@ impl OffscreenDocumentView {
         }
         let snapshots = {
             let mut renderer_mut = self.renderer.borrow_mut();
-            let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-            snapshots
+            self.capture_paged_images_unreported(&mut renderer_mut)?
         };
         self.renderer
             .borrow_mut()
@@ -1942,7 +2202,7 @@ impl OffscreenDocumentView {
     async fn capture_pages_after_render(&self) -> Result<Option<Vec<JsValue>>, JsValue> {
         self.wait_for_pending_images().await?;
         let mut renderer_mut = self.renderer.borrow_mut();
-        let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
+        let snapshots = self.capture_paged_images_unreported(&mut renderer_mut)?;
         let metadata = renderer_mut.table_resize_metadata();
         drop(renderer_mut);
         {
@@ -2853,8 +3113,8 @@ impl OffscreenDocumentView {
             ),
         };
         let one_based = zero_based_page.saturating_add(1);
-        let first_page_of_section = zero_based_page == 0
-            || renderer.section_index_for_zero_based_page(zero_based_page - 1) != section_index;
+        let first_page_of_section =
+            renderer.is_first_page_of_section_for_zero_based_page(zero_based_page);
         if title_page && first_page_of_section && first_present {
             HfVariant::First
         } else if word_doc.even_and_odd_headers && one_based.is_multiple_of(2) && even_present {
@@ -2871,6 +3131,10 @@ impl OffscreenDocumentView {
             return EditingMode::Body;
         }
         let page_index = renderer.page_for_y(y);
+        // The blank parity page shows no header or footer to edit.
+        if renderer.is_parity_filler_page_index(page_index) {
+            return EditingMode::Body;
+        }
         let page_height = renderer.page_height_for_page(page_index);
         let local_y = y - renderer.page_top_y(page_index);
         let margin_bottom = renderer.margin_bottom();
@@ -3919,6 +4183,22 @@ impl OffscreenDocumentView {
         Ok(())
     }
 
+    /// Header/footer editing entry also refuses the blank page an
+    /// oddPage/evenPage break inserted: it shows no header or footer.
+    fn validate_hf_edit_page_index(&self, page_index: usize) -> Result<(), JsValue> {
+        self.validate_hf_page_index(page_index)?;
+        if self
+            .renderer
+            .borrow()
+            .is_parity_filler_page_index(page_index)
+        {
+            return Err(JsValue::from_str(&format!(
+                "page index {page_index} is a blank page inserted by a section break and has no header or footer"
+            )));
+        }
+        Ok(())
+    }
+
     fn hf_cursor_at_segment_end(
         &self,
         page_index: usize,
@@ -4330,7 +4610,7 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let mode = Self::parse_hf_role(&role)?;
         let (segment, _) = Self::parse_hf_alignment(&alignment)?;
-        self.validate_hf_page_index(page_index)?;
+        self.validate_hf_edit_page_index(page_index)?;
         let variant = self.variant_for_page_index(page_index, mode == EditingMode::Header);
         let (hf_role, hf_variant) = Self::hf_role_variant(mode, variant)
             .ok_or_else(|| JsValue::from_str("body is not a header/footer editing role"))?;
@@ -4398,7 +4678,7 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let mode = Self::parse_hf_role(&role)?;
         let (segment, hf_alignment) = Self::parse_hf_alignment(&alignment)?;
-        self.validate_hf_page_index(page_index)?;
+        self.validate_hf_edit_page_index(page_index)?;
         let variant = self.variant_for_page_index(page_index, mode == EditingMode::Header);
         let (hf_role, hf_variant) = Self::hf_role_variant(mode, variant)
             .ok_or_else(|| JsValue::from_str("body is not a header/footer editing role"))?;
@@ -5746,7 +6026,7 @@ impl OffscreenDocumentView {
             .map(|cursor| cursor.page_index)
             .unwrap_or(0);
         self.prepare_hf_edit_rerender(mode, anchor_page_index);
-        let dirty_regions = self.hf_dirty_regions_to_js(mode);
+        let dirty_before = self.hf_dirty_before(mode);
         if self.state.borrow().lazy_mode {
             let snapshots = self.capture_hf_active_page_after_render_sync()?;
             self.store_paged_images(snapshots);
@@ -5754,11 +6034,11 @@ impl OffscreenDocumentView {
             self.rerender_document()?;
             let snapshots = {
                 let mut renderer_mut = self.renderer.borrow_mut();
-                let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-                snapshots
+                self.capture_paged_images_unreported(&mut renderer_mut)?
             };
             self.store_paged_images(snapshots);
         }
+        let dirty_regions = self.hf_dirty_regions_to_js(mode, dirty_before);
 
         let result = Object::new();
         Reflect::set(&result, &JsValue::from_str("size"), &self.canvas_size()?)?;
@@ -6048,7 +6328,7 @@ impl OffscreenDocumentView {
     /// Synchronous twin of `finish_hf_edit_result_async` for bindings whose
     /// worker handler does not await (the inline formatting commands).
     fn finish_hf_edit_result_sync(&self, mode: EditingMode) -> Result<JsValue, JsValue> {
-        let dirty_regions = self.hf_dirty_regions_to_js(mode);
+        let dirty_before = self.hf_dirty_before(mode);
         if self.state.borrow().lazy_mode {
             let snapshots = self.capture_hf_active_page_after_render_sync()?;
             self.store_paged_images(snapshots);
@@ -6056,11 +6336,11 @@ impl OffscreenDocumentView {
             self.rerender_document()?;
             let snapshots = {
                 let mut renderer_mut = self.renderer.borrow_mut();
-                let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-                snapshots
+                self.capture_paged_images_unreported(&mut renderer_mut)?
             };
             self.store_paged_images(snapshots);
         }
+        let dirty_regions = self.hf_dirty_regions_to_js(mode, dirty_before);
         let result = Object::new();
         Reflect::set(&result, &JsValue::from_str("size"), &self.canvas_size()?)?;
         Reflect::set(&result, &JsValue::from_str("pages"), &self.paged_images())?;
@@ -6615,7 +6895,18 @@ impl OffscreenDocumentView {
                 if zone == EditingMode::Body {
                     // Word keeps header/footer editing active on a single click
                     // into the document body; a body double-click exits the mode.
-                    return Ok(());
+                    if !self.state.borrow().hf_exit_on_body_click {
+                        return Ok(());
+                    }
+                    // Hosts that opted out of Word's double-click leave the
+                    // story here and let the click place the body caret below.
+                    let selection = self.state.borrow_mut().exit_hf_editing_mode();
+                    {
+                        let mut renderer_mut = self.renderer.borrow_mut();
+                        renderer_mut.set_selection_range(selection);
+                        renderer_mut.set_editing_mode(EditingMode::Body);
+                    }
+                    self.rerender_document()?;
                 } else if zone == current_mode {
                     // Clicking within the same hf zone -> update cursor position.
                     // Variant may change if the user clicked a different page
@@ -7302,10 +7593,12 @@ impl OffscreenDocumentView {
                 resized_widths[state.column_index] = state.current_left_width;
             }
         }
-        Ok(Some(ResizeTableColumnCommand::rendered_columns(
+        let command = ResizeTableColumnCommand::rendered_columns(
             state.table_order_index,
             resized_widths.into_iter().map(Self::px_to_points).collect(),
-        )))
+        )
+        .with_previous_rendered_width(Self::px_to_points(state.initial_column_widths.iter().sum()));
+        Ok(Some(command))
     }
 
     /// The command that applies a row drag's current heights, or `None`
@@ -7346,12 +7639,22 @@ impl OffscreenDocumentView {
     /// Returns whether it recorded a history entry.
     fn apply_table_resize_drag(&self, drag: &PointerDragState) -> Result<bool, JsValue> {
         enum Resize {
-            Column(ResizeTableColumnCommand),
+            Column(Box<ResizeTableColumnCommand>),
             Row(Box<HeadlessCommand>),
         }
         let resize = match drag {
             PointerDragState::ColumnResize(state) => {
-                Self::column_resize_command(state)?.map(Resize::Column)
+                Self::column_resize_command(state)?.map(|command| {
+                    let geometry = self
+                        .renderer
+                        .borrow()
+                        .nested_column_resize_geometry(state.table_order_index);
+                    let command = match geometry {
+                        Some(geometry) => command.with_nested_geometry(geometry),
+                        None => command,
+                    };
+                    Resize::Column(Box::new(command))
+                })
             }
             PointerDragState::RowResize(state) => {
                 Self::row_resize_command(state).map(|command| Resize::Row(Box::new(command)))
@@ -7382,7 +7685,7 @@ impl OffscreenDocumentView {
                 let mut selection_after = state_mut.selection;
                 let mut context = CommandContext::new(&mut word_doc, &mut selection_after);
                 command_executor
-                    .execute(Box::new(command), &mut context)
+                    .execute(command, &mut context)
                     .map(|()| selection_after)
                     .map_err(|err| JsValue::from_str(&err.to_string()))
             }
@@ -7605,8 +7908,7 @@ impl OffscreenDocumentView {
                 }
                 renderer.layout_page_limit().unwrap_or(0).saturating_add(1)
             };
-            self.ensure_layout_through_page_async(next_page, true)
-                .await?;
+            self.extend_layout_for_selection(next_page).await?;
         }
 
         let range = SelectionRange::new(
@@ -7726,7 +8028,7 @@ impl OffscreenDocumentView {
         }
 
         let anchor_paragraph = reanchor
-            .then(|| self.object_anchor_paragraph_for_transform(transform))
+            .then(|| self.object_reanchor_paragraph(target, transform).0)
             .flatten();
         self.renderer.borrow_mut().set_object_transform_preview(
             target,
@@ -7764,9 +8066,12 @@ impl OffscreenDocumentView {
             .borrow()
             .object_selection
             .ok_or_else(|| JsValue::from_str("No object selected"))?;
-        let anchor_paragraph = reanchor
-            .then(|| self.object_anchor_paragraph_for_transform(transform))
-            .flatten();
+        let (anchor_paragraph, kept_for_table) = if reanchor {
+            self.object_reanchor_paragraph(target, transform)
+        } else {
+            (None, false)
+        };
+        let reanchor = reanchor && !kept_for_table;
         let anchor_paragraph_top = if target.kind == FloatingObjectKind::TextBox && reanchor {
             let paragraph_index = anchor_paragraph.unwrap_or(target.paragraph_index);
             self.renderer
@@ -7779,6 +8084,12 @@ impl OffscreenDocumentView {
         let mut command = TransformObjectCommand::new(target, transform);
         if let Some(paragraph_index) = anchor_paragraph {
             command = command.with_anchor_paragraph(paragraph_index);
+        }
+        // An object laid out in a table cell keeps its cell frames.
+        if anchor_paragraph.is_none_or(|paragraph| paragraph == target.paragraph_index) {
+            if let Some(origin) = self.renderer.borrow().cell_float_frame_origin(target) {
+                command = command.with_frame_origin(origin);
+            }
         }
         if let Some(top) = anchor_paragraph_top {
             command = command.with_anchor_paragraph_top(top);
@@ -7854,6 +8165,30 @@ impl OffscreenDocumentView {
         .await
     }
 
+    /// The paragraph a drag re-anchors the object to. An object whose anchor
+    /// is in a table cell, or that would move into one, keeps its anchor:
+    /// re-anchoring there would store body frames for an object Word lays
+    /// out in its cell, and it would jump.
+    ///
+    /// Returns the paragraph, and whether a table cell kept the anchor.
+    fn object_reanchor_paragraph(
+        &self,
+        target: FloatingObjectTarget,
+        transform: FloatingObjectTransform,
+    ) -> (Option<usize>, bool) {
+        let destination = self.object_anchor_paragraph_for_transform(transform);
+        let state = self.state.borrow();
+        let Some(document) = state.word_doc.as_ref() else {
+            return (destination, false);
+        };
+        let anchor = reanchor_outside_tables(target.paragraph_index, destination, |index| {
+            document.paragraph_is_in_table(index)
+        });
+        let kept = document.paragraph_is_in_table(target.paragraph_index)
+            || (destination.is_some() && anchor.is_none());
+        (anchor, kept)
+    }
+
     fn object_anchor_paragraph_for_transform(
         &self,
         transform: FloatingObjectTransform,
@@ -7886,7 +8221,7 @@ impl OffscreenDocumentView {
 
         // See `apply_inline_style_with_scope`.
         let _document_cache = self.drop_renderer_document_cache();
-        let (options, numbering_part, header_lines, footer_lines) = {
+        let (options, numbering_part, header_lines, footer_lines, anchors) = {
             let mut state_mut = self.state.borrow_mut();
             let mut word_doc = state_mut
                 .word_doc
@@ -7936,7 +8271,13 @@ impl OffscreenDocumentView {
             let footer_lines = word_doc.footer_lines.clone();
             state_mut.word_doc = Some(word_doc);
 
-            (options, numbering_part, header_lines, footer_lines)
+            (
+                options,
+                numbering_part,
+                header_lines,
+                footer_lines,
+                [target.paragraph_index, selected_target.paragraph_index],
+            )
         };
 
         {
@@ -7952,6 +8293,9 @@ impl OffscreenDocumentView {
             // left other visible pages to be promoted mid-walk, dropping the
             // lines that had already flowed onto them.
             renderer_mut.mark_full_repaint();
+            // The lazy repaint below stops after the visible window. Layout
+            // and seek snapshots past it must not keep the pre-edit geometry.
+            renderer_mut.invalidate_layout_for_object_edit(&anchors);
             let lazy_mode = self.state.borrow().lazy_mode;
             Self::ensure_visible_page_range_for_edit(&mut renderer_mut, lazy_mode, anchor_page);
             let prev_limit: Option<Option<usize>> = if lazy_mode {
@@ -8565,13 +8909,11 @@ impl OffscreenDocumentView {
 
             // Keep state (e.g. table resize metadata) updated and clear dirty markers.
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js =
+                    Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer_mut)?);
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             dirty_regions_js
@@ -8963,13 +9305,11 @@ impl OffscreenDocumentView {
         let (snapshots, dirty_regions_js) = if lazy_mode {
             self.wait_for_pending_images().await?;
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js =
+                    Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer_mut)?);
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             (None, dirty_regions_js)
@@ -9434,13 +9774,11 @@ impl OffscreenDocumentView {
         let (snapshots, dirty_regions) = if lazy_mode {
             self.wait_for_pending_images().await?;
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js =
+                    Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer_mut)?);
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             (None, dirty_regions_js)
@@ -9540,6 +9878,24 @@ impl OffscreenDocumentView {
         F: Fn(&mut InlineFormattingState),
         G: Fn(SelectionRange) -> Box<dyn Command>,
     {
+        self.apply_inline_style_anchored(update_inline, command_factory, full_document, None)
+    }
+
+    /// [`Self::apply_inline_style_with_scope`] whose repaint keeps the page
+    /// of paragraph `anchor` in view (a lazy view's edit window), rather
+    /// than the first dirty paragraph's: a whole-document command run at
+    /// the caret (a table of contents) does not send the view to page 1.
+    fn apply_inline_style_anchored<F, G>(
+        &self,
+        update_inline: F,
+        command_factory: G,
+        full_document: bool,
+        anchor: Option<usize>,
+    ) -> Result<JsValue, JsValue>
+    where
+        F: Fn(&mut InlineFormattingState),
+        G: Fn(SelectionRange) -> Box<dyn Command>,
+    {
         if self.state.borrow().preview_mode || !self.body_commands_allowed() {
             return Ok(JsValue::NULL);
         }
@@ -9622,7 +9978,7 @@ impl OffscreenDocumentView {
         let anchor_page = {
             let renderer = self.renderer.borrow();
             renderer
-                .cached_paragraph_start_page(dirty_from)
+                .cached_paragraph_start_page(anchor.unwrap_or(dirty_from))
                 .or_else(|| renderer.visible_page_range().as_ref().map(|r| *r.end()))
                 .or_else(|| renderer.layout_page_limit())
                 .unwrap_or(1)
@@ -9701,10 +10057,8 @@ impl OffscreenDocumentView {
         // In lazy mode, skip snapshotting to avoid expensive bitmap generation.
         let skip_snapshots = self.state.borrow().lazy_mode;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else if full_document {
             // Package imports can introduce uncached images. The async caller
@@ -10310,6 +10664,62 @@ impl OffscreenDocumentView {
         renderer: &mut CanvasRenderer,
         defer_snapshots: bool,
     ) -> Result<(Option<Vec<JsValue>>, JsValue), JsValue> {
+        // A pass that drew a NUMPAGES total or a STYLEREF its own end proved
+        // wrong (the first complete pass, an edit that moved the page count
+        // or a heading) draws those pages again, and leaves them dirty for
+        // the payload built below. A pass that drew them right paints
+        // nothing.
+        if !self.state.borrow().options.pageless() {
+            word_session::settle_drawn_pages(renderer)?;
+            // So do the pages earlier unreported passes settled.
+            word_session::report_kept_pages(
+                renderer,
+                &mut self.state.borrow_mut().kept_settled_pages,
+            );
+        }
+        self.capture_settled_paged_images(renderer, defer_snapshots)
+    }
+
+    /// [`Self::capture_paged_images`] for a caller that drops the dirty
+    /// regions: the pages the pass settled are kept, with those kept before,
+    /// for the next payload that is reported. The capture clears the dirty
+    /// tracker, so they are kept outside it.
+    fn capture_paged_images_unreported(
+        &self,
+        renderer: &mut CanvasRenderer,
+    ) -> Result<Option<Vec<JsValue>>, JsValue> {
+        let settled = if self.state.borrow().options.pageless() {
+            word_session::Settled::default()
+        } else {
+            word_session::settle_drawn_pages(renderer)?
+        };
+        let (snapshots, _dirty_regions) = self.capture_settled_paged_images(renderer, false)?;
+        word_session::keep_for_next_payload(
+            &mut self.state.borrow_mut().kept_settled_pages,
+            &settled.pages,
+        );
+        Ok(snapshots)
+    }
+
+    /// [`word_session::take_lazy_payload_dirty_regions`] with the view's
+    /// kept pages.
+    fn lazy_payload_dirty_regions(
+        &self,
+        renderer: &mut CanvasRenderer,
+    ) -> Result<Vec<DirtyRect>, JsValue> {
+        // The set is handed in place, not taken out: settling can fail, and
+        // a bounded pass leaves the pages past its end kept.
+        word_session::take_lazy_payload_dirty_regions(
+            renderer,
+            &mut self.state.borrow_mut().kept_settled_pages,
+        )
+    }
+
+    fn capture_settled_paged_images(
+        &self,
+        renderer: &mut CanvasRenderer,
+        defer_snapshots: bool,
+    ) -> Result<(Option<Vec<JsValue>>, JsValue), JsValue> {
         // Keep table resize metadata in sync for all render paths, including
         // non-lazy snapshot capture. Frontend hit-testing fetches this state
         // asynchronously, so stale values can cause handler-coordinate drift.
@@ -10472,6 +10882,8 @@ impl OffscreenDocumentView {
         options: Option<Options>,
         device_pixel_ratio: f64,
     ) -> Result<OffscreenDocumentView, JsValue> {
+        // Recorded revisions are dated by the page's clock (`w:date`).
+        crate::revision_clock::set_revision_clock(Some(current_host_time));
         let opts = options.unwrap_or_default();
         let host = OffscreenRenderHost::new(canvas, device_pixel_ratio)?;
         let renderer = Rc::new(RefCell::new(CanvasRenderer::with_host(
@@ -10508,11 +10920,13 @@ impl OffscreenDocumentView {
             hf_variant: HfVariant::default(),
             hf_edit_cursor: None,
             hf_body_selection: None,
+            hf_exit_on_body_click: false,
             hf_selection_anchor: None,
             hf_undo_stack: Vec::new(),
             hf_redo_stack: Vec::new(),
             hf_history_revision: 0,
             hf_provisional_recording: false,
+            kept_settled_pages: Default::default(),
         }));
 
         Ok(OffscreenDocumentView {
@@ -10771,6 +11185,7 @@ impl OffscreenDocumentView {
                 let (pending_images, metadata) = {
                     let mut renderer_mut = renderer.borrow_mut();
                     renderer_mut.clear_selection();
+                    renderer_mut.reset_page_totals();
                     renderer_mut.set_style_context(
                         word_doc.styles_part.clone().map(Rc::new),
                         word_doc.loaded_theme_part().map(Rc::new),
@@ -10831,6 +11246,11 @@ impl OffscreenDocumentView {
                                 Some(&word_doc.comments),
                             )
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+                        // A pass that lays the document out whole draws its
+                        // NUMPAGES and STYLEREFs before it knows them; the
+                        // pages are drawn again, as the native host does at
+                        // open. Every page is fetched after this anyway.
+                        word_session::settle_drawn_pages(&mut renderer_mut)?;
                     }
 
                     let metadata = renderer_mut.table_resize_metadata();
@@ -10866,6 +11286,7 @@ impl OffscreenDocumentView {
                     state_mut.inline_formatting = InlineFormattingState::default();
                     state_mut.table_resize = metadata;
                     state_mut.lazy_mode = false;
+                    state_mut.kept_settled_pages.clear();
                 }
                 renderer
                     .borrow_mut()
@@ -10906,6 +11327,7 @@ impl OffscreenDocumentView {
                 let (pending_images, metadata, page_count) = {
                     let mut renderer_mut = renderer.borrow_mut();
                     renderer_mut.clear_selection();
+                    renderer_mut.reset_page_totals();
                     renderer_mut.set_style_context(
                         word_doc.styles_part.clone().map(Rc::new),
                         word_doc.loaded_theme_part().map(Rc::new),
@@ -10963,6 +11385,11 @@ impl OffscreenDocumentView {
                                 Some(&word_doc.comments),
                             )
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+                        // A pass that lays the document out whole draws its
+                        // NUMPAGES and STYLEREFs before it knows them; the
+                        // pages are drawn again, as the native host does at
+                        // open. Every page is fetched after this anyway.
+                        word_session::settle_drawn_pages(&mut renderer_mut)?;
                     }
 
                     let metadata = renderer_mut.table_resize_metadata();
@@ -11005,6 +11432,7 @@ impl OffscreenDocumentView {
                     state_mut.inline_formatting = InlineFormattingState::default();
                     state_mut.table_resize = metadata;
                     state_mut.lazy_mode = true;
+                    state_mut.kept_settled_pages.clear();
                 }
                 renderer
                     .borrow_mut()
@@ -11122,6 +11550,7 @@ impl OffscreenDocumentView {
                 let (pending_images, metadata, page_count, complete) = {
                     let mut renderer_mut = renderer.borrow_mut();
                     renderer_mut.clear_selection();
+                    renderer_mut.reset_page_totals();
                     renderer_mut.set_style_context(
                         word_doc.styles_part.clone().map(Rc::new),
                         word_doc.loaded_theme_part().map(Rc::new),
@@ -11182,6 +11611,11 @@ impl OffscreenDocumentView {
                                 Some(&word_doc.comments),
                             )
                             .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+                        // A pass that lays the document out whole draws its
+                        // NUMPAGES and STYLEREFs before it knows them; the
+                        // pages are drawn again, as the native host does at
+                        // open. Every page is fetched after this anyway.
+                        word_session::settle_drawn_pages(&mut renderer_mut)?;
                     }
 
                     let metadata = renderer_mut.table_resize_metadata();
@@ -11230,6 +11664,7 @@ impl OffscreenDocumentView {
                     state_mut.inline_formatting = InlineFormattingState::default();
                     state_mut.table_resize = metadata;
                     state_mut.lazy_mode = true;
+                    state_mut.kept_settled_pages.clear();
                 }
                 renderer
                     .borrow_mut()
@@ -11283,8 +11718,11 @@ impl OffscreenDocumentView {
     /// page dimensions. The host can call this when the viewport approaches the end
     /// of the currently laid-out pages.
     ///
-    /// Returns { pageCount, pages: [{width,height}, ...], complete } by default.
+    /// Returns { pageCount, pages: [{width,height}, ...], complete, dirtyRegions } by default.
     /// With compact_dimensions, replaces pages with pageDimensionRuns: [[count,width,height], ...].
+    /// `dirtyRegions` (whole pages, as an edit's payload gives them) lists the
+    /// pages drawn before this pass proved their NUMPAGES totals or STYLEREFs
+    /// wrong; those in the visible range are drawn again already.
     #[wasm_bindgen(js_name = ensureLayoutThroughPage)]
     pub fn ensure_layout_through_page(
         &self,
@@ -11299,31 +11737,38 @@ impl OffscreenDocumentView {
         })
     }
 
-    #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
-    async fn ensure_layout_through_page_async(
+    /// Lays the document out, without drawing, through `end_page` (1-based;
+    /// `None`: to its end), resuming from the last valid page-top snapshot
+    /// where one qualifies, and records the table-resize metadata. Returns
+    /// the image loads the pass started when `drain_images` (for the caller
+    /// to wait on; otherwise the next render drains them), the page count,
+    /// whether the layout reached the end of the document, and the pages
+    /// whose drawn NUMPAGES totals or STYLEREFs the pass proved wrong
+    /// ([`word_session::extend_renderer_layout`]), which the main thread
+    /// fetches again. Shared by `ensureLayoutThroughPage` and
+    /// `complete_layout`.
+    pub(super) fn extend_layout(
         &self,
-        end_page: usize,
-        compact_dimensions: bool,
-    ) -> Result<JsValue, JsValue> {
-        let (options, document, numbering_part, header_lines, footer_lines, comments) = {
+        end_page: Option<usize>,
+        drain_images: bool,
+    ) -> Result<
+        (
+            Option<js_sys::Promise>,
+            usize,
+            bool,
+            std::collections::BTreeSet<usize>,
+        ),
+        JsValue,
+    > {
+        let (pending, page_count, complete, table_resize_metadata, settled) = {
+            // The side tables are read where the document keeps them: a
+            // background chunk copies none of them.
             let state = self.state.borrow();
             let word_doc = state
                 .word_doc
                 .as_ref()
                 .ok_or_else(|| JsValue::from_str("No document loaded"))?;
-            (
-                state.options.clone(),
-                word_doc.document.as_ref().map(Rc::clone),
-                word_doc.numbering_part.clone(),
-                word_doc.header_lines.clone(),
-                word_doc.footer_lines.clone(),
-                word_doc.comments.clone(),
-            )
-        };
-
-        let (pending_images, page_count, complete, table_resize_metadata) = {
             let mut renderer_mut = self.renderer.borrow_mut();
-            let previous_visible_range = renderer_mut.visible_page_range();
             // IMPORTANT:
             // Do NOT clear the selection here.
             //
@@ -11331,48 +11776,68 @@ impl OffscreenDocumentView {
             // If we clear selection, subsequent edit commands (e.g. insert_text) can observe
             // `selection_range() == None` and fall back to `TextPosition::default()` (0,0),
             // which manifests as "caret jumps to the beginning while typing".
-            let previous_limit = renderer_mut.layout_page_limit();
-            renderer_mut.set_layout_page_limit(Some(end_page));
-            // Preserve the current viewport window while extending layout in the background.
-            // Expanding the visible range to `1..=end_page` makes later edit renders treat the
-            // whole laid-out prefix as visible, which causes avoidable tail bitmap churn.
-            renderer_mut.set_visible_page_range(previous_visible_range.clone());
-            // Resume the layout-only walk from the last valid page-top snapshot
-            // instead of re-walking every laid-out page; falls back to the
-            // from-start walk when no snapshot qualifies.
-            renderer_mut.prepare_layout_extension_seek(previous_limit, end_page, &options);
+            let settled = word_session::extend_renderer_layout(
+                &mut renderer_mut,
+                end_page,
+                &state.options,
+                word_doc,
+            )?;
 
-            if let Some(document) = document.as_ref() {
-                renderer_mut
-                    .render_layout_with_numbering_rc(
-                        Rc::clone(document),
-                        &options,
-                        numbering_part.as_ref(),
-                        header_lines.as_deref(),
-                        footer_lines.as_deref(),
-                        Some(&comments),
-                    )
-                    .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
-            }
-            // Layout expansion should not leave dirty regions that can slow subsequent renders.
-            renderer_mut.clear_dirty_regions();
-
-            let pending = renderer_mut.drain_pending_image_promises();
+            let pending = if drain_images {
+                renderer_mut.drain_pending_image_promises()
+            } else {
+                None
+            };
             let page_count = renderer_mut.page_count();
             let complete = renderer_mut.last_layout_complete();
             let table_resize_metadata = renderer_mut.table_resize_metadata();
-            (pending, page_count, complete, table_resize_metadata)
+            (
+                pending,
+                page_count,
+                complete,
+                table_resize_metadata,
+                settled.pages,
+            )
         };
+        self.state.borrow_mut().table_resize = table_resize_metadata;
+        Ok((pending, page_count, complete, settled))
+    }
 
+    /// `ensureLayoutThroughPage` for a selection that reaches past the laid-out
+    /// pages: nothing reports its result, so the pages it settles stay dirty
+    /// for the payload of the selection's render.
+    async fn extend_layout_for_selection(&self, end_page: usize) -> Result<(), JsValue> {
+        let (pending_images, _, _, settled) = self.extend_layout(Some(end_page), true)?;
+        word_session::keep_for_next_payload(
+            &mut self.state.borrow_mut().kept_settled_pages,
+            &settled,
+        );
         if let Some(wait) = pending_images {
             if let Err(err) = JsFuture::from(wait).await {
                 web_sys::console::error_1(&err);
             }
         }
+        Ok(())
+    }
 
-        {
-            let mut state_mut = self.state.borrow_mut();
-            state_mut.table_resize = table_resize_metadata;
+    #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
+    async fn ensure_layout_through_page_async(
+        &self,
+        end_page: usize,
+        compact_dimensions: bool,
+    ) -> Result<JsValue, JsValue> {
+        let (pending_images, page_count, complete, mut settled) =
+            self.extend_layout(Some(end_page), true)?;
+        // This result reports what earlier unreported passes settled too.
+        settled.append(&mut word_session::take_reportable_kept_pages(
+            &self.renderer.borrow(),
+            &mut self.state.borrow_mut().kept_settled_pages,
+        ));
+
+        if let Some(wait) = pending_images {
+            if let Err(err) = JsFuture::from(wait).await {
+                web_sys::console::error_1(&err);
+            }
         }
 
         let result = Object::new();
@@ -11386,6 +11851,13 @@ impl OffscreenDocumentView {
             &JsValue::from_str("complete"),
             &JsValue::from_bool(complete),
         )?;
+        // Pages drawn before the pass proved their NUMPAGES totals or
+        // STYLEREFs wrong: the main thread fetches their bitmaps again.
+        let dirty_regions = {
+            let renderer = self.renderer.borrow();
+            Self::dirty_regions_to_js(&word_session::whole_page_rects(&renderer, &settled))
+        };
+        Reflect::set(&result, &JsValue::from_str("dirtyRegions"), &dirty_regions)?;
         // Encode consecutive equal sizes before crossing the WASM/JS boundary.
         // Complete snapshots need no cache invalidation after edits or shrinkage.
         if compact_dimensions {
@@ -11918,13 +12390,11 @@ impl OffscreenDocumentView {
             // See insert_text_async: avoid accumulating in-flight async image draws.
             self.wait_for_pending_images().await?;
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js =
+                    Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer_mut)?);
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             dirty_regions_js
@@ -12631,16 +13101,7 @@ impl OffscreenDocumentView {
         let inserts_cover_at_start = commands
             .iter()
             .any(|command| matches!(command, HeadlessCommand::InsertCoverPage { .. }));
-        let mutates_endnotes_globally = commands.iter().any(|command| {
-            matches!(
-                command,
-                HeadlessCommand::UpdateEndnote { .. }
-                    | HeadlessCommand::DeleteEndnote { .. }
-                    | HeadlessCommand::ConvertFootnoteToEndnote { .. }
-                    | HeadlessCommand::ConvertEndnoteToFootnote { .. }
-            )
-        });
-        if inserts_cover_at_start || mutates_endnotes_globally {
+        if headless_edit_is_dirty_from_document_start(&commands) {
             dirty_from = 0;
         }
         // Structural inserts (e.g. InsertTable) add brand-new body elements
@@ -12675,101 +13136,7 @@ impl OffscreenDocumentView {
         // remove body paragraphs inside the table without touching the
         // anchor paragraph's own height, so they need the same full-repaint
         // treatment as `InsertTable`.
-        let is_structural_insert = commands.iter().any(|command| {
-            matches!(
-                command,
-                HeadlessCommand::InsertTable { .. }
-                | HeadlessCommand::InsertTableOfContents { .. }
-                | HeadlessCommand::InsertCaption { .. }
-                | HeadlessCommand::InsertBibliography { .. }
-                | HeadlessCommand::InsertBlankPage { .. }
-                | HeadlessCommand::InsertCoverPage { .. }
-                | HeadlessCommand::UpdateEndnote { .. }
-                | HeadlessCommand::DeleteEndnote { .. }
-                | HeadlessCommand::ConvertFootnoteToEndnote { .. }
-                | HeadlessCommand::ConvertEndnoteToFootnote { .. }
-                | HeadlessCommand::InsertField { .. }
-                | HeadlessCommand::InsertEquation { .. }
-                | HeadlessCommand::ReplaceEquation { .. }
-                | HeadlessCommand::InsertDateTimeField { .. }
-                | HeadlessCommand::InsertEnclosedCharacter { .. }
-                | HeadlessCommand::InsertTableFormula { .. }
-                | HeadlessCommand::UpdateTableFormulas
-                | HeadlessCommand::InsertIndex { .. }
-                | HeadlessCommand::UpdateTableOfContents
-                | HeadlessCommand::SetParagraphStyle { .. }
-                | HeadlessCommand::SetCharacterStyle { .. }
-                | HeadlessCommand::SetDropCap { .. }
-                | HeadlessCommand::SetHeaderFooterVariants { .. }
-                | HeadlessCommand::SetHeaderFooterLink { .. }
-                // The Office-parity dialogs: each reflows past the edited
-                // paragraph (pagination, typography, grid snapping, ruby line
-                // height) or reshapes the body (sections, tables).
-                | HeadlessCommand::SetParagraphOptions { .. }
-                | HeadlessCommand::SetParagraphPagination { .. }
-                | HeadlessCommand::SetParagraphTypography { .. }
-                | HeadlessCommand::SetParagraphSnapToGrid { .. }
-                | HeadlessCommand::SetJapaneseTypography { .. }
-                | HeadlessCommand::SetRuby { .. }
-                | HeadlessCommand::SetSectionLayout { .. }
-                | HeadlessCommand::SetHyphenation { .. }
-                | HeadlessCommand::SetTableCellSpacing { .. }
-                | HeadlessCommand::SetTableCellTextDirection { .. }
-                | HeadlessCommand::SetTableIndent { .. }
-                | HeadlessCommand::SetTablePosition { .. }
-                | HeadlessCommand::ConvertTextToTable { .. }
-                | HeadlessCommand::ConvertTableToText { .. }
-                | HeadlessCommand::SortTable { .. }
-                | HeadlessCommand::InsertTableRow { .. }
-                | HeadlessCommand::DeleteTableRow { .. }
-                | HeadlessCommand::InsertTableColumn { .. }
-                | HeadlessCommand::DeleteTableColumn { .. }
-                | HeadlessCommand::DeleteTableCell { .. }
-                | HeadlessCommand::InsertTableCell { .. }
-                | HeadlessCommand::DeleteTable { .. }
-                // Accepting/rejecting revisions rewrites runs across the whole
-                // document (deleted runs vanish, inserted runs stay), reflowing
-                // every paragraph after the change. Treat it as a structural
-                // edit so the full document is re-laid-out and re-snapshotted
-                // rather than fast-replayed from the caret paragraph.
-                | HeadlessCommand::AcceptRevisions { .. }
-                | HeadlessCommand::RejectRevisions { .. }
-                // Page size/orientation/margins change the body box geometry,
-                // so every page must be re-laid-out and re-snapshotted.
-                | HeadlessCommand::SetPageOrientation { .. }
-                | HeadlessCommand::SetPageSize { .. }
-                | HeadlessCommand::SetPageMargins { .. }
-                | HeadlessCommand::SetPageColumns { .. }
-                | HeadlessCommand::SetPageBorders { .. }
-                | HeadlessCommand::SetWatermark { .. }
-                | HeadlessCommand::SetDocumentTheme { .. }
-                | HeadlessCommand::InsertSectionBreak { .. }
-                | HeadlessCommand::SetPageBackgroundColor { .. }
-                // Comment add/update/delete/resolve change comment ranges and
-                // markers within paragraphs; re-lay-out and re-snapshot the
-                // whole document so the highlight bands update everywhere.
-                | HeadlessCommand::AddComment { .. }
-                | HeadlessCommand::UpdateComment { .. }
-                | HeadlessCommand::DeleteComment { .. }
-                | HeadlessCommand::ResolveComment { .. }
-                // Line spacing changes the height of every selected paragraph,
-                // so downstream content reflows — re-lay-out, don't fast-replay
-                // off the focus paragraph's height alone.
-                | HeadlessCommand::SetParagraphLineSpacing { .. }
-                | HeadlessCommand::SetParagraphMetrics { .. }
-                // A pasted line break adds a paragraph after the anchor, and a
-                // replacement across paragraphs removes some; neither shows in
-                // the anchor paragraph's height.
-                | HeadlessCommand::InsertParagraphBreak { .. }
-            ) || matches!(
-                command,
-                HeadlessCommand::ReplaceRange {
-                    start_paragraph,
-                    end_paragraph,
-                    ..
-                } if start_paragraph != end_paragraph
-            )
-        });
+        let is_structural_insert = commands.iter().any(headless_command_is_structural);
         // Every list item after the edited paragraphs takes its number from
         // the ones before it, so adding, removing or re-levelling an item
         // renumbers paragraphs whose own content and height are unchanged —
@@ -13252,10 +13619,8 @@ impl OffscreenDocumentView {
         let caret_metrics = renderer.caret_metrics();
         let selection_after = renderer.selection_range();
         let (snapshots, dirty_regions_js) = if lazy_mode {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else {
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
@@ -13457,10 +13822,8 @@ impl OffscreenDocumentView {
         let caret_metrics = renderer.caret_metrics();
         let selection_after = renderer.selection_range();
         let (snapshots, dirty_regions_js) = if lazy_mode {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else {
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
@@ -14889,6 +15252,26 @@ impl OffscreenDocumentView {
         } else {
             outline_max.max(min)
         };
+        if self.document_commands_allowed() {
+            // The layout completed first and the entries labelled with the
+            // number their heading's page displays (`WordToc::build_toc`).
+            let after = self.current_selection().normalized().0.paragraph;
+            self.complete_layout()?;
+            return self.run_word_session_at(
+                "insert_table_of_contents",
+                Some(after),
+                move |session| {
+                    use crate::word::references::toc::WordToc;
+                    session.build_toc(
+                        "insert_table_of_contents",
+                        None,
+                        after,
+                        crate::document::TocOptions::headings(min, max),
+                        "dot".to_string(),
+                    )
+                },
+            );
+        }
         self.apply_paragraph_style_headless(|start, _end| HeadlessCommand::InsertTableOfContents {
             after_paragraph: start,
             outline_min: min,
@@ -14901,6 +15284,15 @@ impl OffscreenDocumentView {
     /// Returns an error when the document has no TOC field.
     #[wasm_bindgen(js_name = updateTableOfContents)]
     pub fn update_table_of_contents(&self) -> Result<JsValue, JsValue> {
+        if self.document_commands_allowed() {
+            // As 目次の更新: the layout completed first, the entries labelled.
+            let caret = self.current_selection().normalized().0.paragraph;
+            self.complete_layout()?;
+            return self.run_word_session_at("update_table_of_contents", Some(caret), |session| {
+                use crate::word::references::toc::WordToc;
+                session.update_toc_at(0, false).map(|_| ())
+            });
+        }
         self.apply_paragraph_style_headless(|_start, _end| HeadlessCommand::UpdateTableOfContents)
     }
 
@@ -16752,10 +17144,8 @@ impl OffscreenDocumentView {
         // incremental dirty regions.
         let skip_snapshots = self.state.borrow().lazy_mode && !merged_paragraphs;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else {
             self.capture_paged_images(&mut renderer)?
@@ -17866,12 +18256,19 @@ impl OffscreenDocumentView {
         let Some(document) = word_doc.document.as_ref() else {
             return to_value(&Vec::<BookmarkInfo>::new()).unwrap_or(JsValue::NULL);
         };
+        let live = word_doc.live_bookmark_markers();
         let bookmarks = document
             .bookmarks
             .iter()
             .map(|bookmark| {
-                let preview = word_doc
-                    .bookmark_surface_index(bookmark.start_paragraph)
+                // Markers between paragraphs are resolved to the paragraphs
+                // they bound, so a range never reaches into the next one; the
+                // markers are read back from the XML, which edits keep current.
+                let start = word_doc.bookmark_start(bookmark, live.as_ref());
+                let end = word_doc.bookmark_end(bookmark, live.as_ref());
+                let preview = start
+                    .map(|position| position.paragraph)
+                    .or_else(|| word_doc.bookmark_surface_index(bookmark.start_paragraph))
                     .and_then(|index| word_doc.paragraph(index))
                     .map(|paragraph| {
                         paragraph
@@ -17886,14 +18283,24 @@ impl OffscreenDocumentView {
                     .collect();
                 BookmarkInfo {
                     name: bookmark.name.clone(),
-                    start_paragraph: word_doc
-                        .bookmark_surface_index(bookmark.start_paragraph)
-                        .unwrap_or(bookmark.start_paragraph),
-                    start_offset: bookmark.start_offset,
-                    end_paragraph: word_doc
-                        .bookmark_surface_index(bookmark.end_paragraph)
-                        .unwrap_or(bookmark.end_paragraph),
-                    end_offset: bookmark.end_offset,
+                    start_paragraph: start.map_or_else(
+                        || {
+                            word_doc
+                                .bookmark_surface_index(bookmark.start_paragraph)
+                                .unwrap_or(bookmark.start_paragraph)
+                        },
+                        |position| position.paragraph,
+                    ),
+                    start_offset: start.map_or(bookmark.start_offset, |position| position.offset),
+                    end_paragraph: end.map_or_else(
+                        || {
+                            word_doc
+                                .bookmark_surface_index(bookmark.end_paragraph)
+                                .unwrap_or(bookmark.end_paragraph)
+                        },
+                        |position| position.paragraph,
+                    ),
+                    end_offset: end.map_or(bookmark.end_offset, |position| position.offset),
                     preview,
                 }
             })
@@ -18369,10 +18776,11 @@ impl OffscreenDocumentView {
     pub fn rerender(&self) -> Result<(), JsValue> {
         let (metadata, snapshots) = {
             let mut renderer = self.renderer.borrow_mut();
+            renderer.note_style_reference_edit();
             renderer.skip_change_detection_once();
             renderer.rerender_with_cached_state()?;
             let metadata = renderer.table_resize_metadata();
-            let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer)?;
+            let snapshots = self.capture_paged_images_unreported(&mut renderer)?;
             (metadata, snapshots)
         };
         self.store_paged_images(snapshots);
@@ -19705,6 +20113,7 @@ impl OffscreenDocumentView {
             let previous_limit = renderer.layout_page_limit();
             let previous_visible = renderer.visible_page_range();
             renderer.replace_render_host(Box::new(host), pageless)?;
+            renderer.note_style_reference_edit();
             renderer.set_band_redraw_paints_band_page_only(lazy);
             if lazy {
                 // A lazy session keeps laying out on demand; an eager one was
@@ -19722,6 +20131,9 @@ impl OffscreenDocumentView {
 
         self.rerender_document()?;
         if lazy {
+            // Every page is fetched after a switch; those it settles are
+            // drawn with the settled values.
+            word_session::settle_drawn_pages(&mut self.renderer.borrow_mut())?;
             return self.switch_renderer_lazy_result();
         }
         let (snapshots, dirty_regions, metadata, caret_metrics) = {
@@ -19902,6 +20314,9 @@ impl OffscreenDocumentView {
         let (metadata, snapshots, caret_metrics) = {
             let mut renderer = self.renderer.borrow_mut();
             prepare(&mut renderer);
+            // A view laid out otherwise may draw STYLEREFs wrong afresh, as
+            // the native host's `repaint_all` notes.
+            renderer.note_style_reference_edit();
             // Display preferences can change pixels without mutating document
             // content. Explicitly dirty the visible pages so the caller gets
             // replacement bitmaps even after prior dirty regions were consumed.
@@ -21172,6 +21587,14 @@ impl OffscreenDocumentView {
     /// `w:del`, and review flows are unusable when every change claims the same
     /// author. Hosts call this once the signed-in user is known; passing `None`
     /// (or a blank string) clears it and falls back to the generic name.
+    /// Whether a single click in the body ends header/footer editing. Word
+    /// keeps the header open until the body is double-clicked; embedding
+    /// hosts whose users expect a click to leave it can turn this on.
+    #[wasm_bindgen(js_name = "setHeaderFooterExitOnBodyClick")]
+    pub fn set_header_footer_exit_on_body_click(&self, enabled: bool) {
+        self.state.borrow_mut().hf_exit_on_body_click = enabled;
+    }
+
     #[wasm_bindgen(js_name = "setAuthorName")]
     pub fn set_author_name(&self, name: Option<String>) {
         let mut state_mut = self.state.borrow_mut();
@@ -21496,10 +21919,8 @@ impl OffscreenDocumentView {
         let caret_metrics = renderer.caret_metrics();
         let selection_after = renderer.selection_range();
         let (snapshots, dirty_regions_js) = if lazy_mode {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else {
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
@@ -21804,10 +22225,8 @@ impl OffscreenDocumentView {
         let selection_after = renderer.selection_range();
         let skip_snapshots = lazy_mode;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else {
             self.capture_paged_images(&mut renderer)?
@@ -21988,10 +22407,8 @@ impl OffscreenDocumentView {
         let selection_after = renderer.selection_range();
         let skip_snapshots = lazy_mode;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js =
+                Self::dirty_regions_to_js(&self.lazy_payload_dirty_regions(&mut renderer)?);
             (None, dirty_regions_js)
         } else {
             self.capture_paged_images(&mut renderer)?
@@ -22298,6 +22715,10 @@ impl OffscreenDocumentView {
     }
 
     /// Clears all dirty regions.
+    ///
+    /// Pages a pass settled that no payload has reported yet are not dirty
+    /// regions: they are kept outside the tracker, and stay kept, for the
+    /// next payload that is reported. `getDirtyRegions` does not list them.
     #[wasm_bindgen(js_name = clearDirtyRegions)]
     pub fn clear_dirty_regions(&self) {
         let renderer = self.renderer.borrow();
@@ -22441,10 +22862,88 @@ impl OffscreenDocumentView {
     }
 }
 
+/// `destination`, unless it or the object's `source` anchor paragraph is in
+/// a table cell: such an object keeps its anchor (and its cell frames).
+fn reanchor_outside_tables(
+    source: usize,
+    destination: Option<usize>,
+    in_table: impl Fn(usize) -> bool,
+) -> Option<usize> {
+    destination.filter(|&destination| !in_table(source) && !in_table(destination))
+}
+
 include!("crdt_live_view.rs");
 
 #[cfg(test)]
 mod tests {
+    /// The host decisions for a note command by id: it is dirty from the
+    /// document start and structural (the layout is dropped and fully
+    /// repainted, never fast-replayed off the caret paragraph's height).
+    /// Deleting a footnote from the notes list with fast replay armed left
+    /// later pages stale.
+    #[test]
+    fn note_commands_by_id_are_dirty_from_the_document_start() {
+        use jade_docx_headless_api::HeadlessCommand;
+        for command in [
+            HeadlessCommand::UpdateFootnote {
+                footnote_id: "2".into(),
+                text: "text".into(),
+            },
+            HeadlessCommand::DeleteFootnote {
+                footnote_id: "2".into(),
+            },
+            HeadlessCommand::UpdateEndnote {
+                endnote_id: "2".into(),
+                text: "text".into(),
+            },
+            HeadlessCommand::DeleteEndnote {
+                endnote_id: "2".into(),
+            },
+            HeadlessCommand::ConvertFootnoteToEndnote {
+                footnote_id: "2".into(),
+            },
+            HeadlessCommand::ConvertEndnoteToFootnote {
+                endnote_id: "2".into(),
+            },
+        ] {
+            assert!(super::rewrites_notes_by_id(&command), "{command:?}");
+            assert!(
+                super::headless_edit_is_dirty_from_document_start(std::slice::from_ref(&command)),
+                "{command:?}"
+            );
+            assert!(
+                super::headless_command_is_structural(&command),
+                "{command:?}"
+            );
+        }
+        let typing = HeadlessCommand::InsertText {
+            paragraph: 3,
+            offset: 0,
+            text: "a".into(),
+        };
+        assert!(!super::rewrites_notes_by_id(&typing));
+        assert!(!super::headless_edit_is_dirty_from_document_start(
+            std::slice::from_ref(&typing)
+        ));
+        assert!(!super::headless_command_is_structural(&typing));
+    }
+
+    /// A drag keeps a cell object's anchor, and does not move a body object
+    /// into a cell: either would store body frames for a cell layout.
+    #[test]
+    fn drags_do_not_reanchor_into_out_of_or_within_table_cells() {
+        // Paragraphs 2 and 3 are in table cells.
+        let in_table = |index: usize| matches!(index, 2 | 3);
+        assert_eq!(
+            super::reanchor_outside_tables(0, Some(1), in_table),
+            Some(1)
+        );
+        assert_eq!(super::reanchor_outside_tables(0, None, in_table), None);
+        assert_eq!(super::reanchor_outside_tables(0, Some(2), in_table), None);
+        assert_eq!(super::reanchor_outside_tables(2, Some(0), in_table), None);
+        assert_eq!(super::reanchor_outside_tables(2, Some(3), in_table), None);
+    }
+
     /// No Markup and Original drop one side of each revision from layout, so
     /// a selection's display offsets have to skip those runs before they can
     /// be compared with revision offsets. A boundary next to a hidden run
@@ -22653,6 +23152,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -22764,6 +23264,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -23071,6 +23572,57 @@ mod tests {
     fn bidi_visual_column_resize_reverses_physical_pointer_delta() {
         assert_eq!(column_resize_delta(18.0, false), 18.0);
         assert_eq!(column_resize_delta(18.0, true), -18.0);
+    }
+
+    #[test]
+    fn a_header_edit_that_moves_the_body_dirties_whole_pages() {
+        use super::{merge_hf_dirty_bands, HfDirtyBand};
+        let band = |page, y, height| HfDirtyBand { page, y, height };
+        let before = vec![band(0, 0.0, 120.0), band(1, 0.0, 120.0)];
+        let after = vec![band(0, 0.0, 140.0), band(1, 0.0, 140.0)];
+
+        // Same height: the old and new header bands, nothing below them.
+        assert_eq!(
+            merge_hf_dirty_bands(before.clone(), after.clone(), false, 1123.0),
+            vec![band(0, 0.0, 140.0), band(1, 0.0, 140.0)],
+        );
+        // The header grew into the body: the body moved on every page.
+        assert_eq!(
+            merge_hf_dirty_bands(before, after, true, 1123.0),
+            vec![band(0, 0.0, 1123.0), band(1, 0.0, 1123.0)],
+        );
+        // A footer band keeps the lowest top and the lowest bottom of the two.
+        assert_eq!(
+            merge_hf_dirty_bands(
+                vec![band(0, 1000.0, 123.0)],
+                vec![band(0, 980.0, 143.0)],
+                false,
+                1123.0
+            ),
+            vec![band(0, 980.0, 143.0)],
+        );
+    }
+
+    #[test]
+    fn header_footer_extent_changes_are_body_moves() {
+        use super::same_hf_extent;
+        assert!(same_hf_extent(
+            Some((Some(120.0), None)),
+            Some((Some(120.004), None))
+        ));
+        assert!(!same_hf_extent(
+            Some((Some(120.0), None)),
+            Some((Some(138.0), None))
+        ));
+        assert!(!same_hf_extent(
+            Some((None, None)),
+            Some((Some(18.0), None))
+        ));
+        assert!(!same_hf_extent(
+            Some((None, Some(30.0))),
+            Some((None, Some(48.0)))
+        ));
+        assert!(same_hf_extent(None, None));
     }
 
     #[test]

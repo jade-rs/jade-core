@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T204201374Z-f405280f",
+  "captured_at_utc": "2026-11-15T20:42:01.3857799Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-script-fallback-arial-hang-ja-compat15",
+      "docx_sha256": "0b689a4ceee289664f3ff107f64e1ecbb019bd4294c029fbd5040451198b4966",
+      "pdf_sha256": "4c673ec8b9fb68b881f4a9b26576fc4d018324a7d197ac2f885d0c3fac56d49f",
+      "pdf_file": "word-windows-edge-script-fallback-arial-hang-ja-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-script-fallback-arial-hang-ja-compat15.page-001.emf",
+          "sha256": "b87975d1fb4ec97219bcbc1d787f3ab57ef7739452144d9a33afd803225a4ed8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          95.75678290667203,
+          122.39709236031928
+        ],
+        [
+          1,
+          "글",
+          107.75637976214472,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          122.75587583148557,
+          122.39709236031928
+        ],
+        [
+          1,
+          "A",
+          133.43551703285627,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          144.11515823422695,
+          122.39709236031928
+        ],
+        [
+          1,
+          "글",
+          156.11475508969963,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          171.1142511590405,
+          122.39709236031928
+        ],
+        [
+          1,
+          "A",
+          181.79389236041118,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          192.47353356178186,
+          122.39709236031928
+        ],
+        [
+          1,
+          "글",
+          204.35313444869985,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          219.35263051804068,
+          122.39709236031928
+        ]
+      ]
+    }
+  ]
+}

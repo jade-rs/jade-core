@@ -1,0 +1,74 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261116T103725470Z-9c75b5b7",
+  "captured_at_utc": "2026-11-16T10:37:25.4740366Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-cjk-cell-yu-ideographic-gap-size25p5-regular-compat15",
+      "docx_sha256": "b635be43e44c457210a44deec06afec757c9e01ab130a1110bc26981879f013a",
+      "pdf_sha256": "9a08c691a740cc3d658c0eb7e8c13618381c7107352b4b81b34feb1cb8ecbf07",
+      "pdf_file": "word-windows-cjk-cell-yu-ideographic-gap-size25p5-regular-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-yu-ideographic-gap-size25p5-regular-compat15.page-001.emf",
+          "sha256": "2eb44152de2e74f42773c99596656fd018e43e0638fd93c448c8ea974a42a495",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.08214393710311,
+          135.2367873432155
+        ],
+        [
+          1,
+          "本",
+          365.64921378893257,
+          135.2367873432155
+        ],
+        [
+          1,
+          "日",
+          391.08985485334136,
+          135.2367873432155
+        ],
+        [
+          1,
+          "本",
+          671.6569247051708,
+          135.2367873432155
+        ],
+        [
+          1,
+          "日",
+          697.0975657695797,
+          135.2367873432155
+        ],
+        [
+          1,
+          "本",
+          977.664635621409,
+          135.2367873432155
+        ]
+      ]
+    }
+  ]
+}

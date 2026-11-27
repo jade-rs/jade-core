@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T155406166Z-8bff07a4",
+  "captured_at_utc": "2026-11-15T15:54:06.1701518Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bolditalic-balance0-compat15",
+      "docx_sha256": "a7bcd562f1ea6091929c2cf841a64d4e4d5d91a65714bb7e571acc878fcac6f0",
+      "pdf_sha256": "a3c491e487f7d2599911f5299763248cbf148386df9dea153a787d3a4c67df3f",
+      "pdf_file": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bolditalic-balance0-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bolditalic-balance0-compat15.page-001.emf",
+          "sha256": "0e9e337ec2b1b1a52d7f31f9e5d21ab6c1d0dfccbb3fc5bb8138f8d741f45031",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          125.87700969213228
+        ],
+        [
+          1,
+          "g",
+          99.59665390042329,
+          125.87700969213228
+        ],
+        [
+          1,
+          "日",
+          118.79600886917959,
+          125.87700969213228
+        ],
+        [
+          1,
+          "本",
+          142.91519854867968,
+          125.87700969213228
+        ],
+        [
+          1,
+          "語",
+          167.03438822817978,
+          125.87700969213228
+        ],
+        [
+          1,
+          "A",
+          196.43340052408786,
+          125.87700969213228
+        ],
+        [
+          1,
+          "B",
+          210.95291271920982,
+          125.87700969213228
+        ],
+        [
+          1,
+          "C",
+          224.39246119733923,
+          125.87700969213228
+        ],
+        [
+          1,
+          "A",
+          236.8720419270308,
+          125.87700969213228
+        ],
+        [
+          1,
+          "B",
+          251.39155412215277,
+          125.87700969213228
+        ],
+        [
+          1,
+          "C",
+          264.8311026002822,
+          125.87700969213228
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          161.39616590649942
+        ]
+      ]
+    }
+  ]
+}

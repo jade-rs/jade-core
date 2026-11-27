@@ -1,0 +1,718 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T050224844Z-1dc893e5",
+  "captured_at_utc": "2026-11-20T05:02:24.8798063Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-y-pdf-context-off-on-regular-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-on-regular-s15-m14.docx",
+      "sha256": "32c4a5e2371c8570fdb00822154b25142f104fd45b8385339c57555c4602f588",
+      "pdf": "word-windows-y-pdf-context-off-on-regular-s15-m14.pdf",
+      "pdf_sha256": "b241c9edd7a81addfffc8babf0495787bc851e1e0731d5a447b9136ef18261a9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-on-regular-s15-m14.xps",
+      "xps_sha256": "ba94556bb6136ec54cfe0c6a5665e58457d365331b6805140d74398659558596",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-on-regular-s15-m14.page-001.emf",
+          "sha256": "1983ed2bbf66e456908ba5d3288e64e7e9c7d5615325cba1c5d8de90cb088667",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-regular-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-regular-s15-m14.docx",
+      "sha256": "bbbc20cff4ee8610cc734779d0d7ba5afa2abd2fee338afadb60b96c0928ded5",
+      "pdf": "word-windows-y-pdf-context-on-off-regular-s15-m14.pdf",
+      "pdf_sha256": "149c32d680544742a2dca8be912bc4c429adc6af3e034bdb80e944c966c0f439",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-regular-s15-m14.xps",
+      "xps_sha256": "bbffa383b15a54540802ceac07f26b1f1e37a14667e36701cfeb0bafb4c020ce",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-regular-s15-m14.page-001.emf",
+          "sha256": "857ef022391578fd6399bab64ac449c52dc6e675a3d481fc1fd899c8df131f93",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-regular-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-regular-s15-m14.docx",
+      "sha256": "43f901bcfad436a6805224bc3901d03146474d562d0bf2b0840f7e0925ca5514",
+      "pdf": "word-windows-y-pdf-context-on-regular-s15-m14.pdf",
+      "pdf_sha256": "cbcb3dad3fae1390f899404a22d7449c4a39aeb586093c6e474f5272dc1d9037",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-regular-s15-m14.xps",
+      "xps_sha256": "d29582392bf91a756d94f765d4f793e87fcaa08d7119c543fb1f650314e17d0e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-regular-s15-m14.page-001.emf",
+          "sha256": "9dace98b11a691be5beb5f3fb5afbcb10af7b0062715169f6024004a877e6382",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-regular-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-regular-s15-m14.docx",
+      "sha256": "88bd8ae0ef2c927269d845e5bf5fdb440489420c592fc08a118c73ed4afd5c98",
+      "pdf": "word-windows-y-pdf-context-off-regular-s15-m14.pdf",
+      "pdf_sha256": "23f838881fe5ca78028aa1157c44e8886b5fb40475c95a680edb8a5b8bec3fe5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-regular-s15-m14.xps",
+      "xps_sha256": "ccea7c6401c19d971e27b8c8917b73a64819dd98d1d7066734438ad2ecd45dd0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-regular-s15-m14.page-001.emf",
+          "sha256": "a22a71a77829a28f0c09e18c610946e02d74b8129dd78035210312900cc70736",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-on-regular-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-on-regular-s15-m14.docx",
+      "sha256": "53bf453ca7f2db837aab7aa7b457f4114df130fb6bc43cd10daa3293ac6f3405",
+      "pdf": "word-windows-y-pdf-context-on-on-regular-s15-m14.pdf",
+      "pdf_sha256": "62b84e2b40e8b689666882eb4343b88900e1fc8288af25ff5079b4c6f0a9ed78",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-on-regular-s15-m14.xps",
+      "xps_sha256": "df09dd254db719ce2c89136bdbc74e9f6bbfa199911d463c10c808ac9cf6deaf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-on-regular-s15-m14.page-001.emf",
+          "sha256": "305f1393c9f7422e7e55a991e38354c97f57c779b8bc293709c56d5222ff7f2e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-on-regular-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-on-regular-s15-m14.docx",
+      "sha256": "54e2cd8a4ad671d7439927e8b9efb93c80959c5ed7412245a4649615a0d7998e",
+      "pdf": "word-windows-y-pdf-context-on-off-on-regular-s15-m14.pdf",
+      "pdf_sha256": "791f91656cbb58993cfae08bb444327032fba23dba083a99fb0d941fab6eb176",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-on-regular-s15-m14.xps",
+      "xps_sha256": "f795e67d953199fd6cbcfad1dcdfdee111e110c92226b750d09911c33ddbbbe2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-on-regular-s15-m14.page-001.emf",
+          "sha256": "7cbdff31c231ed095b29a4ed56952c920012c59cda83d92d8e86c0c65d8df041",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-on-regular-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-on-regular-s15-m15.docx",
+      "sha256": "8333fecf1b5ee686b0deb2da95fb212773662a89ad4fa8ebd545a027b2d3e759",
+      "pdf": "word-windows-y-pdf-context-off-on-regular-s15-m15.pdf",
+      "pdf_sha256": "32410d241b53fe02293fcddb9f179a869a506ddaa8ba8adfad948fd29fbcf707",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-on-regular-s15-m15.xps",
+      "xps_sha256": "7a55e153345b7f16abcb1cdc251ffaba1fbf74c80f0d5408f7d3458e47a4ceb4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-on-regular-s15-m15.page-001.emf",
+          "sha256": "1983ed2bbf66e456908ba5d3288e64e7e9c7d5615325cba1c5d8de90cb088667",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-regular-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-regular-s15-m15.docx",
+      "sha256": "520613a03f20fe636ffceb5c7d4e2fc97f446fd85fa4f2047ada9e8ffe759577",
+      "pdf": "word-windows-y-pdf-context-on-off-regular-s15-m15.pdf",
+      "pdf_sha256": "785d1fdae8c73143621c485a450db07528f35bfaacb9ae6c2c742b78dff2eb17",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-regular-s15-m15.xps",
+      "xps_sha256": "1b53c0d73120cd385f347cac61161b8a120b3367b99921f5c64626e56c69383f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-regular-s15-m15.page-001.emf",
+          "sha256": "857ef022391578fd6399bab64ac449c52dc6e675a3d481fc1fd899c8df131f93",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-regular-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-regular-s15-m15.docx",
+      "sha256": "e4773739797cacce1b1bcbf26a0a0a0cec0a809077e220fbe604523d38019851",
+      "pdf": "word-windows-y-pdf-context-on-regular-s15-m15.pdf",
+      "pdf_sha256": "e03fe5fe2706cf3301ade18c6c66f015e15fcd5f8304d5ea15233ecfb96f76fb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-regular-s15-m15.xps",
+      "xps_sha256": "09612eb2139b9bce725de91d1f5cbfd1cd62c132526a564774148d4ad61202d6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-regular-s15-m15.page-001.emf",
+          "sha256": "9dace98b11a691be5beb5f3fb5afbcb10af7b0062715169f6024004a877e6382",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-regular-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-regular-s15-m15.docx",
+      "sha256": "1da5614da786564fcb80ea99825f5866cfbbbf069f366cd1c776dedc5db24367",
+      "pdf": "word-windows-y-pdf-context-off-regular-s15-m15.pdf",
+      "pdf_sha256": "9d1417831f69ee380b55a3dcdbe5f219c73ee36128ef4ff83f3dd47d50c0b60f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-regular-s15-m15.xps",
+      "xps_sha256": "bd650935b6d74179b61e242ce096f42eaa112863939f66776f12e755e755d6a1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-regular-s15-m15.page-001.emf",
+          "sha256": "1ff2d4c45a2daa098ceb836823374343f6577516f4be5f51aa7b4414534476fa",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-on-regular-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-on-regular-s15-m15.docx",
+      "sha256": "e0e81e16d43e8e06e84ab2a56216401b9dfec74af0f03553d182b9aaa07a2783",
+      "pdf": "word-windows-y-pdf-context-on-on-regular-s15-m15.pdf",
+      "pdf_sha256": "7aa7a0a51c27e18b91fea2f2cfe87bd099879721de57be64ad2e9e89bd6a0974",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-on-regular-s15-m15.xps",
+      "xps_sha256": "be5c898544e123beafd5f6570da3446946c54333576a2851921ac8b4b925446b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-on-regular-s15-m15.page-001.emf",
+          "sha256": "305f1393c9f7422e7e55a991e38354c97f57c779b8bc293709c56d5222ff7f2e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-on-regular-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-on-regular-s15-m15.docx",
+      "sha256": "b55a4bdc11f46440ca6b6a7a9fba8f034baded67bb24c6a01bcf9b081ef5f203",
+      "pdf": "word-windows-y-pdf-context-on-off-on-regular-s15-m15.pdf",
+      "pdf_sha256": "de45e066f45816704883322bd29d63f39633c4b24595ad7a2b19e28d0e39ebd8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-on-regular-s15-m15.xps",
+      "xps_sha256": "1069da058413f4b669a9b404397872ab101461f843ae9551786c17538c0da20b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-on-regular-s15-m15.page-001.emf",
+          "sha256": "7cbdff31c231ed095b29a4ed56952c920012c59cda83d92d8e86c0c65d8df041",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-on-bold-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-on-bold-s15-m14.docx",
+      "sha256": "9af3c8133a70ce9388d3fa437fb5760dbab492cc6ade4fdc226531a683a54000",
+      "pdf": "word-windows-y-pdf-context-off-on-bold-s15-m14.pdf",
+      "pdf_sha256": "1c586af57fc29feaec047d6db81533d585ce95bd241bb0348b6d87542515dd31",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-on-bold-s15-m14.xps",
+      "xps_sha256": "26b4ea199e4646d411360dfc29b721d0ee3f2e2c5e4243e3d3831c572dcd720b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-on-bold-s15-m14.page-001.emf",
+          "sha256": "afec14d8b404ec8d619b26a4d34162380c4a58a8cdeb735ce68c4231f1c8b4b0",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-bold-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-bold-s15-m14.docx",
+      "sha256": "00de3cd89657299f6717ce953e363b6799c6201ca2e119e5e2ebd4030f18567b",
+      "pdf": "word-windows-y-pdf-context-on-off-bold-s15-m14.pdf",
+      "pdf_sha256": "34a8c626b1497abba1de2087e0aeb25e0f5ee7b6839689e0d7cc36b1eac05be6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-bold-s15-m14.xps",
+      "xps_sha256": "9a75db3a7ea201046bd764dcf5eb809576e699ad841800e073d33f1bdf96b581",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-bold-s15-m14.page-001.emf",
+          "sha256": "ef0a8898d9e5d14b95831c0e08734d8206825a8ed4de4a02834c13b4cc0bfc13",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-bold-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-bold-s15-m14.docx",
+      "sha256": "15be1e85aa4cac3294db35db3480542b52f93a963519295ef44c685ce8942d7b",
+      "pdf": "word-windows-y-pdf-context-on-bold-s15-m14.pdf",
+      "pdf_sha256": "53eab906732790fe8f548c44c2c8ac4c9975945f344aee114f4068705b0d9957",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-bold-s15-m14.xps",
+      "xps_sha256": "1e3f9540b875e54ac9d37eee02f9d0156ac38cde595373bfa122f60bd07fcab3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-bold-s15-m14.page-001.emf",
+          "sha256": "1df9b6d1ffebb5f0ed841bc5d8d277d548e66f09fe86d9101e0fbaf89101d261",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-bold-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-bold-s15-m14.docx",
+      "sha256": "16caec859d3aee14062f3f2fa804063c3927205ed3c516fb61b64a4f724c72ae",
+      "pdf": "word-windows-y-pdf-context-off-bold-s15-m14.pdf",
+      "pdf_sha256": "fa80400679cdc4b29a990051de6443563a6e8fdf5e7edebfdfcc9f543f40bbdf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-bold-s15-m14.xps",
+      "xps_sha256": "f17d1adf86796ccad8ea0cc87bdb429eccda614583917de559b509936992f8a2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-bold-s15-m14.page-001.emf",
+          "sha256": "772ff3d405f0436d492a384021f83b6a53efef76ae858f59fe00def7d6afebd4",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-on-bold-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-on-bold-s15-m14.docx",
+      "sha256": "08eaf7d72f3e3ad39924edff13dce92b99ff4b6a4d53613eddeb88bfec358b11",
+      "pdf": "word-windows-y-pdf-context-on-on-bold-s15-m14.pdf",
+      "pdf_sha256": "fbdbce831f72f9e53093ee4eecf65ea8e526170861b860362d9406572b7ddaca",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-on-bold-s15-m14.xps",
+      "xps_sha256": "9fc48794f5c7c7778756f0124de87684f0d17c1f27ff180677e2d151cfdbd875",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-on-bold-s15-m14.page-001.emf",
+          "sha256": "b3cd469666876a17ddb0a8f7f39207c17beb3a197345ad0183e4a5e0d55580c3",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-on-bold-s15-m14",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-on-bold-s15-m14.docx",
+      "sha256": "799e3220435af3455cb5d244818ebb04c386070a6d809d5c3a214ee744fe2a25",
+      "pdf": "word-windows-y-pdf-context-on-off-on-bold-s15-m14.pdf",
+      "pdf_sha256": "d54b1a6bb12b98d95c23797135c2bb12cb04549a5428aaf7e57f1b8aa1bd5a13",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-on-bold-s15-m14.xps",
+      "xps_sha256": "9fe1f435db4b76da9d8c2147f21c09346515ee1dfbb9d0fd20e5c702ef150228",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-on-bold-s15-m14.page-001.emf",
+          "sha256": "50f2fe391d32e69620db34ce691becf80ce966706c447d0558fcf39bdc18105e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-on-bold-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-on-bold-s15-m15.docx",
+      "sha256": "fdeac6abfdcdd5132e7f27965b71485b83edd1db85e64f9fe3dfd35b77e6ab0e",
+      "pdf": "word-windows-y-pdf-context-off-on-bold-s15-m15.pdf",
+      "pdf_sha256": "c63b054291dd335bfafd116ae6e2a97976741b764661fbf78c1a4ff092acae54",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-on-bold-s15-m15.xps",
+      "xps_sha256": "d84d6974095f5d625119314e269848936fd9bc84173c768e2395031df59bee5c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-on-bold-s15-m15.page-001.emf",
+          "sha256": "afec14d8b404ec8d619b26a4d34162380c4a58a8cdeb735ce68c4231f1c8b4b0",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-bold-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-bold-s15-m15.docx",
+      "sha256": "87324066979bc477e491e9a96aaecee3390e034e715fb5bced737bea0ada43ea",
+      "pdf": "word-windows-y-pdf-context-on-off-bold-s15-m15.pdf",
+      "pdf_sha256": "157677d7ac2df2eae9f3cc8c2dad98d3281f175f24486925548c19bd86712baa",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-bold-s15-m15.xps",
+      "xps_sha256": "4f20004d004e97c50ab003ca68bbbe9ac5bd00fa17d3d2cbc942ab5e7720e12b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-bold-s15-m15.page-001.emf",
+          "sha256": "ef0a8898d9e5d14b95831c0e08734d8206825a8ed4de4a02834c13b4cc0bfc13",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-bold-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-bold-s15-m15.docx",
+      "sha256": "25a856e054fe15a85962416693137412689048f3f694f72714ab2934886b197a",
+      "pdf": "word-windows-y-pdf-context-on-bold-s15-m15.pdf",
+      "pdf_sha256": "bb634bd4e4551302c729093652704170f3dbb723eff84d563ac9acd868bb2827",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-bold-s15-m15.xps",
+      "xps_sha256": "665e0421b424f5257212f9c06f80088977c385b937b6c9f2db5ba4f705ef13f8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-bold-s15-m15.page-001.emf",
+          "sha256": "1df9b6d1ffebb5f0ed841bc5d8d277d548e66f09fe86d9101e0fbaf89101d261",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-off-bold-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-off-bold-s15-m15.docx",
+      "sha256": "ff90e1ac70bb60fe24c68350675e202339a8346501607fa750923e6145b9ef86",
+      "pdf": "word-windows-y-pdf-context-off-bold-s15-m15.pdf",
+      "pdf_sha256": "fc655a6446dccd3d692dbb55418f9d96c5316fbb6d44de8932b829d6d5bad493",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-off-bold-s15-m15.xps",
+      "xps_sha256": "c6b7eb786fa7904a95da9c6e9db884eab83f5e0a0d4eafd7a124174766477cd2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-off-bold-s15-m15.page-001.emf",
+          "sha256": "97ac4337428332e6295aa9ded0acca584d661208749437905f84cfad2200fc35",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-on-bold-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-on-bold-s15-m15.docx",
+      "sha256": "b2bd3ca374e34c4fdc2cf9fb4fa61218475ee3d32dcee4900428cfcce4b98d1f",
+      "pdf": "word-windows-y-pdf-context-on-on-bold-s15-m15.pdf",
+      "pdf_sha256": "8f273909c0886b967917947a2f5b7c84eac8c086dc3b734cfa1f82ee89a5cabe",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-on-bold-s15-m15.xps",
+      "xps_sha256": "81487d60086e41bcfec5a4e74a96f40ff8ff2770044457a415eae91d88339f7d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-on-bold-s15-m15.page-001.emf",
+          "sha256": "b3cd469666876a17ddb0a8f7f39207c17beb3a197345ad0183e4a5e0d55580c3",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-y-pdf-context-on-off-on-bold-s15-m15",
+      "source": "tmp\\w20-y-pdf-context-inputs\\word-windows-y-pdf-context-on-off-on-bold-s15-m15.docx",
+      "sha256": "01761532ac82f6448ec9d2a5da12d4add7a2dbaabeaab1ebb8b89c8c8248679d",
+      "pdf": "word-windows-y-pdf-context-on-off-on-bold-s15-m15.pdf",
+      "pdf_sha256": "1059ae342a7ae69228d0152320c7f6d950cbf17a2e928b8fe619d3cbf9bf8893",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-y-pdf-context-on-off-on-bold-s15-m15.xps",
+      "xps_sha256": "4a7a291e4bae7ee6d23f8ebd0b9b01f6ccea670a03b7fa8d25dbb5a4f0f04032",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-y-pdf-context-on-off-on-bold-s15-m15.page-001.emf",
+          "sha256": "50f2fe391d32e69620db34ce691becf80ce966706c447d0558fcf39bdc18105e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

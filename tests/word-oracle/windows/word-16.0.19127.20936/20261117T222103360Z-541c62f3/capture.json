@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T222103360Z-541c62f3",
+  "captured_at_utc": "2026-11-17T22:21:03.3635697Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-minimum-line-arial-latin-uniform12-min12-compat15",
+      "source": "w18-t-minimum-line-metrics-input-snapshots\\word-windows-minimum-line-arial-latin-uniform12-min12-compat15.docx",
+      "sha256": "19eaa1cad731f19707fe187c1e020be1fe4f50335201950094e8583561c0e3f0",
+      "pdf": "word-windows-minimum-line-arial-latin-uniform12-min12-compat15.pdf",
+      "pdf_sha256": "93559ee384b46c428eb5c83734debbc6164cf37f602ed9b3938e15e590205aa5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-minimum-line-arial-latin-uniform12-min12-compat15.page-001.emf",
+          "sha256": "6e92998e7a76bfc09cb430e8677f87f6a68b22abafbeaf550746a19b0ae7ad55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

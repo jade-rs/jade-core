@@ -1,0 +1,3350 @@
+[
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m14-manual-w3000",
+    "source_sha256": "2413f20fda7d5f01a147ce781b140d922318d61beca9233e776817b3e362b57f",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/5B6B43DD-1A3C-2D89-CF23-2812916E2F52.odttf",
+        "bytes": 55860,
+        "sha256": "ad732c3427cd3bbfdeac6ebe76db7576a10ad5b3f59738fa5ba5d670ec8e2071"
+      },
+      {
+        "file": "Resources/69262F38-4E31-14BE-7A15-CB353D4EE635.odttf",
+        "bytes": 188388,
+        "sha256": "854aa22e7ef739b2a8f1836873a0c036c536f9b863e9d9cf282885463e45f1bb"
+      },
+      {
+        "file": "Resources/7F52545D-1754-40DC-0F7B-C245B460F229.odttf",
+        "bytes": 54888,
+        "sha256": "13e48c08d08f28d35c9b28d94d0b638dec764469a1dc59d3b4f7289d6d1708ce"
+      },
+      {
+        "file": "Resources/351C1E6A-26A2-3B6A-7662-D9180D208C44.odttf",
+        "bytes": 533676,
+        "sha256": "d9c8ca6377865d6181d1a60d14f01af094c1d1a680faff5d406706ea9ef3722b"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m14-manual-w3000",
+    "source_sha256": "5b7d32e8a81bdc3a69097397f1f74bad7be85d1f6aad611a35fc7ac26808f23a",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/14EE5F92-2891-2FB7-877C-0136C415164E.odttf",
+        "bytes": 55860,
+        "sha256": "c25cfd5c6da92404cd6de2c3d867a98e9cb2903870d1b62c03311c0b51839775"
+      },
+      {
+        "file": "Resources/26A369BE-674D-0A74-0050-0717DE4CC354.odttf",
+        "bytes": 188388,
+        "sha256": "aeb93d259e327c4739df3e339a6744c80d9c1a48e72d224f9fe9e735fb58ea40"
+      },
+      {
+        "file": "Resources/25D42246-43D6-68FB-7C50-D75720006B24.odttf",
+        "bytes": 54888,
+        "sha256": "ec957bce79323bcf4b32cca22eef152633bd90197d7210d22ea64627a7d1c429"
+      },
+      {
+        "file": "Resources/37F41786-5C58-454C-8112-633330159C48.odttf",
+        "bytes": 533676,
+        "sha256": "b447cca8c7d5115b8b73ab462d7153a6f1b64424404b418d3d34f83109234cad"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m14-manual-w3000",
+    "source_sha256": "6269165f335e1cdddae711edbb654747ba8def61decce533cf9c2dcd47614a6e",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/35EE67BF-62C7-0BFF-415F-2B1E0E07762C.odttf",
+        "bytes": 55860,
+        "sha256": "736d05539bffb592dd26ff8c9cb3d5d19632b1b2b3776084c5605a9e1d69ae76"
+      },
+      {
+        "file": "Resources/04736937-74F5-78BE-AB59-7A6DF65BB869.odttf",
+        "bytes": 188388,
+        "sha256": "2cce3ec6091c3133c6f750da6bdf3f2464806950277eb4d21044fcc3c94caa1d"
+      },
+      {
+        "file": "Resources/5CDD7004-2BC9-008D-D777-A842D85B4F40.odttf",
+        "bytes": 54888,
+        "sha256": "b7a934abbe2b270d59f27ccf07882a282a8593909993b7c4b8ffa9940e12a73b"
+      },
+      {
+        "file": "Resources/621B6C00-46F4-6ADE-F24F-AE15466F0905.odttf",
+        "bytes": 533676,
+        "sha256": "9af328e6a8c7f77403f97b5f62e2ec0f7b653f2018e5d2b5d33c812c8854b00f"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m14-manual-w8504",
+    "source_sha256": "3d45d913b448739572d6238a5e1ce29dd8ab5c3bea9eea048fd5d34e198e21c0",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/4CB9701E-33B7-6A3D-5A1E-696CB52E525F.odttf",
+        "bytes": 55860,
+        "sha256": "3420f62bc1863b38b1470860dd40d518bc0dff87adb53da4c20d3dcf512a9b65"
+      },
+      {
+        "file": "Resources/7A07302A-79F2-699C-8A74-700D617F9376.odttf",
+        "bytes": 188388,
+        "sha256": "141025ea9f33ad2d8ed375c176f5873e6ba936e4f55d59a8e2cda08a6f7d4c32"
+      },
+      {
+        "file": "Resources/4B80611F-7F01-7A85-123C-8F3857273777.odttf",
+        "bytes": 54888,
+        "sha256": "c6cdfae8de399ef213ddd9d58abc68a4c3519399baa0e8233343d3314c652b2e"
+      },
+      {
+        "file": "Resources/143B181F-121B-55CF-E956-68223279F117.odttf",
+        "bytes": 533676,
+        "sha256": "2e04f74d6d78f14a168732a7bef9f27876ef2cad90159724d58d3a4930261418"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m14-manual-w8504",
+    "source_sha256": "bd45a7ec67d31fd2ced00df60e47d684b78525c2ad4d6b12dd9365c5b165c667",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/189C777D-41AA-24B0-BA16-3B0E0A22150E.odttf",
+        "bytes": 55860,
+        "sha256": "a7b0d5c186d7542f27ffaa4abcc8f0f71f86d61089b72ca7019607621a2b7426"
+      },
+      {
+        "file": "Resources/40D8503D-2C01-4D0F-F835-F17B1E39BC60.odttf",
+        "bytes": 188388,
+        "sha256": "11dda1f5896a2fa0f40c5897db1189991532f11d79c067ba824e33c30e4bbfb7"
+      },
+      {
+        "file": "Resources/4C33671F-246D-74D0-246A-9D410114DC54.odttf",
+        "bytes": 54888,
+        "sha256": "1c3b4a5ab4769d4fb3b6b41aca62cdab88632be0735c213d651cdb3fbbb3c0b9"
+      },
+      {
+        "file": "Resources/1CE362E6-00D0-24D1-2679-106CC470C002.odttf",
+        "bytes": 533676,
+        "sha256": "4389f9399dac5e68f0b281fb147ff086b97102a08f3eb1cbdde0872301b6eaf8"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m14-manual-w8504",
+    "source_sha256": "0f1aea07eabc3f58ee379a3bdac0aee90d371b2f3b67756f62d2b43569abd846",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/647F7EDD-4F9D-5F23-1A0F-0D305F15D83C.odttf",
+        "bytes": 55860,
+        "sha256": "515628704ef02deb359762dd07688317a94bdc2512cc39882e5d1793423d368e"
+      },
+      {
+        "file": "Resources/07A97051-5E0F-3082-6677-716ADC72E44A.odttf",
+        "bytes": 188388,
+        "sha256": "2e018ff032d9345c33ff8a34c64283ea13141bec5ef5ec3089aa6d70b6448b39"
+      },
+      {
+        "file": "Resources/4CE66D1F-49D9-6F1B-3618-AB4AAB008232.odttf",
+        "bytes": 54888,
+        "sha256": "5d64110826c5882c5843561ddb4ff3150f0a1e50942b4066a9a20fdfc2932aaa"
+      },
+      {
+        "file": "Resources/258A2DAD-6F84-73D2-621B-B83556688E6D.odttf",
+        "bytes": 533676,
+        "sha256": "8171c704ce88ecf11ca88ca248bf01f25b54d1416c7df34ed373fc4c4dfcfcc5"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000",
+    "source_sha256": "4fa15519463d61412e9e2d2f142c0adbfff8793fb1a4a6d84324dffd900e36e4",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/1AD105D7-6A53-37AC-7226-5E76CD0F154E.odttf",
+        "bytes": 55728,
+        "sha256": "f7f55e9861da3e125666e85efc4b162a14ef0428c9f0a1e20e8447217720c488"
+      },
+      {
+        "file": "Resources/36F740F0-2206-0EA0-F33F-4905452D8401.odttf",
+        "bytes": 188388,
+        "sha256": "ceb6ce35e4d5d909322c02d269706f92db1dafe2b56a4b2a2965e48f2cc8b54a"
+      },
+      {
+        "file": "Resources/166C43A1-1194-48B6-F05F-14012153BA3E.odttf",
+        "bytes": 533676,
+        "sha256": "80fbb98827b505ad2e7c34fdadb241c49a53ba7eaa047fdfc74674c8f368a4f3"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000",
+    "source_sha256": "d079f4d198ae8bd9256fbad5ed7c22e8f5a5b3062a8e11ff03df1026c3eec031",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/70EA0D05-618C-702A-7442-1B32C34C5D28.odttf",
+        "bytes": 55728,
+        "sha256": "5191d96ce581fb0133afb794417fe6e237f55ba8e812e9623dbd7caba976185c"
+      },
+      {
+        "file": "Resources/6605198A-5CBF-6F7E-2E70-472AB152C573.odttf",
+        "bytes": 188388,
+        "sha256": "2e660b67db97e03e80f39200001cd52346cc862951d2243a5ddacb8cedcc857b"
+      },
+      {
+        "file": "Resources/5F852644-4BBB-609B-2171-0C7F05505C01.odttf",
+        "bytes": 533676,
+        "sha256": "d18dcb7fd1e04c1350e7f259d65dc17f2fb84093d8d37aaaba5014da60da5bf3"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000",
+    "source_sha256": "108032589b38562ad51fe20198e63103c47e027b67471a413767200be66511c3",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/077513CC-1FBF-68BD-2355-0103AB048E70.odttf",
+        "bytes": 55728,
+        "sha256": "6bf4d522fc8d412b41448617885719446aa20dc44f8aa3b5421709eff6f54771"
+      },
+      {
+        "file": "Resources/15956230-29F5-4ADB-0D51-FA3A1722C36E.odttf",
+        "bytes": 188388,
+        "sha256": "7ff262e23d5a6aece484107660b2d35a02fc8af1f5cb7abe5077fd55f55a8b2e"
+      },
+      {
+        "file": "Resources/297770A6-210B-7BEB-626F-E66D0E782C57.odttf",
+        "bytes": 533676,
+        "sha256": "453ece82c5603a1dcd4eb9aa09c656bd7577352291b48409f0e7e3a6019aaaef"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504",
+    "source_sha256": "98a79d1dc73955085b5c901c3e799990bff943f16eab2b466884c18363bbd6d9",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/68AA19F8-0E32-1F71-2102-FA0225012D52.odttf",
+        "bytes": 55728,
+        "sha256": "7fd0f32605e4b6663fb011bfb7730139d5177273006dafe056ac97defd924e78"
+      },
+      {
+        "file": "Resources/2DE5536A-1252-1E21-5D51-E06D2507977A.odttf",
+        "bytes": 188388,
+        "sha256": "c36e668e98e0479611f758fd58650ee20c8e6eb23fcb395fc28b5b4e87afa45a"
+      },
+      {
+        "file": "Resources/3CA77F6B-263F-383F-D33D-8C42765B2525.odttf",
+        "bytes": 533676,
+        "sha256": "46361d4c1e951c491d63503fcd034c6f0b56f6770a428a1e0fc04e5f5e6b26c6"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504",
+    "source_sha256": "030cea5fa7225c398ec562a051f3ddfb33acc625637ddda76d5c8637644a6141",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/1EBE1F5A-162A-124F-0F6D-F24BD30BBF78.odttf",
+        "bytes": 55728,
+        "sha256": "74b2ecd9717ce36f752330edea7b9e5b669382788fe29e346b0bde8e000768ca"
+      },
+      {
+        "file": "Resources/173025BD-1E82-66BD-EA5F-76798A6D5A1F.odttf",
+        "bytes": 188388,
+        "sha256": "adcaad60b682ff3830ad7053c43e60c38f12aa47780692e046279c0936dac749"
+      },
+      {
+        "file": "Resources/617B2F34-7013-3332-923F-E871770A4550.odttf",
+        "bytes": 533676,
+        "sha256": "ad23627b4a480408a3d06c1a2e0b0e2f9d143a07458a2e43cddef6a9552d420d"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504",
+    "source_sha256": "93a522bfee207c44d746d630708cd077cedc685556e67335f6c701fa66d4915a",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/749824F0-7AA5-6523-A75C-560A09595D68.odttf",
+        "bytes": 55728,
+        "sha256": "7edda9962ba6a7539290e71320fd4f45a0c3b2a3a2de00f1c6350147666809a2"
+      },
+      {
+        "file": "Resources/003A000A-2173-3219-2656-300FF13EBD7F.odttf",
+        "bytes": 188388,
+        "sha256": "a70a886cdb9e70ee14792533360221a95897b777c92964bbeeeccb8b8c2c0347"
+      },
+      {
+        "file": "Resources/05E36B1D-2C52-6C70-C90A-D368E563CE31.odttf",
+        "bytes": 533676,
+        "sha256": "717c9a0d5c0b963cebbc6a81928fbe072f801b8954db3857085bbe751c20a331"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m15-manual-w3000",
+    "source_sha256": "28c5d98d88933a2cb03c014f36b4051e4a6d7333aa8fb41ade8f6c62f412b9d2",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/20752A84-1958-59F7-F423-6339161A6A63.odttf",
+        "bytes": 55860,
+        "sha256": "c7f81f61eac2503f2d0ae7835ec6333b7ad2bfcdd9d84e00c686633ca59922b8"
+      },
+      {
+        "file": "Resources/014919D7-24F8-7D4A-E675-4964A839671C.odttf",
+        "bytes": 188388,
+        "sha256": "57a7b1641b8721ad10e8288ca1b2ecc63c446b473aa1fcc3d412aa0d29d374f2"
+      },
+      {
+        "file": "Resources/62523E44-616A-49C9-6929-4523AD02F177.odttf",
+        "bytes": 54888,
+        "sha256": "0878e5dd351eeacc7eace789c0d3672d8facb70708c13362fef01538bc3f6d59"
+      },
+      {
+        "file": "Resources/16562E5E-12DF-3D62-3065-B620861A6018.odttf",
+        "bytes": 533676,
+        "sha256": "df6c4a7d5c714fa439d48a5d79a9255583431dd89e41b2cfe04661309fdbbbeb"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m15-manual-w3000",
+    "source_sha256": "0b3afa73b09275c0c1789ee8d30c3bde2c06b36832bf9ff4b86602cc226e2cf7",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/56892FE6-2151-4CD5-E20E-5B02C424FC09.odttf",
+        "bytes": 55860,
+        "sha256": "1530e4d77410dccce37b6d039fc5c8b481aafbfc999d18f681ed1c906a2c39aa"
+      },
+      {
+        "file": "Resources/6A946C2A-3127-45E5-7404-DE6F0D202941.odttf",
+        "bytes": 188388,
+        "sha256": "3b7298f573b87be06ecb820f2fc19624753c8cb9f36e17027a2ad61357becfbc"
+      },
+      {
+        "file": "Resources/07266E0D-2B3E-44BC-282B-A052AE311123.odttf",
+        "bytes": 54888,
+        "sha256": "4402dcced7f3dc01dcae60cb4df85699cc972c428a55347ea74af4b4be20f64d"
+      },
+      {
+        "file": "Resources/4C0C3676-48AF-5485-F63D-3764656DFA32.odttf",
+        "bytes": 533676,
+        "sha256": "a64b366486d9aee17d25edc7a02512b25043f5a24f53ec27e2f4431b62ea55b0"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m15-manual-w3000",
+    "source_sha256": "626cd3142bdbcbe1aec7bc05b08ee291417af6c33ae5d728ebaa1bc7b814b664",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6CD63513-4CC6-5FBF-2775-E755EB6C8267.odttf",
+        "bytes": 55860,
+        "sha256": "c64156d225243370c792d575578bd2726eb1afd155418cbbb70a2659378f6ac9"
+      },
+      {
+        "file": "Resources/54213683-4696-0BC0-542B-4F716F1B4A2A.odttf",
+        "bytes": 188388,
+        "sha256": "cf80f470aeecd07d91d207a810a1d65becf6a150d48969ec776e4f8f90b66977"
+      },
+      {
+        "file": "Resources/2C6711B6-02A6-0164-6F63-6D3A4136C817.odttf",
+        "bytes": 54888,
+        "sha256": "a6d1a8c8ebac2e14bfeda219ea7f30c4958c8be30b7bcbbd2c0feff788965718"
+      },
+      {
+        "file": "Resources/4E952DDD-4AB5-65ED-2D26-A82DB4048824.odttf",
+        "bytes": 533676,
+        "sha256": "a3dcb181c56c93b9e91a3134fd12da3e62bcbebf7d01c6c706c8a2399960072d"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m15-manual-w8504",
+    "source_sha256": "776d04d0204b1f1ea1b9e2e8bc60b75d304f143939beaf0dd2d0ae892c86ccf0",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/03233A41-783C-72A8-6C5B-732913350845.odttf",
+        "bytes": 55860,
+        "sha256": "997b057f8a4b49b43c09fb2e40548e2206476bf7687fc5d66031755f8f8b731d"
+      },
+      {
+        "file": "Resources/3DAD00DD-5C04-519B-3352-BF72D1166B13.odttf",
+        "bytes": 188388,
+        "sha256": "98f85f6dd7ccc5e8728a40faef6bc6821d9ffe21f96d0c13ac4286f42e452a6b"
+      },
+      {
+        "file": "Resources/51A8355F-5A0E-3E0C-B61B-3A22D53A7E0C.odttf",
+        "bytes": 54888,
+        "sha256": "f78ecce372e8ef88be793f63577f3e88a2dd4f924b9791275945447a8158bf50"
+      },
+      {
+        "file": "Resources/511E2544-4CBC-7754-640E-1877041C1616.odttf",
+        "bytes": 533676,
+        "sha256": "c89bbc3f7b9e3695bb131e794b48fef0e64cf7c276d77b075be007fcccf3aaa9"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m15-manual-w8504",
+    "source_sha256": "092e54944faf470b8e13dce04e8a24615e0541e0ec37569ded57d9c84695b3cf",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/041E40A2-4332-0951-140D-D81E1474B36F.odttf",
+        "bytes": 55860,
+        "sha256": "63ed15d44a459bc15def2b838a61e99a743f47a44588b7bb6ab9915514202da4"
+      },
+      {
+        "file": "Resources/55BB7A10-3B23-27A3-313A-CA2FE266E15A.odttf",
+        "bytes": 188388,
+        "sha256": "7f3d4d7c85db911970f47bb119cff37d04948b0bd17d7ac88c24ade0f6d483ab"
+      },
+      {
+        "file": "Resources/646C5044-51AD-38AB-9F33-6F3EAB48E110.odttf",
+        "bytes": 54888,
+        "sha256": "280bfcb9c14c5fb9d9210feaac74046a02979aa5b62fb804588ab9d251237932"
+      },
+      {
+        "file": "Resources/304C0EB4-5EFE-2A67-E54B-AD7D3C01CB58.odttf",
+        "bytes": 533676,
+        "sha256": "553b8ca01adab2c487dba225f96ec0effb500365dc2bb234bb0d5621cc83f8a5"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m15-manual-w8504",
+    "source_sha256": "9942554de93f2c1a76731e3a0d7f24dfc4a7b41cbbc77e7413b8ae0602e24ffd",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "cdced2bff286cd156e8dcf1e0007e94b44d2da5d0c740d566b293551fc8500bb",
+        "bytes": 20788,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 19,
+        "name": "BCDHEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/04DA456B-7B6A-3A50-5112-E4165543B32F.odttf",
+        "bytes": 55860,
+        "sha256": "c712de2c5693275d34dbd6688164551b6bb61f7307e7eb16b2acfc44b6701141"
+      },
+      {
+        "file": "Resources/27C674F6-627A-6828-2F68-925DEF627910.odttf",
+        "bytes": 188388,
+        "sha256": "40e69facbd5a46b753a2fcd864a26fb9e7d8ce4590911617051875bc010cdb0b"
+      },
+      {
+        "file": "Resources/527F446F-4B65-54A2-8D05-97530B332B34.odttf",
+        "bytes": 54888,
+        "sha256": "912e922286bd1f6ff97078eeb8da305576a65d115f111b78fb44058460fdd010"
+      },
+      {
+        "file": "Resources/77AF1DC7-4CAF-70B4-067A-9C22262DD24A.odttf",
+        "bytes": 533676,
+        "sha256": "9430e8880d426dcbbebc8243fd0808adde243329133ad3093a090d295282d77e"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000",
+    "source_sha256": "52400d06aee929f9b914e757ad984f39e4d04741c87794bea6664b8d3ebb5057",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/255D4A67-1025-4B43-381C-5B041E55BE38.odttf",
+        "bytes": 55728,
+        "sha256": "c0c08cc287d89c9680b30b0d2f24af40e1b4d8b5b7adda82df2e0cfcd9e484d1"
+      },
+      {
+        "file": "Resources/798F77D6-0092-2B6E-DC7D-8015FE49B201.odttf",
+        "bytes": 188388,
+        "sha256": "9f9c94d4af0de7847c70af42584d892131fbaa6341a8f8c954f54e42abcadc3f"
+      },
+      {
+        "file": "Resources/402544BA-3788-2EE4-F320-4D30D847DE0D.odttf",
+        "bytes": 533676,
+        "sha256": "1cbf9ac22c9a638cc8c96505db32be6679854a1745583b926377c12e086586c6"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000",
+    "source_sha256": "c30ccee05ff17d407c9c8bebb48b4f5041df0d25ffe2e56f83d5aea1dbeb70d6",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/3BAA4F95-3B9A-5E2D-7D02-E857451D4516.odttf",
+        "bytes": 55728,
+        "sha256": "44e63689d8370651a828ff80edd5f8ce090025f3db1e39e07961e026a1ba30d4"
+      },
+      {
+        "file": "Resources/631C4230-1600-7149-BB24-F0166045D36A.odttf",
+        "bytes": 188388,
+        "sha256": "d94fe28b5a4b90bae1553ac4b91193dfa72d6f53004e81c8ef31730d40ba6780"
+      },
+      {
+        "file": "Resources/65666864-0EF0-6B8C-3A59-1A186C4C9502.odttf",
+        "bytes": 533676,
+        "sha256": "e03591edf5b0ca98b275d1118d0727a3a6b53626fcb83ea7e4301d80fc20b242"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000",
+    "source_sha256": "9fc54cdd08ac8db22dceaab44624aa3e5648b1674092ec9c4d1f085556154799",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/5C2D5492-5056-6F20-630C-5F450D2F501F.odttf",
+        "bytes": 55728,
+        "sha256": "d301be7d250933a21c4e2703189d18fe497bc2f05bbbd65888fd0d3ec06bf496"
+      },
+      {
+        "file": "Resources/34E54510-3419-3490-683A-DE4E702C0D5C.odttf",
+        "bytes": 188388,
+        "sha256": "b8bbcfd640e0aa18a939d3e9dc5f8df53742c1759c6dd5de516b793038c3ed80"
+      },
+      {
+        "file": "Resources/530D68AF-7B14-45CE-A174-D1743961485C.odttf",
+        "bytes": 533676,
+        "sha256": "d00c984ab38b36f4d983364d22317b58f69856664a18370d8109aab5d4e9a221"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504",
+    "source_sha256": "150344b1007cf05525e13261d6cac531fd934824f1b5a3d77e888afd8253aa74",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/124159F4-584E-61FF-5277-570EBB39E245.odttf",
+        "bytes": 55728,
+        "sha256": "7a4b5001d6cd958ce2494b3dd7cd9496c6de493efb321e3fd3ea08e57d1a448e"
+      },
+      {
+        "file": "Resources/1E311763-4049-7D2B-F548-735AD412CF00.odttf",
+        "bytes": 188388,
+        "sha256": "196f41a65968eefde7d6d1131e40f9995f245719b4c2dd5fc11c2be340d09b9a"
+      },
+      {
+        "file": "Resources/77E11878-44E7-40C1-6076-2D243A106807.odttf",
+        "bytes": 533676,
+        "sha256": "c03020cc2032ee323e7aee86b6992bf125b4e7a75c3be4674a609f4cff7aeaa2"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504",
+    "source_sha256": "09d1e02ec37e39814497633f6fab53e219098945ba2bfd639cffe97462da0c68",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/288E5F22-03C3-74E8-975D-E461E2016923.odttf",
+        "bytes": 55728,
+        "sha256": "5ba98c699800d038057c67c0992832472b7655693d6b77d2d570efca5d956e27"
+      },
+      {
+        "file": "Resources/07BD61BC-55B7-4306-D56F-E45B360EF069.odttf",
+        "bytes": 188388,
+        "sha256": "bddfa5b11490f5fd3e7ee6f064857d00a45b6cfdd6ec7273b67e41a82f4a9ff4"
+      },
+      {
+        "file": "Resources/1D223C21-1C4F-7D69-A72E-F90BCE141F7C.odttf",
+        "bytes": 533676,
+        "sha256": "ca949675102e738e35fca25863b15933155faa895341bbb31fe12919615f9d23"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504",
+    "source_sha256": "91e40dc90caa6c30b15ce0c3022d523ef995f22ee68b0c7e8d12608b214bdda1",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+Aptos Display",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "8592162cff141380a8bbc1f79a22da32c3fd24f485c1c8bef92b717d9fc14654",
+        "bytes": 20692,
+        "family": "Aptos Display",
+        "version": "Version 2.01;O365",
+        "glyphs": 1287,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "STAT",
+          "meta"
+        ]
+      },
+      {
+        "xref": 12,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      },
+      {
+        "xref": 17,
+        "name": "BCDGEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+        "bytes": 170008,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/3EDB6450-2F39-07D2-DC43-70350A4AEF00.odttf",
+        "bytes": 55728,
+        "sha256": "238ee529c28cc5ec8406fa9fedb6da29ea555fb9c43fddf8f9beb180f52ab26d"
+      },
+      {
+        "file": "Resources/714A2C16-6B25-08E1-B416-545D98091153.odttf",
+        "bytes": 188388,
+        "sha256": "433115119bbe5ad58fbdbd2dae92ca6744d126ca7fa5c3eee8608fc344d9e020"
+      },
+      {
+        "file": "Resources/42635FCA-73B7-3A11-EE66-C6736219D570.odttf",
+        "bytes": 533676,
+        "sha256": "54f732ad492564733b13d15dec166aa583a8e163541b500233fe9711aee611ca"
+      }
+    ]
+  }
+]

@@ -1,0 +1,138 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T132210919Z-158142e9",
+  "captured_at_utc": "2026-11-19T13:22:10.9308702Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-mincho-font-switch-space3-s12-m14",
+      "source": "tmp\\w19-mincho-font-switch-inputs\\word-windows-mincho-font-switch-space3-s12-m14.docx",
+      "sha256": "ad8b3f86c509389600eab71cd14937b0d4285638db8057c802b8a7b75134bb73",
+      "pdf": "word-windows-mincho-font-switch-space3-s12-m14.pdf",
+      "pdf_sha256": "8859b00143ab755c7c1e9f6187227fe021431d0ed5a7f37c1f4c81053e6a16f8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-font-switch-space3-s12-m14.xps",
+      "xps_sha256": "19d9438eb10948c5a31aaa718b02f4b38c339ea0ba942f0ba59f8d2ce8cf1e9f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-space3-s12-m14.page-001.emf",
+          "sha256": "1a63f83c9280875b8ad017f15f56b9a5c4b40331fd48ec828a8bbe0c4c005c37",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-font-switch-space6-s12-m14",
+      "source": "tmp\\w19-mincho-font-switch-inputs\\word-windows-mincho-font-switch-space6-s12-m14.docx",
+      "sha256": "4c78b751d2ebcdc9377d82a0193ac5257a88705e0ac9af8a2f5688f03e6a0ad3",
+      "pdf": "word-windows-mincho-font-switch-space6-s12-m14.pdf",
+      "pdf_sha256": "57e4108b8f3757521548dac2afa3a4b9d5834b9726d744e40bdc74ef042a7c4b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-font-switch-space6-s12-m14.xps",
+      "xps_sha256": "5a46fed9ae14783a756fbed6f87950b3bce5bf833f4860034a27a95b0e9ef0be",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-space6-s12-m14.page-001.emf",
+          "sha256": "941b8ffa52cc3fb9151de11354a3af62addf416736a45d85fc82b490ac883933",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-font-switch-adjacent3-s12-m14",
+      "source": "tmp\\w19-mincho-font-switch-inputs\\word-windows-mincho-font-switch-adjacent3-s12-m14.docx",
+      "sha256": "8e97af22796e9d49caec70c11bbe0cde2ca69c346e463df737e528d4b018f0c4",
+      "pdf": "word-windows-mincho-font-switch-adjacent3-s12-m14.pdf",
+      "pdf_sha256": "252de5fe6474f5494da13af45f2ac31b5902a69d91a99ef959cbdf2f7d9cf288",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-font-switch-adjacent3-s12-m14.xps",
+      "xps_sha256": "ee11a831faa5955fdfbe77cd45444ae651a9f033cd923da5510ddf70c12eb65a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-adjacent3-s12-m14.page-001.emf",
+          "sha256": "3d7e29c2acc2bb734c681e37096a1386ef58c9f201a4acbebfa5808719d2c3d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-font-switch-adjacent6-s12-m14",
+      "source": "tmp\\w19-mincho-font-switch-inputs\\word-windows-mincho-font-switch-adjacent6-s12-m14.docx",
+      "sha256": "ea7205f69b4c69c6cf1a779afc249e09d5b2e98dea4ae0761e890700edc11b0c",
+      "pdf": "word-windows-mincho-font-switch-adjacent6-s12-m14.pdf",
+      "pdf_sha256": "0da2d5354d5ba21176246cec4a04914ec62528a84d66a96024d75825d01954b5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-font-switch-adjacent6-s12-m14.xps",
+      "xps_sha256": "84b42ed12c9eff245cfdc948e9327312fce71ef0ed93b0b844ce0fcc507989ef",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-adjacent6-s12-m14.page-001.emf",
+          "sha256": "48d8fe03edf83c74dd9091902d694bea91bf4627d15cbcfd538e749359c92fbd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

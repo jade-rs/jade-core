@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T152341625Z-6db4b4bb",
+  "captured_at_utc": "2026-11-15T15:23:41.6298207Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-cross-slot-calibri-calibri-size20-both-balance0-compat15",
+      "docx_sha256": "e32562df106603c7436becce54b2b80eebc073a583158b0afc9aab805b6500b8",
+      "pdf_sha256": "3f27655ac539de1a589d8f55d3c9665ecaada895e93836b0265c50edd8969a21",
+      "pdf_file": "word-windows-edge-cross-slot-calibri-calibri-size20-both-balance0-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-cross-slot-calibri-calibri-size20-both-balance0-compat15.page-001.emf",
+          "sha256": "66e3e83394fd3579a1cfa219dc1e294c70f6e4c3d0be51776dba9c47dd819b10",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          124.43704389965792
+        ],
+        [
+          1,
+          "g",
+          96.71675065510985,
+          124.43704389965792
+        ],
+        [
+          1,
+          "日",
+          181.55390042330174,
+          124.43704389965792
+        ],
+        [
+          1,
+          "本",
+          266.87103406571254,
+          124.43704389965792
+        ],
+        [
+          1,
+          "語",
+          352.3081636766781,
+          124.43704389965792
+        ],
+        [
+          1,
+          "A",
+          444.10507962104407,
+          124.43704389965792
+        ],
+        [
+          1,
+          "B",
+          455.7446885708526,
+          124.43704389965792
+        ],
+        [
+          1,
+          "C",
+          466.66432170933274,
+          124.43704389965792
+        ],
+        [
+          1,
+          "A",
+          477.2239669421487,
+          124.43704389965792
+        ],
+        [
+          1,
+          "B",
+          488.7435799234025,
+          124.43704389965792
+        ],
+        [
+          1,
+          "C",
+          499.66321306188263,
+          124.43704389965792
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          160.07619726339794
+        ]
+      ]
+    }
+  ]
+}

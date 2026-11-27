@@ -1,0 +1,74 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261116T153449640Z-b7c21400",
+  "captured_at_utc": "2026-11-16T15:34:49.6434717Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-cjk-cell-mincho-ideographic-gap-size8p5-regular-compat15",
+      "docx_sha256": "6dc18eb3aeb87c7d25581fb224abd4b094baa4e16c43106d637ad99dead125b1",
+      "pdf_sha256": "e177bb56724bae95542ebd895a38c18ca2cf102496448ef08b18a918942d4edc",
+      "pdf_file": "word-windows-cjk-cell-mincho-ideographic-gap-size8p5-regular-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-mincho-ideographic-gap-size8p5-regular-compat15.page-001.emf",
+          "sha256": "5093769bb29d36f8cb880049f193c1fbb334735ae18322b3bb7abc32cf49f67c",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.08214393710311,
+          111.35735461801596
+        ],
+        [
+          1,
+          "本",
+          391.3298609011188,
+          111.35735461801596
+        ],
+        [
+          1,
+          "日",
+          399.73007257332927,
+          111.35735461801596
+        ],
+        [
+          1,
+          "本",
+          705.8577865134563,
+          111.35735461801596
+        ],
+        [
+          1,
+          "日",
+          714.3780012095555,
+          111.35735461801596
+        ],
+        [
+          1,
+          "本",
+          1020.5057151496825,
+          111.35735461801596
+        ]
+      ]
+    }
+  ]
+}

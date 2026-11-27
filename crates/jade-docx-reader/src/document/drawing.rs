@@ -433,9 +433,37 @@ pub struct AnchorOptions {
     /// `wp:anchor@layoutInCell` (表のセル内に配置する).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout_in_cell: Option<bool>,
-    /// Space below an inline drawing's extent reserved by `wp:effectExtent@b`.
+    /// `wp:effectExtent`: the space a drawing reserves beyond `wp:extent`
+    /// for its effects (ECMA-376 Part 1 §20.4.2.6); `None` when every edge
+    /// is zero.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub inline_effect_bottom: Option<f64>,
+    pub effect_extent: Option<EffectExtent>,
+}
+
+/// The extra extent added to each edge of a drawing's `wp:extent` "to
+/// compensate for any drawing effects applied" (ECMA-376 Part 1
+/// §20.4.2.6): shadows, outlines and glow. CSS pixels, each edge at least 0
+/// once read ([`EffectExtent::clamped`]); a drawing's rotation is laid out
+/// from its own transform, not from this extent.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct EffectExtent {
+    pub left: f64,
+    pub top: f64,
+    pub right: f64,
+    pub bottom: f64,
+}
+
+impl EffectExtent {
+    /// The extent with every edge at least 0. Word clips or drops drawings
+    /// with negative effect extents, and LibreOffice writes them as 0.
+    pub fn clamped(self) -> Self {
+        Self {
+            left: self.left.max(0.0),
+            top: self.top.max(0.0),
+            right: self.right.max(0.0),
+            bottom: self.bottom.max(0.0),
+        }
+    }
 }
 
 static NO_PICTURE_FORMAT: std::sync::OnceLock<PictureFormat> = std::sync::OnceLock::new();
@@ -443,6 +471,27 @@ static NO_SHAPE_EXTRAS: std::sync::OnceLock<ShapeExtras> = std::sync::OnceLock::
 static NO_ANCHOR_OPTIONS: std::sync::OnceLock<AnchorOptions> = std::sync::OnceLock::new();
 
 impl RunImage {
+    /// Keeps `wp:effectExtent` consistent after the picture's size or
+    /// rotation changed from `previous` (width, height and rotation): the
+    /// effects' insets (shadow, glow, outline) do not depend on either, so
+    /// they are kept, with no edge below 0. No part is derived from the
+    /// rotation; that has not been checked against Word.
+    pub fn refit_effect_extent(&mut self, previous: (Option<f64>, Option<f64>, Option<f64>)) {
+        if previous == (self.width_px, self.height_px, self.layout.rotation_deg) {
+            return;
+        }
+        let Some(options) = self.layout.options.as_deref_mut() else {
+            return;
+        };
+        options.effect_extent = options
+            .effect_extent
+            .map(EffectExtent::clamped)
+            .filter(|extent| *extent != EffectExtent::default());
+        if *options == AnchorOptions::default() {
+            self.layout.options = None;
+        }
+    }
+
     /// The picture's format; empty when it has none.
     pub fn format(&self) -> &PictureFormat {
         self.format

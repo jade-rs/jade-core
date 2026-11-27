@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T083849531Z-0bd6fb72",
+  "captured_at_utc": "2026-11-16T08:38:49.5339184Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-yu-justify-auto-wrap-size20-width319-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w16-ao-justify-auto-wrap-input-snapshots\\word-windows-yu-justify-auto-wrap-size20-width319-compat15.docx",
+      "sha256": "2c9830e5930afc978d95836bb354a4c31b3f4841cb388ff851f65d6ed9a5a1bf",
+      "pdf": "word-windows-yu-justify-auto-wrap-size20-width319-compat15.pdf",
+      "pdf_sha256": "7d9d18577722489e78220a7acbf07f8356595470b088f8276a1106743cc3fbaf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-yu-justify-auto-wrap-size20-width319-compat15.page-001.emf",
+          "sha256": "573fa733239a3fde09961ec0a43c754c3fc3f489a290531170e8c54740735b76",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 # Windows Word coordinate references
 
 References are separated by complete Word product version and immutable capture ID.
-The captured application is **16.0.19127.20860**; no other Word build has been
-measured. New builds create additional directories and keep older versions' tests.
+Captured builds include **16.0.19127.20860** and **16.0.19127.20936**.
+New builds create additional directories and keep older versions' tests.
 
-The regression index covers **68 unique documents, 348 pages and 56,460 visible
+The legacy regression index covers **68 unique documents, 348 pages and 56,460 visible
 non-whitespace characters**, combining original PDF origins and Word drawing
 origins. Each registered set checks text, order, page count and both absolute
 coordinate axes within **0.375pt**. No origin fitting or tolerance increase is used.
@@ -20,6 +20,23 @@ PageSetup dimensions; it does not fit positions to the native renderer. It check
 EMF bounds, drawing mode, transforms, paper dimensions and hashes, and rejects
 unsupported text encodings rather than guessing coordinates. CI reconstructs
 registered references from the original EMF files and rejects changed origins.
+
+`../platform-coordinates.json` registers 98 identical source DOCX files against
+separate Mac and Windows Word originals. Mac-native and Mac-browser coordinate
+jobs run on GitHub Actions macOS runners; the Windows version-baseline job
+renders against the corresponding Windows captures. Each platform checks its own
+original text, pages and absolute origins. Genuine Mac/Windows differences do not
+share an expected coordinate set.
+
+The original Windows captures of `floating-simple-position-mac`,
+`floating-through-concave-mac` and `floating-z-order-mac` also have distinct screen
+and print origins. Their explicit `independent-screen-print` context asserts both
+live snapshots against original Word EMFs, exact live origins and PNG preservation
+across export, and actual native vector-PDF origins against original Word PDFs
+with and without clipping. The other 95 cases retain all existing assertions.
+These cases preserve their original Mac manifests, Word build and executable
+hashes, capture IDs, source hashes and embedded font programs. No coordinate
+translation or tolerance change is applied.
 
 The drawing sets contain all **11,868 characters** of `yokohama_page1`,
 `yokohama_page6`, `contract`, `numbering-restart` and
@@ -392,3 +409,22 @@ Registered coverage is now 134 distinct documents / 440 pages / 86,124 complete
 origins, plus two historical duplicate registrations. Required Arial coverage
 is 117 documents / 307 pages / at least 68,025 origins. Raw EMFs reconstruct
 79,893 origins, and the required vector gate covers 105 documents / 278 pages.
+
+
+### Word-boundary controls
+
+`word-boundary-observations.json` retains 16 original Word 16.0.19127.20936 captures
+(384 paragraphs), derived reproducibly from the Mac Aptos parent through captured
+size controls. The matrix covers four styles, 14/15 pt and compatibility 14/15.
+Each input compares five isolated repeated glyphs and seven space/word/hyphen
+patterns with kerning off and on. Parent paragraph/run formatting and other ZIP
+parts are retained. Original DOCX, PDF, XPS and page EMF bytes are archived with
+Word executable/version, printer and original font version/hash facts.
+
+CI requires all 16 EMF and dual-plane XPS comparisons, plus the four validated
+physical PDF comparisons, at the original 0.375 pt tolerance on each axis. The
+remaining 12 PDF coordinate differences remain pending; all outputs still have
+strict text, page and order assertions. In these originals Word's PDF and XPS
+origins themselves differ beyond tolerance, so the output contexts are separate.
+Repeated `y` with kerning on reproduces PDF advance accumulation without spaces
+or hyphens; retain that evidence when investigating serializer rounding.

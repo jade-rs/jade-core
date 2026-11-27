@@ -1,0 +1,515 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T231446604Z-84e9e3aa",
+  "captured_at_utc": "2026-11-20T23:14:46.6420217Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-paper-grid-w11902-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11902-h16838-m15.docx",
+      "sha256": "20222412dda7550eede3fe150b80e940aac25f5366a280c87eb028834a4d017b",
+      "pdf": "word-windows-paper-grid-w11902-h16838-m15.pdf",
+      "pdf_sha256": "f92519d804fbdb38b5a27e5b242e8f9b576d237c8ba9e2173d2cd5f80527dfda",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11902-h16838-m15.xps",
+      "xps_sha256": "55f85408a819931c468fd00e2dabe257d744e7e2b7bedcb40c910045860512d5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11902-h16838-m15.page-001.emf",
+          "sha256": "5fe1314cc73ef0557147a47f07fd060116a12c525fa4240dafd24f20d3f288d8",
+          "width_pt": 595.1,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11903-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11903-h16838-m15.docx",
+      "sha256": "301a07f0f7cfdf0d5c7bf881c50fc46182155ed7d7c709066985cfe9332009fd",
+      "pdf": "word-windows-paper-grid-w11903-h16838-m15.pdf",
+      "pdf_sha256": "630b06b0c13b595ce0cd753e7f771155e1fa6be67dc8891f0966d72e4a2cdef4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11903-h16838-m15.xps",
+      "xps_sha256": "f21efbb8a6bcc4c4e5f2f8f880132c2b0857921870ef8480d761f9a06426320e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11903-h16838-m15.page-001.emf",
+          "sha256": "c1e32b2cd2e09094a3696d24742873dbd1856b09f45643dd80f6202ec5864682",
+          "width_pt": 595.15,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11904-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11904-h16838-m15.docx",
+      "sha256": "01e56c1f03ce0492b02e4a21830fda8210f00be37c0d425eb9f31fa86bb4b044",
+      "pdf": "word-windows-paper-grid-w11904-h16838-m15.pdf",
+      "pdf_sha256": "cc7306d4cea5d4ae1159a8c5599a1f59cbf604c5e8cc33941d2e8779f9347d1e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11904-h16838-m15.xps",
+      "xps_sha256": "9ffa86dad332d57799c90a6fe704a9e32d9ae5902f4772a024d96432700c14ec",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11904-h16838-m15.page-001.emf",
+          "sha256": "58d7c713f182028ffbd0aaa25fa6b29ed8eba9bfd316bbad0bbbb784199d4ee0",
+          "width_pt": 595.2,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11905-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11905-h16838-m15.docx",
+      "sha256": "f910640f7b510f558c77a7c80ff00689270bc34718bdb9474558468c1dee80e0",
+      "pdf": "word-windows-paper-grid-w11905-h16838-m15.pdf",
+      "pdf_sha256": "331e8eb66858418fd59dbefb32196398187adf7a522e943a40a275de4ef674a5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11905-h16838-m15.xps",
+      "xps_sha256": "6182affe360d69514750ecd92953c7db74ef14a7ab6cdf507e8b4f371bdcec70",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11905-h16838-m15.page-001.emf",
+          "sha256": "dec637ecf3888e725236b99d8698dd39313aa7e395a1b783bcfbea97b73f2445",
+          "width_pt": 595.25,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16834-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16834-m15.docx",
+      "sha256": "c0b52e9f17fa41105e5b523ef9a736e6d1c24307f56df85f2e0dc03cee8a093f",
+      "pdf": "word-windows-paper-grid-w11906-h16834-m15.pdf",
+      "pdf_sha256": "6c8be3ba186810144045244a11a616aca9decabd9a4ae0e44211e9c0cf7c45d1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16834-m15.xps",
+      "xps_sha256": "4f8bced22fed3a5e13699010f2b669eb664765dfc05c3b7490936dcdbf48743b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16834-m15.page-001.emf",
+          "sha256": "39587a539ae4e8af6b8e98286048a5f65a7a76d23b65f34131e3170f7442751e",
+          "width_pt": 595.3,
+          "height_pt": 841.7,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16835-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16835-m15.docx",
+      "sha256": "ab4382d5d92a27cac171f17ec2a1ea689fa2d1e81db4b7a5378743abd65131b6",
+      "pdf": "word-windows-paper-grid-w11906-h16835-m15.pdf",
+      "pdf_sha256": "bf2c8c4ff90783dfaba8a140b35e90645e37f3b417785caa7d55163f7236b681",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16835-m15.xps",
+      "xps_sha256": "77cf65692056facea2587bc0a4a8b011de11028278f238c8ba1d6ab9f12deabc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16835-m15.page-001.emf",
+          "sha256": "f5bd1cced68b5943819f7869778358a9baaeb60e8e41c6cc1e4dddc244d522c6",
+          "width_pt": 595.3,
+          "height_pt": 841.75,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16836-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16836-m15.docx",
+      "sha256": "dbd466935e1cbeb954f7783bad539825dec98a032698db992b389bb1a8f69813",
+      "pdf": "word-windows-paper-grid-w11906-h16836-m15.pdf",
+      "pdf_sha256": "b4d785639ae8cf0d71b9e4234f448411f17dfb1cc5715a8fb7ed64d3ec33afbc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16836-m15.xps",
+      "xps_sha256": "84c6d97a1056bb1c5803100da83a514bc0f227627810e673bff5c7ec24c096ed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16836-m15.page-001.emf",
+          "sha256": "852b22e25dc71243feef5ac6903b3f133416bf05d031c278b0d669001d1affd4",
+          "width_pt": 595.3,
+          "height_pt": 841.8,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16837-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16837-m15.docx",
+      "sha256": "042149e62c2be6c35dab976298720502373bc0e84d04e46ddf52c0ec06438646",
+      "pdf": "word-windows-paper-grid-w11906-h16837-m15.pdf",
+      "pdf_sha256": "eceefb2c482f296f5d5ffdc498289a7bb62f1d9c51ea9ad767904c6083a64acf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16837-m15.xps",
+      "xps_sha256": "931a30108eeab569944a16d26bb1c0060a3fc1f4c23b6970c77ad37302099eb5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16837-m15.page-001.emf",
+          "sha256": "4052c56bdc88e893a90daa4ec0de9bab7e921168968c875a273971abff98737e",
+          "width_pt": 595.3,
+          "height_pt": 841.85,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16838-m15.docx",
+      "sha256": "dde2f5b1d57cb2607ecb4f0fcabbb91310f97778c3868db9104732852123baec",
+      "pdf": "word-windows-paper-grid-w11906-h16838-m15.pdf",
+      "pdf_sha256": "fb2331a5b242d4a837ad5ceda6c12d4b84e25e2dd55b2043afb0d732e5c557ec",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16838-m15.xps",
+      "xps_sha256": "f66065949688a116a7ff19470befc5656a9148502d222e9e4239f7f263abef4b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16838-m15.page-001.emf",
+          "sha256": "0968df034844b073754f96b13d45a3d31a18a6637db888fb4beb4090f9aa49a1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16839-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16839-m15.docx",
+      "sha256": "6b2697570d4debf03e34f495349dd2062b3f777e6e891f65c3b618ef0c425848",
+      "pdf": "word-windows-paper-grid-w11906-h16839-m15.pdf",
+      "pdf_sha256": "277675849fc151ffe3d45f445575e0b8785c60e405847d2f6e4e56a96988b40d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16839-m15.xps",
+      "xps_sha256": "9be32a5d10ff7afbeae62cd7d7e475aa77df4b79e26c25a1aa50c912a8f5ef9f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16839-m15.page-001.emf",
+          "sha256": "7a14e145a451ec5c89ac94d9efff3f3714a7255fcaa193f7d1d5b8c7231dde0a",
+          "width_pt": 595.3,
+          "height_pt": 841.95,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16840-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16840-m15.docx",
+      "sha256": "100d154f4c3fec09a9755ece96f1e9e3886a7cad613d871829e77fceb2e28f20",
+      "pdf": "word-windows-paper-grid-w11906-h16840-m15.pdf",
+      "pdf_sha256": "9975acc56e3bfddaba8fd00bf70158a8c02c15850484c691cc2bc085b0994da3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16840-m15.xps",
+      "xps_sha256": "1f1f87303fc78666c744b5fd2e7eccac2e2b456382cb29b1a7641b4afb3e10e3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16840-m15.page-001.emf",
+          "sha256": "c61c67b9506c03756c6ae0c510f46440a893f9d0b304f3894a473c1ffa6d762d",
+          "width_pt": 595.3,
+          "height_pt": 842.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16841-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16841-m15.docx",
+      "sha256": "7e012de76c783bc68f335262643854f3cec4722a62f90ec5dbcdab11fc703220",
+      "pdf": "word-windows-paper-grid-w11906-h16841-m15.pdf",
+      "pdf_sha256": "17e6738bd68c77685c0ba66b98828f78644286e11d0f1916d1745e8d59c76de1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16841-m15.xps",
+      "xps_sha256": "0b2c723a9b80b366a286f485b669d7229512583f1e8ae31ada7c376c74853aa6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16841-m15.page-001.emf",
+          "sha256": "5e92c9075a5575da6fae276090e732f16d10cd04444244e93502a4e16166b041",
+          "width_pt": 595.3,
+          "height_pt": 842.05,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16842-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11906-h16842-m15.docx",
+      "sha256": "f96c767e53721cd3f2c3bc6197df071b47df3b68a284f941258d552b1f8bf953",
+      "pdf": "word-windows-paper-grid-w11906-h16842-m15.pdf",
+      "pdf_sha256": "6263d81b15339ddb80dcb08f80b81b151e4c52680a383dc1a33be8fbe2a18991",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11906-h16842-m15.xps",
+      "xps_sha256": "8fcbe4fc82483681069d603dab5e0e2e18053927983c4dcb33ad8c9ad8886059",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11906-h16842-m15.page-001.emf",
+          "sha256": "5416f5379b4b7f9821960eec032bc798212968bd43353bdf44bdceb9d6f05b8f",
+          "width_pt": 595.3,
+          "height_pt": 842.1,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11907-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11907-h16838-m15.docx",
+      "sha256": "565b7bddd47ebcaafa79177192f29a4b938562898286653909e7d1f7cb590b1a",
+      "pdf": "word-windows-paper-grid-w11907-h16838-m15.pdf",
+      "pdf_sha256": "3f6ab6dab6fc913732c229ba71d26b9bf35463d0230c66e4d499b79b94486c7d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11907-h16838-m15.xps",
+      "xps_sha256": "53a9b2a4584a7e08ea3d25c10438bfb6dbe8def7595fde321d29648e04e5d96f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11907-h16838-m15.page-001.emf",
+          "sha256": "f9404a232e967652dcd771ac343de124055aed193f5340edd665601e72c38f26",
+          "width_pt": 595.35,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11908-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11908-h16838-m15.docx",
+      "sha256": "1ee84fdc43fc440c891dc0cc7404221afa6647b3d57bf09697e7fe1ec9c188f4",
+      "pdf": "word-windows-paper-grid-w11908-h16838-m15.pdf",
+      "pdf_sha256": "9aba54a30da6a834f1ac5b90959744931a8202ddf1c45ffd46d305c399f83cd8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11908-h16838-m15.xps",
+      "xps_sha256": "53aadeba359f2c690698ea109902cd6c69a3a850b1c1634671e95dfb979ef6df",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11908-h16838-m15.page-001.emf",
+          "sha256": "865b66551551849e82ed0a7c7660ee93b0250c74b63c1fb148a7e56e1ff38f2e",
+          "width_pt": 595.4,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11909-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11909-h16838-m15.docx",
+      "sha256": "f8803d2aca0d3b3e38422b312ccc3bb6e9714bca904952a753c44a7094ab5a0e",
+      "pdf": "word-windows-paper-grid-w11909-h16838-m15.pdf",
+      "pdf_sha256": "314559307917a3e1676306d8f64a35e9ad07e935eb3b3b9275d73753fb79a97a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11909-h16838-m15.xps",
+      "xps_sha256": "9a0bbe45f2e6511e1a7a00fe91245e074032765050db6b3baadfb51ff525ce8b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11909-h16838-m15.page-001.emf",
+          "sha256": "be984893ad41c90c85ba261bc4510b0efbf603a8b775bcb72e99118e0644ccae",
+          "width_pt": 595.45,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-paper-grid-w11910-h16838-m15",
+      "source": "..\\w21-paper-grid17-inputs\\word-windows-paper-grid-w11910-h16838-m15.docx",
+      "sha256": "dac46a276fd29da996c55011bbcbc1f77c13a1e8b56d23999fa4a1b808ca0b82",
+      "pdf": "word-windows-paper-grid-w11910-h16838-m15.pdf",
+      "pdf_sha256": "eec222ccb32db2a84dbd453ea88ba82d261e9d6f9c741ffc9b237d8ccf3459f0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-paper-grid-w11910-h16838-m15.xps",
+      "xps_sha256": "695821d6fe8fcbec3e5369e5b5bb86b89dc52c86652a3f61de8c2a95ea6b4f62",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-paper-grid-w11910-h16838-m15.page-001.emf",
+          "sha256": "bf0a4bc777949c5049fdbd98d8edfbe5036492dda897a76fefe434a72e6d0d6f",
+          "width_pt": 595.5,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

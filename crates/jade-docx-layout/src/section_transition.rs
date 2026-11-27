@@ -118,11 +118,24 @@ impl SectionBreakType {
             Some("nextPage") | None | Some(_) => Self::NextPage,
         }
     }
+
+    /// A visible terminal manual break advances continuous and next-column
+    /// sections to column one of the next page.
+    pub fn after_manual_page_break(self) -> Self {
+        match self {
+            Self::Continuous | Self::NextColumn => Self::NextPage,
+            other => other,
+        }
+    }
 }
 
 /// Resolve the next flow container before laying out a section.
 ///
-/// `current_page` is one-based. `has_next_column` describes the section being
+/// `current_page` is the one-based number the page before the break
+/// displays; Word settles oddPage/evenPage parity by displayed numbers, not
+/// physical positions. A section that restarts its numbering
+/// (`w:pgNumType w:start`) settles that parity with
+/// [`parity_page_advances`] instead. `has_next_column` describes the section being
 /// left, because its final column determines whether `nextColumn` can remain on
 /// the current physical page. A page-geometry change wins over a column break:
 /// Word cannot apply two page sizes or margin boxes to one physical page.
@@ -140,16 +153,38 @@ pub fn resolve_section_transition(
         SectionBreakType::Continuous
         | SectionBreakType::NextColumn
         | SectionBreakType::NextPage => SectionTransition::NextPage { page_advances: 1 },
-        SectionBreakType::OddPage => {
-            let next_page = current_page.saturating_add(1);
-            let page_advances = if !next_page.is_multiple_of(2) { 1 } else { 2 };
-            SectionTransition::NextPage { page_advances }
+        SectionBreakType::OddPage | SectionBreakType::EvenPage => SectionTransition::NextPage {
+            page_advances: parity_page_advances(section_type, current_page, None),
+        },
+    }
+}
+
+/// Pages an oddPage/evenPage break advances: 2 when Word inserts a blank
+/// page first. `previous_number` is the number the page before the break
+/// displays, and `restart` the incoming section's `w:pgNumType w:start`.
+///
+/// An odd-numbered page is a right-hand page, so the numbers on either
+/// side of the break must differ in parity. A section that continues the
+/// numbering needs a blank when the next number lacks the break's parity;
+/// one that restarts needs a blank when its start shares the previous
+/// page's parity. Other break types advance one page.
+pub fn parity_page_advances(
+    section_type: SectionBreakType,
+    previous_number: usize,
+    restart: Option<usize>,
+) -> usize {
+    let blank = match (section_type, restart) {
+        (SectionBreakType::OddPage | SectionBreakType::EvenPage, Some(start)) => {
+            previous_number % 2 == start % 2
         }
-        SectionBreakType::EvenPage => {
-            let next_page = current_page.saturating_add(1);
-            let page_advances = if next_page.is_multiple_of(2) { 1 } else { 2 };
-            SectionTransition::NextPage { page_advances }
-        }
+        (SectionBreakType::OddPage, None) => previous_number.saturating_add(1).is_multiple_of(2),
+        (SectionBreakType::EvenPage, None) => !previous_number.saturating_add(1).is_multiple_of(2),
+        _ => false,
+    };
+    if blank {
+        2
+    } else {
+        1
     }
 }
 
@@ -164,6 +199,25 @@ mod tests {
         // A4 upright, two pages to a sheet: two A5 landscape halves.
         assert_eq!(folded_page_size(595.0, 842.0, true, false), (595.0, 421.0));
         assert_eq!(folded_page_size(595.0, 842.0, false, false), (595.0, 842.0));
+    }
+
+    #[test]
+    fn a_restarting_section_needs_a_blank_when_its_start_shares_the_previous_parity() {
+        use SectionBreakType::{EvenPage, OddPage};
+        // Front matter on page 1, then chapter 1 restarting at 1.
+        assert_eq!(parity_page_advances(OddPage, 1, Some(1)), 2);
+        assert_eq!(parity_page_advances(OddPage, 1, Some(2)), 1);
+        assert_eq!(parity_page_advances(EvenPage, 2, Some(2)), 2);
+        assert_eq!(parity_page_advances(EvenPage, 1, Some(2)), 1);
+        // Continuing numbers keep the break's parity.
+        assert_eq!(parity_page_advances(OddPage, 2, None), 1);
+        assert_eq!(parity_page_advances(OddPage, 1, None), 2);
+        assert_eq!(parity_page_advances(EvenPage, 1, None), 1);
+        assert_eq!(parity_page_advances(EvenPage, 2, None), 2);
+        assert_eq!(
+            parity_page_advances(SectionBreakType::NextPage, 1, Some(1)),
+            1
+        );
     }
 
     #[test]

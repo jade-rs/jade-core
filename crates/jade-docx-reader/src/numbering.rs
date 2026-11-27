@@ -19,7 +19,7 @@ type ParseResult<T> = Result<T, Box<dyn std::error::Error>>;
 
 /// Parsed representation of `word/numbering.xml`. Stores abstract numbering
 /// definitions and concrete numbering instances that paragraphs refer to.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NumberingPart {
     pub abstract_nums: HashMap<String, AbstractNum>,
     pub numbering_instances: HashMap<String, NumberingInstance>,
@@ -51,7 +51,7 @@ impl Default for NumberingPart {
 
 /// Describes a multiline numbering definition that may contain up to nine
 /// levels, each with its own formatting and indentation rules.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct AbstractNum {
     pub id: String,
     pub levels: Vec<NumberingLevel>,
@@ -64,7 +64,7 @@ pub struct AbstractNum {
 
 /// Stores the configuration for a single numbering level, including the
 /// textual template and any optional paragraph/run overrides.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NumberingLevel {
     pub ilvl: u32,
     pub start: Option<u32>,
@@ -92,14 +92,14 @@ pub struct NumberingLevel {
 
 /// Indentation offsets used when the numbering definition contributes its own
 /// layout (common for bullet lists).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NumberingIndent {
     pub left: Option<f32>,
     pub hanging: Option<f32>,
 }
 
 /// Associates a numbering instance with its referenced abstract definition.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NumberingInstance {
     pub id: String,
     pub abstract_num_id: String,
@@ -125,7 +125,7 @@ impl MultilevelListPreset {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct LevelOverride {
     pub start: Option<u32>,
     /// A complete replacement for this instance's abstract numbering level.

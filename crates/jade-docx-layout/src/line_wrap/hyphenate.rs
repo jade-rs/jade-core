@@ -99,7 +99,13 @@ fn discretionary_break<C: LineWrapContext>(
         .take_while(|(_, cluster)| {
             cluster.text.as_str() == "\u{ad}" || is_word_letter(&cluster.text)
         })
-        .find_map(|(index, cluster)| (cluster.text.as_str() == "\u{ad}").then_some(index))
+        .find_map(|(index, cluster)| {
+            (cluster.text.as_str() == "\u{ad}"
+                && !segment_of(line, cluster.start)
+                    .and_then(|segment| segment.properties.as_deref())
+                    .is_some_and(|properties| properties.literal_soft_hyphen))
+            .then_some(index)
+        })
     else {
         return Ok(None);
     };

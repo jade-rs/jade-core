@@ -28,6 +28,147 @@ use jade_docx_layout::layout_cache::ContentHash;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
+/// Immutable command text with control presence resolved once, including
+/// when loading the legacy string-only wire representation.
+#[derive(Clone, PartialEq, Eq)]
+pub struct CommandText {
+    // The final ASCII byte caches control presence; it is never part of the
+    // logical text or legacy wire representation. Keeping it in the shared
+    // allocation preserves the original two-word command payload.
+    encoded: Rc<str>,
+}
+
+impl CommandText {
+    /// U+00AD starts with C2 in UTF-8. Reject ordinary ASCII/CJK spans with
+    /// one byte search before checking the complete scalar, so C2-prefixed
+    /// characters such as NBSP never become false control markers.
+    #[inline]
+    pub(crate) fn text_has_soft_hyphen(text: &str) -> bool {
+        text.as_bytes().contains(&0xc2) && text.contains('\u{ad}')
+    }
+
+    #[inline]
+    pub(crate) fn text_has_zero_width_controls(text: &str) -> bool {
+        text.as_bytes().contains(&0xe2) && text.contains(['\u{200b}', '\u{200c}', '\u{200d}'])
+    }
+
+    #[inline]
+    fn control_flags(&self) -> u8 {
+        // SAFETY: from_plan always appends one ASCII flag byte, including for
+        // empty text. The private allocation is immutable; cloning and string
+        // deserialization preserve that nonempty representation.
+        unsafe {
+            *self
+                .encoded
+                .as_bytes()
+                .get_unchecked(self.encoded.len() - 1)
+        }
+    }
+
+    #[inline]
+    pub(crate) fn has_soft_hyphen(&self) -> bool {
+        self.control_flags() & 1 != 0
+    }
+
+    #[inline]
+    pub(crate) fn has_zero_width_controls(&self) -> bool {
+        self.control_flags() & 2 != 0
+    }
+
+    pub(crate) fn from_plan(text: &str, has_soft_hyphen: bool) -> Self {
+        let length = text.len().checked_add(1).expect("command text too long");
+        let mut encoded = Rc::<[u8]>::new_uninit_slice(length);
+        let buffer = Rc::get_mut(&mut encoded).expect("new command text must be unique");
+        buffer[..text.len()].write_copy_of_slice(text.as_bytes());
+        let flags =
+            u8::from(has_soft_hyphen) | (u8::from(Self::text_has_zero_width_controls(text)) << 1);
+        buffer[text.len()].write(flags);
+        // SAFETY: every byte was initialized above, including the cached suffix.
+        // The source is valid UTF-8 and the two flag bits are ASCII (0..=3), so the
+        // complete allocation is also valid UTF-8. Both DSTs have the same
+        // byte length/alignment. into_raw transfers this single Rc ownership
+        // exactly once to from_raw; no alias is created or allocation copied.
+        let encoded = unsafe {
+            let bytes = encoded.assume_init();
+            Rc::from_raw(Rc::into_raw(bytes) as *const str)
+        };
+        Self { encoded }
+    }
+
+    #[inline]
+    pub(crate) fn requires_windows_control_paint(&self) -> bool {
+        self.control_flags() != 0
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    }
+}
+
+impl From<Rc<str>> for CommandText {
+    fn from(text: Rc<str>) -> Self {
+        Self::from_plan(&text, Self::text_has_soft_hyphen(&text))
+    }
+}
+
+impl From<&str> for CommandText {
+    fn from(text: &str) -> Self {
+        Self::from_plan(text, Self::text_has_soft_hyphen(text))
+    }
+}
+
+impl From<String> for CommandText {
+    fn from(text: String) -> Self {
+        Self::from(text.as_str())
+    }
+}
+
+impl std::ops::Deref for CommandText {
+    type Target = str;
+    #[inline]
+    fn deref(&self) -> &str {
+        // SAFETY: from_plan copies valid UTF-8 and appends one ASCII flag.
+        // Removing that byte leaves the original valid UTF-8, even for empty
+        // text. The private immutable field cannot lose or alter its suffix.
+        unsafe {
+            std::str::from_utf8_unchecked(
+                self.encoded
+                    .as_bytes()
+                    .get_unchecked(..self.encoded.len() - 1),
+            )
+        }
+    }
+}
+
+impl AsRef<str> for CommandText {
+    #[inline]
+    fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+impl std::fmt::Debug for CommandText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self.as_ref(), f)
+    }
+}
+
+impl std::fmt::Display for CommandText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
+    }
+}
+
+impl Serialize for CommandText {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.as_ref().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CommandText {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Rc::<str>::deserialize(deserializer).map(Self::from)
+    }
+}
+
 /// Text style information needed for drawing text.
 /// This is a serializable version of AppliedRunStyle.
 ///
@@ -46,6 +187,10 @@ pub struct TextStyle {
     /// Whether pair kerning should be applied while measuring/drawing.
     #[serde(default)]
     pub enable_pair_kerning: bool,
+    /// A derived Windows source slice paints literal U+00AD as a hyphen;
+    /// it is not the invisible `w:softHyphen` control.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub literal_soft_hyphen: bool,
     /// Baseline shift in CSS pixels (for superscript/subscript)
     pub baseline_shift_px: f64,
     /// Whether to draw strikethrough
@@ -142,6 +287,10 @@ fn default_text_scale_x() -> f64 {
     1.0
 }
 
+fn bool_is_false(value: &bool) -> bool {
+    !*value
+}
+
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
@@ -149,6 +298,7 @@ impl Default for TextStyle {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -211,7 +361,7 @@ impl TabLeaderStyle {
 pub enum DrawCommand {
     /// Draw a positioned glyph run with a shared style.
     TextRun {
-        text: Rc<str>,
+        text: CommandText,
         x: f64,
         y: f64,
         style: TextStyle,
@@ -284,6 +434,16 @@ pub enum DrawCommand {
 
     /// Fill a rectangle with a color.
     FillRect {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color: Rc<str>,
+    },
+
+    /// Fill a vector rectangle through a path, retaining fractional PDF edges.
+    /// Used for contiguous Windows print backgrounds, rather than live pixel coverage.
+    FillVectorRect {
         x: f64,
         y: f64,
         width: f64,
@@ -475,6 +635,19 @@ impl DrawCommand {
                 height,
                 color,
             } => DrawCommand::FillRect {
+                x: *x,
+                y: *y + offset,
+                width: *width,
+                height: *height,
+                color: color.clone(),
+            },
+            DrawCommand::FillVectorRect {
+                x,
+                y,
+                width,
+                height,
+                color,
+            } => DrawCommand::FillVectorRect {
                 x: *x,
                 y: *y + offset,
                 width: *width,
@@ -1417,7 +1590,7 @@ mod tests {
     #[test]
     fn test_draw_command_text_run_with_y_offset() {
         let cmd = DrawCommand::TextRun {
-            text: Rc::from("A"),
+            text: "A".into(),
             x: 10.0,
             y: 100.0,
             style: TextStyle::default(),

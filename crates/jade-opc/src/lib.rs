@@ -563,23 +563,33 @@ impl OpcPackage {
         self.parts.get(name).map(Vec::as_slice)
     }
 
-    /// The part as text, or `None` when the archive has no such part.
-    pub fn part_str(&self, name: &str) -> Result<Option<String>> {
+    /// The part as text borrowed from the package, or `None` when the archive
+    /// has no such part. Same semantics as [`OpcPackage::part_str`] without
+    /// copying the part.
+    pub fn part_text(&self, name: &str) -> Result<Option<&str>> {
         match self.part(name) {
             None => Ok(None),
-            Some(bytes) => {
-                String::from_utf8(bytes.to_vec())
-                    .map(Some)
-                    .map_err(|_| OpcError::Encoding {
-                        part: name.to_string(),
-                    })
-            }
+            Some(bytes) => std::str::from_utf8(bytes)
+                .map(Some)
+                .map_err(|_| OpcError::Encoding {
+                    part: name.to_string(),
+                }),
         }
     }
 
-    pub fn required_part_str(&self, name: &str) -> Result<String> {
-        self.part_str(name)?
+    /// The part as text, or `None` when the archive has no such part.
+    pub fn part_str(&self, name: &str) -> Result<Option<String>> {
+        self.part_text(name).map(|text| text.map(str::to_owned))
+    }
+
+    /// Borrowing counterpart of [`OpcPackage::required_part_str`].
+    pub fn required_part_text(&self, name: &str) -> Result<&str> {
+        self.part_text(name)?
             .ok_or_else(|| OpcError::MissingPart(name.to_string()))
+    }
+
+    pub fn required_part_str(&self, name: &str) -> Result<String> {
+        self.required_part_text(name).map(str::to_owned)
     }
 }
 

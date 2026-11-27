@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T203749006Z-6040efc4",
+  "captured_at_utc": "2026-11-17T20:37:49.0094160Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-column-table-unequal-width100-center-compat15",
+      "source": "w18-s-column-table-widths-input-snapshots\\word-windows-column-table-unequal-width100-center-compat15.docx",
+      "sha256": "8cb6edb69f90bbfd2d194f232eceed56b21c868df6743df272cd1a66895759ee",
+      "pdf": "word-windows-column-table-unequal-width100-center-compat15.pdf",
+      "pdf_sha256": "32af5fae241dfbac1ecfff4a725a060f820fef0164300e8d8a6d7b05fa31cd8d",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-column-table-unequal-width100-center-compat15.page-001.emf",
+          "sha256": "1d0163e575c9b9e4d9b4ec909120ecf1a042bdd4c0ff0d2754a82a6b3e42492a",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-column-table-unequal-width100-center-compat15.page-002.emf",
+          "sha256": "5ba9167ceac0a7821f8618c1d14fe86704554244695789efa5fdbbd3e52978b4",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

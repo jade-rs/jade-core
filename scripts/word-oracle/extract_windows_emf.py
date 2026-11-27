@@ -19,7 +19,29 @@ import struct
 import unicodedata
 
 
-def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
+def _integer_reference_canvas(scale, canvas, frame, device, millimeters, page_points):
+    # Recognize Word whole-page canvases with integer device/frame rounding.
+    # EMF records page-space/.01mm factors as FLOAT; the reference device has
+    # integer pixel and millimetre extents, and the frame includes its end edge.
+    if min(device) <= 0 or min(millimeters) <= 0:
+        return False
+    for axis in (0, 1):
+        reference_scale = millimeters[axis] * 100.0 / device[axis]
+        expected_float = struct.unpack('<f', struct.pack('<f', reference_scale))[0]
+        if scale[axis] != expected_float:
+            return False
+        dpi = round(device[axis] * 25.4 / millimeters[axis])
+        twips = round(page_points[axis] * 20)
+        if dpi <= 0 or abs(page_points[axis] * 20 - twips) > 1e-6:
+            return False
+        if canvas[axis] != (twips * dpi + 720) // 1440:
+            return False
+        if abs(reference_scale * canvas[axis] - frame[axis]) > 0.5 * reference_scale + 1.0:
+            return False
+    return True
+
+
+def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None, *, glyph_index_resolver=None):
     if len(data) < 88 or len(data) > 64 * 1024 * 1024:
         raise ValueError('Invalid EMF size')
     if struct.unpack_from('<II', data)[0] != 1 or struct.unpack_from('<I', data, 40)[0] != 0x464d4520:
@@ -36,8 +58,11 @@ def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
     # GM_ADVANCED ignores exScale/eyScale. Only whole-page device-pixel
     # canvases and pure translations have an independently checked mapping.
     device = struct.unpack_from('<ii', data, 72)
+    millimeters = struct.unpack_from('<ii', data, 80)
     state['world_translation'] = (0.0, 0.0)
     fonts = {}
+    font_identities = {}
+    state["font_identity"] = None
     if not all(math.isfinite(v) and v > 0 for v in (width_pt, height_pt)):
         raise ValueError('Invalid Word paper dimensions')
     if abs(width_pt * 25.4 / 0.72 - right) > 100 or abs(height_pt * 25.4 / 0.72 - bottom) > 100:
@@ -69,18 +94,22 @@ def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
             angles = struct.unpack_from('<ii', record, 20)
             family = record[40:104].decode('utf-16-le').split('\0')[0]
             fonts[handle] = angles != (0, 0) or family.startswith('@')
+            font_identities[handle] = (family, struct.unpack_from('<i', record, 28)[0], bool(record[32]))
         elif kind == 37:
             if size != 12:
                 raise ValueError('Invalid object selection')
             handle = struct.unpack_from('<I', record, 8)[0]
             if handle in fonts:
                 state['rotated_font'] = fonts[handle]
+                state['font_identity'] = font_identities[handle]
             elif handle in (0x8000000a, 0x8000000b, 0x8000000c, 0x8000000d, 0x80000010, 0x80000011):
                 state['rotated_font'] = False
+                state['font_identity'] = None
         elif kind == 40:
             if size != 12:
                 raise ValueError('Invalid object deletion')
             fonts.pop(struct.unpack_from('<I', record, 8)[0], None)
+            font_identities.pop(struct.unpack_from('<I', record, 8)[0], None)
         elif kind == 33:
             stack.append(state.copy())
         elif kind == 34:
@@ -136,33 +165,49 @@ def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
                 if not all(math.isfinite(v) and v > 0 for v in (scale_x, scale_y)):
                     raise ValueError('Invalid drawing-unit scale')
                 if abs(scale_x * canvas[0] - right) > 2 or abs(scale_y * canvas[1] - bottom) > 2:
-                    raise ValueError('Text scale does not describe the whole-page canvas')
+                    if not _integer_reference_canvas((scale_x, scale_y), canvas, (right, bottom),
+                                                     device, millimeters, (width_pt, height_pt)):
+                        raise ValueError('Text scale does not describe the whole-page canvas')
             elif device != state['canvas'] or min(device) <= 0:
                 raise ValueError('Advanced text requires a whole-page device-pixel canvas')
             if graphics_modes is not None:
                 graphics_modes.add(mode)
-            if flags & ~0x2006:
+            if flags & ~(0x2016 if glyph_index_resolver is not None else 0x2006):
                 raise ValueError(f'Unsupported text options {flags:#x}')
             stride = 2 if flags & 0x2000 else 1
             if count > 1_000_000 or text_at < 76 or text_at + count * 2 > size:
                 raise ValueError('Invalid UTF-16 string bounds')
             if dx_at < 76 or dx_at + count * stride * 4 > size:
                 raise ValueError('Missing or truncated character advances')
-            text = record[text_at:text_at + count * 2].decode('utf-16-le')
-            if len(text) != count:
-                raise ValueError('Surrogate-pair advances need explicit support')
+            if flags & 0x10:
+                if state['font_identity'] is None:
+                    raise ValueError('Glyph indexes lack a selected font identity')
+                indices = struct.unpack_from('<' + 'H' * count, record, text_at)
+                scalars = [glyph_index_resolver(state['font_identity'], index) for index in indices]
+                if any(not isinstance(c, str) or len(c) != 1 or 0xd800 <= ord(c) <= 0xdfff
+                       for c in scalars):
+                    raise ValueError('Glyph index must resolve to one unambiguous Unicode scalar')
+                text = ''.join(scalars)
+            else:
+                text = record[text_at:text_at + count * 2].decode('utf-16-le')
             advances = struct.unpack_from('<' + 'i' * (count * stride), record, dx_at)
             # Word paints the recorded whole-page canvas onto its own paper.
             # EMF printer millimetres can be rounded; PageSetup points retain
             # twip precision. This conversion uses no native glyph positions.
             pt_x, pt_y = width_pt / canvas[0], height_pt / canvas[1]
-            for index, char in enumerate(text):
+            unit_index = 0
+            for char in text:
                 if not char.isspace() and unicodedata.category(char) != 'Cc':
                     glyphs.append([page, char, (x + translation[0]) * pt_x,
                                    (y + translation[1]) * pt_y])
-                x += advances[index * stride]
+                # EMR_EXTTEXTOUTW indexes its advances by UTF-16 code unit,
+                # while Python iterates Unicode scalars. A supplementary
+                # character paints once and consumes both recorded advances.
+                next_unit = unit_index + (1 if flags & 0x10 else (2 if ord(char) > 0xffff else 1))
+                x += sum(advances[unit_index * stride:next_unit * stride:stride])
                 if stride == 2:
-                    y += advances[index * stride + 1]
+                    y += sum(advances[unit_index * stride + 1:next_unit * stride:stride])
+                unit_index = next_unit
         elif kind == 14:
             eof = True
         offset += size

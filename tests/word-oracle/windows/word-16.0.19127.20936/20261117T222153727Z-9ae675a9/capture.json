@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T222153727Z-9ae675a9",
+  "captured_at_utc": "2026-11-17T22:21:53.7309005Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15",
+      "source": "w18-t-minimum-line-metrics-input-snapshots\\word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15.docx",
+      "sha256": "4bdb3ffd0f9dd2d707934601b7b16df13df55a258a7bbe9e4e7b7c49522b53d4",
+      "pdf": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15.pdf",
+      "pdf_sha256": "c8f0f9f5926698e8448781f397e5922ab0b40cce6092637abf8154e8fc67ef20",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15.page-001.emf",
+          "sha256": "ea883cc5c2db06c49b108de9924666e2a1ae04e565f4561ed41e879b1ff930f4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

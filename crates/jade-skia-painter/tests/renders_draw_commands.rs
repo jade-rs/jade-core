@@ -131,7 +131,7 @@ fn a_glyph_run_lands_at_its_declared_offsets() {
     execute_commands(
         &painter,
         &[DrawCommand::TextRun {
-            text: Rc::from(text),
+            text: text.into(),
             x: 20.0,
             y: 40.0,
             style: style(),

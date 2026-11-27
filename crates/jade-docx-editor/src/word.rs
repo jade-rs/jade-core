@@ -181,6 +181,31 @@ pub trait WordSession {
         None
     }
 
+    /// What a PAGE field on a physical (1-based) page shows at the last
+    /// layout, its section's restart and numeral format applied: the
+    /// number a table of contents' update and F9 write. `None` when the
+    /// session has no such layout.
+    fn page_label(&self, _page: usize) -> Option<crate::fields::PageLabel> {
+        None
+    }
+
+    /// Whether [`Self::page_label`] reflects a layout: a page without a
+    /// label is then one the layout has not finished, not a session
+    /// without labels.
+    fn has_page_labels(&self) -> bool {
+        false
+    }
+
+    /// Lays the document out through its end, where the session can, before
+    /// a command reads [`Self::paragraph_page`] and [`Self::page_label`]
+    /// for every page (a table of contents' page numbers, F9). Returns
+    /// whether the layout is complete: `false` when part of the document
+    /// stays unlaid, whose entries such a command then leaves as they are.
+    /// A session without a layout has nothing to complete.
+    fn complete_layout(&mut self) -> bool {
+        true
+    }
+
     /// Where a caret at a position would be drawn at the last layout —
     /// its x, its top in document coordinates and its height — without
     /// moving the selection.

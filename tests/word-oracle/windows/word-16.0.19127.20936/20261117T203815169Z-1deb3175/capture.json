@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T203815169Z-1deb3175",
+  "captured_at_utc": "2026-11-17T20:38:15.1723330Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-column-table-unequal-width120-left-compat15",
+      "source": "w18-s-column-table-widths-input-snapshots\\word-windows-column-table-unequal-width120-left-compat15.docx",
+      "sha256": "2fe0dc8dbda4642ea089c9a2dbac6ebfe6fad7bf7b706e2a4e03ac53c2dce678",
+      "pdf": "word-windows-column-table-unequal-width120-left-compat15.pdf",
+      "pdf_sha256": "a17beb743ff1eeb0faf6a57684cafbe04405197cb5e789d89dbe54b95317f5cd",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-column-table-unequal-width120-left-compat15.page-001.emf",
+          "sha256": "0fa995c08c86ddde493a127d7fcad4def9bfdf446bd06b2d1e7e47ab013dde70",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-column-table-unequal-width120-left-compat15.page-002.emf",
+          "sha256": "9556eac4934253ac23f12a228966a4efaafbbadb92bb31728a6214ce0b612f24",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

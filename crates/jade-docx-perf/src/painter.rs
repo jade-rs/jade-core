@@ -30,6 +30,8 @@ pub struct PerfPainter {
     measurer: Rc<ShapingMeasurer>,
     #[cfg(test)]
     paragraph_marks: Rc<Cell<usize>>,
+    #[cfg(test)]
+    drawn_text: Rc<RefCell<String>>,
 }
 
 impl PerfPainter {
@@ -39,12 +41,20 @@ impl PerfPainter {
             measurer,
             #[cfg(test)]
             paragraph_marks: Rc::default(),
+            #[cfg(test)]
+            drawn_text: Rc::default(),
         }
     }
 
     #[cfg(test)]
     pub(crate) fn take_paragraph_mark_count(&self) -> usize {
         self.paragraph_marks.replace(0)
+    }
+
+    /// The text drawn since the last call, in drawing order.
+    #[cfg(test)]
+    pub(crate) fn take_drawn_text(&self) -> String {
+        self.drawn_text.take()
     }
 
     fn width(&self, text: &str) -> f64 {
@@ -75,6 +85,7 @@ impl PerfPainter {
     }
 }
 
+#[inline]
 fn batch_accepted(text: &str, positions: usize) -> bool {
     let len = text.encode_utf16().count();
     len >= MIN_GLYPH_RUN_BATCH_LEN && positions == len
@@ -114,6 +125,8 @@ impl Painter for PerfPainter {
         if _text == "\u{21B5}" {
             self.paragraph_marks.set(self.paragraph_marks.get() + 1);
         }
+        #[cfg(test)]
+        self.drawn_text.borrow_mut().push_str(_text);
         Ok(())
     }
     fn stroke_text(&self, _text: &str, _x: f64, _y: f64) -> Result<(), Self::Error> {
@@ -175,15 +188,22 @@ impl Painter for PerfPainter {
     fn clip(&self) {}
     fn use_fill_style_for_stroke(&self) {}
 
+    #[inline]
     fn try_fill_glyph_run_batch(
         &self,
         text: &str,
         x_positions: &[f64],
         _y: f64,
     ) -> Result<bool, Self::Error> {
-        Ok(batch_accepted(text, x_positions.len()))
+        let accepted = batch_accepted(text, x_positions.len());
+        #[cfg(test)]
+        if accepted {
+            self.drawn_text.borrow_mut().push_str(text);
+        }
+        Ok(accepted)
     }
 
+    #[inline]
     fn try_fill_glyph_run_batch_multi_font(
         &self,
         text: &str,
@@ -192,8 +212,13 @@ impl Painter for PerfPainter {
         fonts: &[Rc<str>],
         _y: f64,
     ) -> Result<bool, Self::Error> {
-        Ok(!fonts.is_empty()
+        let accepted = !fonts.is_empty()
             && font_indexes.len() == x_positions.len()
-            && batch_accepted(text, x_positions.len()))
+            && batch_accepted(text, x_positions.len());
+        #[cfg(test)]
+        if accepted {
+            self.drawn_text.borrow_mut().push_str(text);
+        }
+        Ok(accepted)
     }
 }

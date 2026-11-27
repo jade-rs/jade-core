@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T155335740Z-3a5f3dd7",
+  "captured_at_utc": "2026-11-15T15:53:35.7442997Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-italic-balance0-compat15",
+      "source": "w16-a-calibri-fallback-style-input-snapshots\\word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-italic-balance0-compat15.docx",
+      "sha256": "5133ec3a000caf91844d895d26d0defcf9403306fd024d2e972a7d46c7394c1f",
+      "pdf": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-italic-balance0-compat15.pdf",
+      "pdf_sha256": "e1b69bb33b3b08bb952daf4f8b41612c01b767ffcf10779174610f77208ec9af",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-italic-balance0-compat15.page-001.emf",
+          "sha256": "13926d86169c926c621b2fa397cff1c1021c30e3eca5d3c7e5df08cc91282481",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

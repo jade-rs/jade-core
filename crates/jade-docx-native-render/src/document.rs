@@ -5,18 +5,21 @@
 //! an edit cheap. That sequence is not obvious and is easy to get wrong in ways
 //! that still produce a picture, so it lives here rather than in each caller.
 
-use crate::SkiaRenderHost;
+use crate::{FontEnvironment, SkiaRenderHost};
 use futures::executor::block_on;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::canvas_renderer::{CanvasRenderer, FieldShading, FullLayoutDebugSnapshot};
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{
-    Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
+    Command, CommandContext, CommandError, CommandExecutor, HistoryRenderFootprint,
 };
+use jade_docx_editor::document::BodyElement;
 use jade_docx_editor::field_datetime::FieldDateTime;
 use jade_docx_editor::fields::{field_code_display, FieldCodeView};
 use jade_docx_editor::headless_api::{
-    apply_headless_commands_with_executor_to_document, execute_headless_queries_on_document,
+    apply_headless_commands_with_executor_to_document,
+    apply_headless_commands_with_resize_measurement, execute_headless_queries_on_document,
+    ResizeMeasurement,
 };
 use jade_docx_editor::word_document::{
     FloatingObjectKind, FloatingObjectTarget, FloatingObjectTransform, WordDocument,
@@ -26,8 +29,10 @@ use jade_docx_headless_api::{
     HeadlessBorderEdge, HeadlessCommand, HeadlessDeleteDirection, HeadlessEditRequest,
     HeadlessQuery, HeadlessQueryRequest, HeadlessQueryResult, HeadlessRunStyle,
 };
+use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
 use jade_selection::{SelectionRange, TextPosition};
 use jade_skia_painter::SkiaPainter;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -266,6 +271,70 @@ pub struct NativeDocument {
     outline_indents: Option<Rc<std::collections::HashMap<usize, f64>>>,
     /// Configured and fallback math faces, retained across renderer rebuilds.
     math_faces: Vec<FontFace>,
+    /// The pages (0-based) a whole-document repaint draws at once: the ones a
+    /// shell shows. `None` draws every page. See [`Self::set_paint_window`].
+    paint_window: Option<std::ops::Range<usize>>,
+    /// Pages laid out since they were last drawn: their surfaces hold what
+    /// they showed before. [`Self::paint_stale_pages`] draws them.
+    stale_pages: std::collections::BTreeSet<usize>,
+    /// Whether a bounded pass (an edit, a selection) has run since the last
+    /// whole-document layout. While it has, [`Self::paint_stale_pages`] lays
+    /// the document out from the start rather than resuming at a page.
+    bounded_pass_since_full_layout: bool,
+    /// The round-trip tree was built after the layout the pages show, which
+    /// has no node ids for tables and links: the next whole repaint gives
+    /// them theirs, and a bounded edit runs one first.
+    roundtrip_relayout_pending: bool,
+    /// Why the round-trip tree could not be built, kept so it is not
+    /// parsed again on every edit.
+    roundtrip_xml_error: Option<String>,
+}
+
+/// How far before the first stale page [`NativeDocument::paint_stale_pages`]
+/// looks for a page it can resume layout at, before it lays the document out
+/// from the start instead.
+const SEEK_BACK_PAGES: usize = 8;
+
+/// Where a paragraph's lines begin and end, and how many there are: what a
+/// one-paragraph edit has to keep for every later paragraph to stay put.
+#[derive(Clone, Copy, PartialEq, Debug)]
+struct ParagraphExtent {
+    lines: usize,
+    top: f64,
+    bottom: f64,
+}
+
+thread_local! {
+    static SURFACE_DOCUMENT_RENDERS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn count_surface_document_render() {
+    SURFACE_DOCUMENT_RENDERS.with(|renders| renders.set(renders.get() + 1));
+}
+
+/// How many whole-document renders into a [`NativeDocument`]'s page surfaces
+/// have run on this thread: the one at open, every full repaint and every
+/// rebuild for a new page box. Bounded edit repaints, PDF export and print
+/// are not counted. A diagnostic for tests that pin how much work an
+/// operation does.
+#[doc(hidden)]
+pub fn surface_document_renders() -> usize {
+    SURFACE_DOCUMENT_RENDERS.with(std::cell::Cell::get)
+}
+
+thread_local! {
+    static ROUNDTRIP_XML_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How many times a [`NativeDocument`] on this thread has built the
+/// round-trip XML tree that saving patches, after opening. Opening builds
+/// none (a document whose first paint needs it is loaded with it,
+/// uncounted), nor does export; the first edit or an explicit
+/// [`NativeDocument::ensure_roundtrip_xml`] builds one. A diagnostic for
+/// tests that pin how much work an operation does.
+#[doc(hidden)]
+pub fn roundtrip_xml_builds() -> usize {
+    ROUNDTRIP_XML_BUILDS.with(std::cell::Cell::get)
 }
 
 /// Binds only the selected math faces, so each family uses its own MATH
@@ -316,9 +385,61 @@ impl NativeDocument {
         page_height: f64,
         faces: &[FontFace],
     ) -> Result<Self, String> {
+        Self::open_drawing(docx_bytes, page_width, page_height, faces, None)
+    }
+
+    /// [`Self::open`] for a shell that shows `window` (0-based pages) first:
+    /// every page is laid out, but only those are drawn before this returns.
+    /// The rest are left stale for [`Self::paint_stale_pages`], and later
+    /// whole-document repaints keep to the same window (see
+    /// [`Self::set_paint_window`]). An empty window draws every page, as
+    /// [`Self::open`] does.
+    pub fn open_with_paint_window(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FaceSpec<'_>],
+        window: std::ops::Range<usize>,
+    ) -> Result<Self, String> {
+        let faces: Vec<FontFace> = faces.iter().map(FontFace::from).collect();
+        Self::open_with_font_faces_and_paint_window(
+            docx_bytes,
+            page_width,
+            page_height,
+            &faces,
+            window,
+        )
+    }
+
+    /// [`Self::open_with_paint_window`] with faces that may be italic or in a
+    /// collection.
+    pub fn open_with_font_faces_and_paint_window(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FontFace],
+        window: std::ops::Range<usize>,
+    ) -> Result<Self, String> {
+        Self::open_drawing(docx_bytes, page_width, page_height, faces, Some(window))
+    }
+
+    /// Opens the document, lays every page out once and draws those in
+    /// `window` (every page when `None` or empty).
+    fn open_drawing(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FontFace],
+        window: Option<std::ops::Range<usize>>,
+    ) -> Result<Self, String> {
+        let window = window.filter(|window| !window.is_empty());
         let mut options = Options::default();
 
-        let word_document = block_on(WordDocument::load(docx_bytes, &options))
+        // The model alone, as the browser opens: the round-trip XML tree that
+        // saving patches is a second pass over `document.xml` the first paint
+        // does not need. The shell builds it in idle time, and every edit
+        // builds it first if it comes sooner (see `Self::ensure_roundtrip_xml`).
+        let word_document = block_on(WordDocument::load_for_initial_render(docx_bytes, &options))
             .map_err(|err| format!("parse failed: {err}"))?;
         let Some(document) = word_document.document.as_ref() else {
             return Err("no main document part".to_string());
@@ -327,34 +448,33 @@ impl NativeDocument {
         // coloured and underlined, deletions struck through — unless the
         // document was saved with a view that leaves them out.
         options.set_render_changes(document.display_content_revisions.unwrap_or(true));
+        // The model's own snapshot, shared rather than copied: the renderer
+        // keeps it as its last document, and identity-keyed caches then hit.
+        let document = Rc::clone(document);
 
         // Section properties decide the page box, and it is not necessarily the
         // one the caller asked for — this fixture is A4 while the shell asks
         // for Letter. A host sized to the wrong box draws each page short and
-        // maps every page after the first to the wrong place, so find out
-        // first and build to what the document wants.
+        // maps every page after the first to the wrong place, so build to
+        // what the document wants. Layout ends on the last section's box, read
+        // here from the section properties without laying anything out.
         let (page_width, page_height) =
-            Self::layout_page_size_of(&word_document, &options, faces, page_width, page_height)?;
+            Self::layout_page_size_of(&document).unwrap_or((page_width, page_height));
 
         let mut host = SkiaRenderHost::new(page_width, page_height)
             .ok_or_else(|| "could not allocate the raster surface".to_string())?;
         register_faces(&mut host, faces)?;
         let fonts = host.font_environment();
+        let math_faces = math_faces_of(faces, &word_document);
         let pages = host.pages();
         let rendered_pages = host.rendered_pages();
         let pass_covers_whole_document = host.pass_covers_whole_document();
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        let math_faces = math_faces_of(faces, &word_document);
         register_math_faces(&mut renderer, &math_faces);
         renderer.sync_word_document(&word_document);
 
-        let document = word_document
-            .document
-            .as_ref()
-            .expect("checked above")
-            .clone();
         // The renderer defaults to letting a JS overlay draw the selection,
         // which leaves a native host with no highlight at all. There is no
         // overlay here; the renderer paints it.
@@ -364,23 +484,33 @@ impl NativeDocument {
         // a later full repaint draws it, so the content is laid out, just not
         // drawn. Costs nothing here because everything is dirty anyway.
         renderer.mark_full_repaint();
-        renderer
-            .render_with_numbering(
-                &document,
-                &options,
-                word_document.numbering_part.as_ref(),
-                word_document.header_lines.as_deref(),
-                word_document.footer_lines.as_deref(),
-                Some(&word_document.comments),
-            )
-            .map_err(|_| "render failed".to_string())?;
+        if let Some(window) = &window {
+            renderer.set_visible_page_range(Some(window.start + 1..=window.end));
+        }
+        count_surface_document_render();
+        let result = renderer.render_with_numbering_rc(
+            document,
+            &options,
+            word_document.numbering_part.as_ref(),
+            word_document.header_lines.as_deref(),
+            word_document.footer_lines.as_deref(),
+            Some(&word_document.comments),
+        );
+        renderer.clear_visible_page_range();
+        result.map_err(|_| "render failed".to_string())?;
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
         renderer.clear_dirty_regions();
-        drop(document);
+        let page_count = rendered_pages.get();
+        let stale_pages = match &window {
+            Some(window) => (0..page_count)
+                .filter(|page| !window.contains(page))
+                .collect(),
+            None => std::collections::BTreeSet::new(),
+        };
 
-        Ok(Self {
+        let mut opened = Self {
             // The box the document asked for, not the one the caller guessed.
             page_width,
             page_height,
@@ -404,7 +534,218 @@ impl NativeDocument {
             math_faces,
             view_geometry: None,
             outline_indents: None,
-        })
+            paint_window: window,
+            stale_pages,
+            bounded_pass_since_full_layout: false,
+            roundtrip_relayout_pending: false,
+            roundtrip_xml_error: None,
+        };
+        // Should layout end on a box the section properties did not predict,
+        // the host is built again to it, drawing the same window.
+        let window = opened.paint_window.clone();
+        opened.follow_page_box(window)?;
+        opened.redraw_wrong_page_totals()?;
+        Ok(opened)
+    }
+
+    /// Draws the paint window once more when the pass just run drew a
+    /// NUMPAGES or SECTIONPAGES total other than the one it ended with, as
+    /// the first pass over a document does: a footer on page 1 is drawn
+    /// before the last page is reached. The renderer shows the settled
+    /// totals the second time.
+    ///
+    /// So it does when the pass drew a header's or footer's STYLEREF on a
+    /// page of the window other than the page's own headings show: a header
+    /// is drawn before the body below it is laid out, and the first pass has
+    /// no headings yet. Wrong pages outside the window are left stale.
+    fn redraw_wrong_page_totals(&mut self) -> Result<(), String> {
+        let window = self.paint_window.clone();
+        let mut style_refs_drawn_wrong = false;
+        if self.renderer.has_style_reference_wrong_pages() {
+            let wrong = self.renderer.take_style_reference_wrong_pages();
+            style_refs_drawn_wrong = wrong
+                .iter()
+                .any(|page| window.as_ref().is_none_or(|window| window.contains(page)));
+            if !style_refs_drawn_wrong {
+                self.mark_pages_stale(wrong);
+            }
+        }
+        if self.renderer.take_page_totals_changed() || style_refs_drawn_wrong {
+            self.repaint_all_drawing(window, false)?;
+        }
+        Ok(())
+    }
+
+    /// Leaves stale the pages whose STYLEREF the pass just run drew other
+    /// than the headings it laid out show, so [`Self::paint_stale_pages`]
+    /// draws them from those headings.
+    #[inline]
+    fn mark_wrong_style_references_stale(&mut self) {
+        if self.renderer.has_style_reference_wrong_pages() {
+            let wrong = self.renderer.take_style_reference_wrong_pages();
+            self.mark_pages_stale(wrong);
+        }
+    }
+
+    #[cold]
+    fn mark_pages_stale(&mut self, pages: std::collections::BTreeSet<usize>) {
+        let count = self.page_count();
+        self.stale_pages
+            .extend(pages.into_iter().filter(|&page| page < count));
+    }
+
+    /// Leaves every page stale when the pass just run drew a NUMPAGES or
+    /// SECTIONPAGES total other than the one it ended with — an edit that
+    /// changed the page count, a page box that rebuilt the renderer — so
+    /// [`Self::paint_stale_pages`] draws them with the settled totals.
+    fn mark_wrong_page_totals_stale(&mut self) {
+        if self.renderer.take_page_totals_changed() {
+            self.stale_pages.extend(0..self.page_count());
+        }
+        self.mark_wrong_style_references_stale();
+    }
+
+    /// Limits what a whole-document repaint draws to `window` (0-based
+    /// pages): every page is still laid out, but only these are drawn, and
+    /// the rest are left stale for [`Self::paint_stale_pages`]. A paragraph
+    /// split or an undo near the start of a long document re-flows every page
+    /// after it, and drawing all of them is most of what it costs; a shell
+    /// shows a few. `None` (the default) draws every page, as before.
+    pub fn set_paint_window(&mut self, window: Option<std::ops::Range<usize>>) {
+        self.paint_window = window.filter(|window| !window.is_empty());
+    }
+
+    /// Whether page `page_index` was laid out since it was last drawn, so its
+    /// pixels are out of date: the old pixels after a re-flow, or blank for a
+    /// page that has never been drawn (outside the window at open, or after
+    /// the surfaces were built again for a new page box).
+    pub fn is_page_stale(&self, page_index: usize) -> bool {
+        self.stale_pages.contains(&page_index)
+    }
+
+    /// Whether any page waits to be drawn.
+    pub fn has_stale_pages(&self) -> bool {
+        self.stale_pages
+            .first()
+            .is_some_and(|&page| page < self.page_count())
+    }
+
+    /// Draws the stale pages among `pages` (0-based) — all of them in one pass
+    /// over the span from the first to the last. Returns whether any was
+    /// drawn. A shell calls it for the pages it is about to show, and in idle
+    /// time for the rest.
+    pub fn paint_stale_pages(&mut self, pages: std::ops::Range<usize>) -> Result<bool, String> {
+        let count = self.page_count();
+        self.stale_pages.retain(|&page| page < count);
+        let mut stale = self.stale_pages.range(pages.start..pages.end.min(count));
+        let (Some(&first), last) = (stale.next(), stale.next_back()) else {
+            return Ok(false);
+        };
+        let last = last.copied().unwrap_or(first);
+        if self.paint_stale_span_from_page_start(first, last)? {
+            return Ok(true);
+        }
+        // Nothing changed since the pass that left them stale, so the pages
+        // outside this span keep pixels that are still right.
+        self.repaint_all_drawing(Some(first..last + 1), false)?;
+        self.bounded_pass_since_full_layout = false;
+        // A bounded edit may have left the document longer than the count
+        // this span was cut from. The relayout found the pages it added;
+        // nothing has drawn them, and those asked for are drawn now.
+        if self.mark_added_pages_stale(count) {
+            self.paint_stale_pages(pages)?;
+        }
+        Ok(true)
+    }
+
+    /// Marks the pages after `count_before` stale, and returns whether there
+    /// were any: a relayout that lengthened the document drew only the span
+    /// it was asked for.
+    fn mark_added_pages_stale(&mut self, count_before: usize) -> bool {
+        let count = self.page_count();
+        self.stale_pages.extend(count_before..count);
+        count > count_before
+    }
+
+    /// Draws pages `first..=last` (0-based) by resuming layout at the start of
+    /// `first` and stopping after `last`, so the cost follows the pages drawn
+    /// rather than the document. Nothing changed since the pass that left
+    /// them stale: the caches that pass filled still hold, and pagination is
+    /// kept as it is. Returns `false`, having done nothing, when the renderer
+    /// has no page-start snapshot it can seek to at `first` or a few pages
+    /// before (page 0, a document whose notes are shown, snapshots that no
+    /// longer fit); the caller then lays the document out from the start.
+    fn paint_stale_span_from_page_start(
+        &mut self,
+        first: usize,
+        last: usize,
+    ) -> Result<bool, String> {
+        // A page that starts inside a table or a paragraph carried over from
+        // the page before may have no snapshot of its own. The nearest earlier
+        // page that has one does as well: the pages between are laid out
+        // again but, outside the visible range, not drawn.
+        // A bounded pass since the last whole layout (an edit, a selection)
+        // stops at its bound: the snapshots, the line registry hit-testing
+        // reads and the regions after it may belong to a layout that no
+        // longer exists, and only a whole layout rebuilds them. So may a
+        // layout from before the round-trip tree gave the model its node ids.
+        if self.bounded_pass_since_full_layout || self.roundtrip_relayout_pending {
+            return Ok(false);
+        }
+        // With a selection showing, a seek drew some highlighted pages
+        // differently from a whole layout (a selection running to the end of
+        // a long document); the whole layout draws them as a plain open does.
+        if self
+            .selection
+            .is_some_and(|selection| !selection.is_collapsed())
+        {
+            return Ok(false);
+        }
+        // Fetched before anything is prepared, so an early return leaves the
+        // renderer as it was.
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
+        if !(1..=first)
+            .rev()
+            .take(SEEK_BACK_PAGES)
+            .any(|page| self.renderer.try_prepare_rerender_for_page(page))
+        {
+            return Ok(false);
+        }
+        let pages_before = self.page_count();
+        // The pass stops after `last`, so its last page is not the
+        // document's page count.
+        self.pass_covers_whole_document.set(false);
+        self.renderer
+            .set_visible_page_range(Some(first + 1..=last + 1));
+        let previous_limit = self.renderer.layout_page_limit();
+        self.renderer.set_layout_page_limit(Some(last + 1));
+        let result = self.renderer.render_with_numbering_rc(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+        );
+        self.renderer.set_layout_page_limit(previous_limit);
+        self.renderer.clear_visible_page_range();
+        self.pass_covers_whole_document.set(true);
+        result.map_err(|_| "repaint failed".to_string())?;
+        if let Some(error) = self.renderer.take_render_error() {
+            return Err(error);
+        }
+        debug_assert_eq!(self.page_count(), pages_before, "pagination is kept");
+        for page in first..=last {
+            self.stale_pages.remove(&page);
+        }
+        self.mark_wrong_style_references_stale();
+        self.renderer.clear_dirty_regions();
+        Ok(true)
     }
 
     /// Serialises the document back to a .docx.
@@ -412,9 +753,110 @@ impl NativeDocument {
     /// Round-trips through jade's writer, so parts the edit never touched keep
     /// their original XML — tracked changes, comments and field codes survive.
     pub fn export_docx(&self) -> Result<Vec<u8>, String> {
+        let grids = if Self::has_windows_nested_body_tables(&self.word_document) {
+            if !self.can_reuse_table_layout() {
+                return self.export_docx_with_fresh_table_grids();
+            }
+            self.renderer.resolved_table_grids_for_docx()
+        } else {
+            Vec::new()
+        };
         self.word_document
-            .export_docx()
+            .export_docx_with_table_grids(&grids)
             .map_err(|err| format!("export failed: {err:?}"))
+    }
+
+    fn has_windows_nested_body_tables(word_document: &WordDocument) -> bool {
+        word_layout_platform() == WordLayoutPlatform::Windows
+            && word_document
+                .document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+                .is_some_and(|body| {
+                    body.elements.iter().any(|element| {
+                        let BodyElement::Table(table) = element else {
+                            return false;
+                        };
+                        table.rows.iter().flat_map(|row| &row.cells).any(|cell| {
+                            cell.blocks
+                                .iter()
+                                .any(|block| matches!(block, BodyElement::Table(_)))
+                        })
+                    })
+                })
+    }
+
+    fn can_reuse_table_layout(&self) -> bool {
+        self.word_document.raw_document.is_some()
+            && self.renderer.last_layout_complete()
+            && !self.bounded_pass_since_full_layout
+            && !self.roundtrip_relayout_pending
+            && !self.options.render_original
+            && self.options.collapsed_blocks().is_empty()
+    }
+
+    fn export_docx_with_fresh_table_grids(&self) -> Result<Vec<u8>, String> {
+        // Layout may be bounded to the edited pages, or the opening pass
+        // may still carry no round-trip IDs. Keep this save pass independent
+        // of the live document, renderer and history.
+        let mut document = Cow::Borrowed(&self.word_document);
+        if document.raw_document.is_none() {
+            document
+                .to_mut()
+                .ensure_roundtrip_xml()
+                .map_err(|error| format!("round-trip XML failed: {error}"))?;
+        }
+        let renderer = Self::measure_tables(
+            &document,
+            (self.page_width, self.page_height),
+            &self.fonts,
+            &self.math_faces,
+            self.field_datetime,
+            &self.options,
+        )?;
+        document
+            .export_docx_with_table_grids(&renderer.resolved_table_grids_for_docx())
+            .map_err(|err| format!("export failed: {err:?}"))
+    }
+
+    fn measure_tables(
+        document: &WordDocument,
+        page_size: (f64, f64),
+        fonts: &FontEnvironment,
+        math_faces: &[FontFace],
+        field_datetime: Option<FieldDateTime>,
+        options: &Options,
+    ) -> Result<CanvasRenderer<SkiaPainter>, String> {
+        // Use the current model and fonts without drawing or sharing mutable
+        // layout state with the live view.
+        let host = SkiaRenderHost::with_fonts(page_size.0, page_size.1, fonts, 1.0)
+            .ok_or_else(|| "could not allocate the table measurement surface".to_string())?;
+        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
+            .map_err(|_| "table measurement setup failed".to_string())?;
+        register_math_faces(&mut renderer, math_faces);
+        renderer.sync_word_document(document);
+        renderer.set_current_datetime(field_datetime.map(renderer_datetime));
+        renderer.set_visible_page_range(Some(0..=0));
+        let mut options = options.clone();
+        options.render_original = false;
+        options.set_collapsed_blocks(Vec::new());
+        renderer
+            .render_with_numbering_rc(
+                document
+                    .document
+                    .clone()
+                    .ok_or_else(|| "no document".to_string())?,
+                &options,
+                document.numbering_part.as_ref(),
+                document.header_lines.as_deref(),
+                document.footer_lines.as_deref(),
+                Some(&document.comments),
+            )
+            .map_err(|_| "table measurement layout failed".to_string())?;
+        if let Some(error) = renderer.take_render_error() {
+            return Err(error);
+        }
+        Ok(renderer)
     }
 
     /// Exports the live document through the editor's painter and shared layout.
@@ -533,6 +975,17 @@ impl NativeDocument {
                 })
             })
             .collect::<Vec<_>>();
+        if pdf_options.rendering == PdfRenderingMode::Vector
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            for page in &pages.borrow()[..count.get()] {
+                let logical = page
+                    .recording_size_points()
+                    .ok_or_else(|| "missing PDF recording dimensions".to_string())?;
+                page.set_pdf_page_size_points(Some(windows_word_pdf_paper_size(logical)))?;
+            }
+        }
         let output = if pdf_options.tagged {
             let entries = renderer.take_structure_entries();
             let tagging = crate::tagging::tagging(&self.word_document, &entries);
@@ -603,6 +1056,7 @@ impl NativeDocument {
     }
 
     fn step_history(&mut self, backwards: bool) -> Result<Option<(usize, usize)>, String> {
+        self.build_roundtrip_xml()?;
         // Header and footer edits are on their own stack, so undo has to pop
         // whichever stack the last step came from.
         let step = if backwards {
@@ -622,6 +1076,7 @@ impl NativeDocument {
             }
             .ok_or_else(|| "header/footer history went missing".to_string())?;
             self.word_document.restore_snapshot(edit.previous);
+            self.renderer.note_style_reference_edit();
             if backwards {
                 self.history.pop();
                 self.redo_history.push(HistoryStep::HeaderFooter);
@@ -688,12 +1143,31 @@ impl NativeDocument {
 
     /// Repaints every page from scratch.
     pub fn repaint_all(&mut self) -> Result<Duration, String> {
-        let document = self
-            .word_document
-            .document
-            .as_ref()
-            .ok_or_else(|| "document went missing".to_string())?
-            .clone();
+        // Whatever asked for it — an edit, an undo, a view that lays the
+        // document out otherwise (collapsed headings, markup, field codes) —
+        // may leave STYLEREFs wrong afresh.
+        self.renderer.note_style_reference_edit();
+        let elapsed = self.repaint_all_drawing(self.paint_window.clone(), true)?;
+        self.bounded_pass_since_full_layout = false;
+        Ok(elapsed)
+    }
+
+    /// Lays every page out again and draws those in `drawn` (0-based; every
+    /// page when `None`). With `others_changed`, the pages not drawn are
+    /// marked stale; without, they are known to be unchanged.
+    fn repaint_all_drawing(
+        &mut self,
+        drawn: Option<std::ops::Range<usize>>,
+        others_changed: bool,
+    ) -> Result<Duration, String> {
+        // The model's own snapshot, shared: a copy would cost a deep clone of
+        // the document and leave the renderer's identity caches missing.
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
         let started = Instant::now();
         self.renderer.sync_word_document(&self.word_document);
         self.renderer.set_selection_range_for_render(self.selection);
@@ -703,24 +1177,45 @@ impl NativeDocument {
         // before deciding whether old paragraph paint can be replayed.
         self.renderer.invalidate_paragraph_content_hash_cache();
         self.renderer.mark_full_repaint();
-        self.renderer
-            .render_with_numbering(
-                &document,
-                &self.options,
-                self.word_document.numbering_part.as_ref(),
-                self.word_document.header_lines.as_deref(),
-                self.word_document.footer_lines.as_deref(),
-                Some(&self.word_document.comments),
-            )
-            .map_err(|_| "repaint failed".to_string())?;
+        let pages_before = self.page_count();
+        if let Some(drawn) = &drawn {
+            self.renderer
+                .set_visible_page_range(Some(drawn.start + 1..=drawn.end));
+        }
+        count_surface_document_render();
+        let result = self.renderer.render_with_numbering_rc(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+        );
+        self.renderer.clear_visible_page_range();
+        result.map_err(|_| "repaint failed".to_string())?;
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
+        }
+        self.roundtrip_relayout_pending = false;
+        let pages = self.page_count().max(pages_before);
+        match &drawn {
+            Some(drawn) => {
+                if others_changed {
+                    self.stale_pages
+                        .extend((0..pages).filter(|page| !drawn.contains(page)));
+                }
+                for page in drawn.start..drawn.end.min(pages) {
+                    self.stale_pages.remove(&page);
+                }
+            }
+            None => self.stale_pages.clear(),
         }
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
         self.renderer.clear_dirty_regions();
-        self.follow_page_box()?;
+        self.follow_page_box(drawn)?;
+        self.mark_wrong_page_totals_stale();
         Ok(started.elapsed())
     }
 
@@ -730,7 +1225,10 @@ impl NativeDocument {
     /// wrapping lines to its width: turned to landscape, the text kept its
     /// portrait width, the pages their portrait pitch, and lines ran over
     /// each other.
-    fn follow_page_box(&mut self) -> Result<(), String> {
+    ///
+    /// The new surfaces draw `drawn` (0-based; every page when `None`), and
+    /// the pages outside it are left stale: they start blank.
+    fn follow_page_box(&mut self, drawn: Option<std::ops::Range<usize>>) -> Result<(), String> {
         let (width, height) = self.renderer.layout_page_size();
         if (width, height) == (self.page_width, self.page_height) || width <= 1.0 || height <= 1.0 {
             return Ok(());
@@ -768,26 +1266,37 @@ impl NativeDocument {
             )));
         }
         renderer.mark_full_repaint();
-        let document = self
-            .word_document
-            .document
-            .as_ref()
-            .ok_or_else(|| "document went missing".to_string())?
-            .clone();
-        renderer
-            .render_with_numbering(
-                &document,
-                &self.options,
-                self.word_document.numbering_part.as_ref(),
-                self.word_document.header_lines.as_deref(),
-                self.word_document.footer_lines.as_deref(),
-                Some(&self.word_document.comments),
-            )
-            .map_err(|_| "repaint failed".to_string())?;
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
+        if let Some(drawn) = &drawn {
+            renderer.set_visible_page_range(Some(drawn.start + 1..=drawn.end));
+        }
+        count_surface_document_render();
+        let result = renderer.render_with_numbering_rc(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+        );
+        renderer.clear_visible_page_range();
+        result.map_err(|_| "repaint failed".to_string())?;
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
         renderer.clear_dirty_regions();
+        let page_count = rendered_pages.get();
+        self.stale_pages = match &drawn {
+            Some(drawn) => (0..page_count)
+                .filter(|page| !drawn.contains(page))
+                .collect(),
+            None => std::collections::BTreeSet::new(),
+        };
         self.renderer = renderer;
         self.pages = pages;
         self.rendered_pages = rendered_pages;
@@ -846,6 +1355,15 @@ impl NativeDocument {
     ///
     /// The renderer paints the selection, so this costs a repaint — unlike
     /// moving a collapsed caret, which the shell draws itself.
+    ///
+    /// A selection changes no layout, only the highlight, so only the pages
+    /// the old or the new selection is on are drawn again, and of those only
+    /// the ones up to `visible_end_page_1idx`; the ones after it are left
+    /// stale for [`Self::paint_stale_pages`]. The pass lays out no further
+    /// than the last page it draws, and keeps the hit-test, caret and region
+    /// registries the last layout built: rebuilt from a pass that stopped at
+    /// the bound, they covered only the pages before it, and clicks and
+    /// carets on later pages went wrong until the next full repaint.
     pub fn select(
         &mut self,
         anchor: (usize, usize),
@@ -856,11 +1374,108 @@ impl NativeDocument {
             TextPosition::new(anchor.0, anchor.1),
             TextPosition::new(focus.0, focus.1),
         );
+        // Read from the last pass's layout, before the selection changes.
+        let pages = [self.selection, Some(range)]
+            .into_iter()
+            .flatten()
+            .map(|range| self.selection_pages(range))
+            .try_fold(None, |acc: Option<(usize, usize)>, span| {
+                let (first, last) = span?;
+                Some(Some(
+                    acc.map_or((first, last), |(a, b)| (a.min(first), b.max(last))),
+                ))
+            })
+            .flatten();
         self.selection = Some(range);
         self.renderer.set_selection_range(Some(range));
-        let (from, _) = range.normalized();
-        self.repaint_bounded_to(from.paragraph, visible_end_page_1idx)
-            .map(|_| ())
+        let visible_end = visible_end_page_1idx.max(1);
+        let Some((first, last)) = pages else {
+            // An end of a selection the last pass did not lay out (one
+            // bounded to the pages on screen): the layout is not whole. Lay
+            // every page out again, draw the pages on screen, and leave every
+            // other page stale, since the pages may have moved.
+            // `visible_end` may mean "no bound" (`usize::MAX`); pages past
+            // the old count are left stale by the layout itself.
+            let drawn = 0..visible_end.min(self.page_count().max(1));
+            self.repaint_all_drawing(Some(drawn), true)?;
+            return Ok(());
+        };
+        let drawn = first..(last + 1).min(visible_end);
+        if !drawn.is_empty() {
+            if self.renderer.any_section_valign_enabled() {
+                // A vertically aligned section's offsets come from the used
+                // height of every page, which a pass over a few pages does
+                // not measure: lay every page out, drawing the same pages.
+                self.repaint_all_drawing(Some(drawn), false)?;
+            } else {
+                self.repaint_unchanged_layout(drawn)?;
+            }
+        }
+        // The layout did not change, so the pages read before it still hold.
+        let count = self.page_count();
+        self.stale_pages
+            .extend((first.max(visible_end)..=last).filter(|&page| page < count));
+        Ok(())
+    }
+
+    /// Draws `drawn` (0-based pages) again over a layout that has not
+    /// changed since the last pass, which laid out every page. The walk stops
+    /// after the last drawn page, and the registries the last pass built
+    /// (hit-testing, carets, cells, links, pagination) are kept, since they
+    /// describe the same layout.
+    fn repaint_unchanged_layout(&mut self, drawn: std::ops::Range<usize>) -> Result<(), String> {
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
+        self.renderer.set_selection_range_for_render(self.selection);
+        count_surface_document_render();
+        let result = self.renderer.render_pages_over_unchanged_layout(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+            drawn.start + 1..=drawn.end,
+        );
+        result.map_err(|_| "repaint failed".to_string())?;
+        if let Some(error) = self.renderer.take_render_error() {
+            return Err(error);
+        }
+        for page in drawn {
+            self.stale_pages.remove(&page);
+        }
+        self.mark_wrong_style_references_stale();
+        self.renderer.clear_dirty_regions();
+        Ok(())
+    }
+
+    /// The first and last page (0-based) the lines of `range` are on in the
+    /// last pass's layout, or `None` when an end of it was not laid out.
+    fn selection_pages(&self, range: SelectionRange) -> Option<(usize, usize)> {
+        let (start, end) = range.normalized();
+        let paragraphs = self.renderer.selection_manager().paragraphs();
+        // The ends must be laid out; a paragraph between them without lines
+        // (hidden text) draws nothing.
+        for paragraph in [start.paragraph, end.paragraph] {
+            paragraphs
+                .get(paragraph)
+                .filter(|layout| !layout.lines.is_empty())?;
+        }
+        let mut span: Option<(usize, usize)> = None;
+        for layout in &paragraphs[start.paragraph..=end.paragraph] {
+            for line in &layout.lines {
+                let bottom = (line.absolute_top + line.height - 0.01).max(line.absolute_top);
+                for y in [line.absolute_top, bottom] {
+                    let page = self.renderer.page_for_y(y.max(0.0));
+                    span = Some(span.map_or((page, page), |(a, b)| (a.min(page), b.max(page))));
+                }
+            }
+        }
+        span
     }
 
     /// Selects whole cells, as Word does when a drag crosses from one cell
@@ -890,6 +1505,7 @@ impl NativeDocument {
         paragraph: usize,
         text: &str,
     ) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         let previous = self
             .word_document
             .snapshot_including_package()
@@ -983,6 +1599,7 @@ impl NativeDocument {
         replace_previous: bool,
         bound_to_page: Option<usize>,
     ) -> Result<(), String> {
+        self.ensure_roundtrip_xml()?;
         let (x, y, width, height) = rect;
         if replace_previous {
             // Rolled back without a repaint: the transform below redraws, and
@@ -1044,20 +1661,8 @@ impl NativeDocument {
         }
     }
 
-    /// Repaints from `paragraph` up to `visible_end_page_1idx`, drawing every
-    /// page in that span.
-    ///
-    /// The same sequence a keystroke uses, minus the narrowing that only a
-    /// change confined to one page can afford.
-    fn repaint_bounded_to(
-        &mut self,
-        paragraph: usize,
-        visible_end_page_1idx: usize,
-    ) -> Result<Duration, String> {
-        self.repaint_bounded_inner(paragraph, visible_end_page_1idx, false)
-    }
-
-    /// As above, drawing only `visible_end_page_1idx` itself.
+    /// Repaints from `paragraph` up to `visible_end_page_1idx`, drawing only
+    /// `visible_end_page_1idx` itself.
     fn repaint_bounded(
         &mut self,
         paragraph: usize,
@@ -1080,6 +1685,7 @@ impl NativeDocument {
             .clone();
         let started = Instant::now();
         self.refresh_field_display();
+        self.bounded_pass_since_full_layout = true;
         self.pass_covers_whole_document.set(false);
         self.renderer
             .prepare_incremental_repaint(paragraph, visible_end_page_1idx);
@@ -1099,6 +1705,7 @@ impl NativeDocument {
             self.word_document.numbering_part.as_ref(),
             self.word_document.header_lines.as_deref(),
             self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
             visible_end_page_1idx,
         );
         self.renderer.clear_visible_page_range();
@@ -1107,11 +1714,85 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // A moved object can re-wrap text past the bound; a selection changes
+        // no layout, so the pages after it keep pixels that are still right.
+        if only_the_bound_page {
+            self.mark_pages_past_bound_stale(visible_end_page_1idx, false);
+        }
+        self.mark_wrong_style_references_stale();
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
         self.renderer.clear_dirty_regions();
         Ok(started.elapsed())
+    }
+
+    /// After a bounded pass that changed content: the pages after
+    /// `bound_1idx` still show — and their lines still answer hit-testing
+    /// with — the layout from before the edit, unless the pass reached the
+    /// end of the document, proved the pagination after the edit unchanged,
+    /// or `downstream_stood` (the edit's own proof, from the lines it laid
+    /// out). Otherwise they are marked stale, so [`Self::paint_stale_pages`]
+    /// lays the document out again when a shell draws them. A keystroke that
+    /// keeps everything after its paragraph in place — typing, Backspace,
+    /// Delete, in a table cell or not — marks nothing.
+    fn mark_pages_past_bound_stale(&mut self, bound_1idx: usize, downstream_stood: bool) {
+        if downstream_stood
+            || self.renderer.last_layout_complete()
+            || self.renderer.last_completed_pagination_edit_preserved()
+        {
+            return;
+        }
+        let count = self.page_count();
+        if bound_1idx < count {
+            self.stale_pages.extend(bound_1idx..count);
+        }
+    }
+
+    /// Lays the document out again when a bounded pass since the last whole
+    /// layout stopped before `paragraph`: such a pass registers lines only up
+    /// to its bound, and a caret query past it would land on the last line it
+    /// registered. Draws only the last page; the rest stay as they are, stale
+    /// or not.
+    fn ensure_layout_reaches(&mut self, paragraph: usize) -> Result<(), String> {
+        // An entry without lines counts as missing: past a pass's bound the
+        // registry can hold entries with none (a document with footnotes
+        // does).
+        if !self.bounded_pass_since_full_layout
+            || self
+                .renderer
+                .selection_manager()
+                .paragraphs()
+                .get(paragraph)
+                .is_some_and(|layout| !layout.lines.is_empty())
+        {
+            return Ok(());
+        }
+        let count = self.page_count();
+        let last = count.saturating_sub(1);
+        // Drawn: the last page, or the effective layout limit would end the
+        // walk at the drawn window.
+        self.repaint_all_drawing(Some(last..last + 1), false)?;
+        self.bounded_pass_since_full_layout = false;
+        self.mark_added_pages_stale(count);
+        Ok(())
+    }
+
+    /// Where paragraph `paragraph`'s lines begin and end in the last layout,
+    /// and how many there are; `None` when it has none registered.
+    fn paragraph_extent(&self, paragraph: usize) -> Option<ParagraphExtent> {
+        let lines = &self
+            .renderer
+            .selection_manager()
+            .paragraphs()
+            .get(paragraph)?
+            .lines;
+        let (first, last) = (lines.first()?, lines.last()?);
+        Some(ParagraphExtent {
+            lines: lines.len(),
+            top: first.absolute_top,
+            bottom: last.absolute_top + last.height,
+        })
     }
 
     /// The floating object under a point, in document coordinates.
@@ -1544,6 +2225,7 @@ impl NativeDocument {
     /// Shows the codes of the fields `view` names (⌥F9 every field, ⇧F9 the
     /// selected ones) and repaints.
     pub fn set_field_code_view(&mut self, view: FieldCodeView) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         self.field_codes = view;
         self.renderer.set_field_code_display(None);
         self.repaint_all().map(|_| ())
@@ -2298,6 +2980,9 @@ impl NativeDocument {
         offset: usize,
         affinity: CaretAffinity,
     ) -> Option<CaretRect> {
+        // A query has no error to report; on failure it answers from the
+        // layout there is.
+        let _ = self.ensure_layout_reaches(paragraph);
         self.renderer.set_caret_affinity(affinity);
         let range = SelectionRange::collapsed(TextPosition::new(paragraph, offset));
         self.selection = Some(range);
@@ -2314,6 +2999,7 @@ impl NativeDocument {
     /// caret or the selection there — for an overlay that marks a place,
     /// such as the box around a master document's subdocument.
     pub fn position_rect(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        let _ = self.ensure_layout_reaches(paragraph);
         let selection = self.renderer.selection_range();
         self.renderer
             .set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
@@ -2336,7 +3022,10 @@ impl NativeDocument {
     /// space.
     ///
     /// Populated by rendering, so it reflects the last paint — which is what a
-    /// click should hit.
+    /// click should hit. It cannot lay the document out on demand: on a page
+    /// past a bounded edit's bound it answers from the layout before the
+    /// edit until that page is drawn again ([`Self::paint_stale_pages`]),
+    /// or a caret query lays the document out.
     pub fn position_at(&self, x: f64, y: f64) -> Option<(usize, usize)> {
         self.renderer
             .hit_test_position(x, y)
@@ -2368,60 +3057,59 @@ impl NativeDocument {
         self.page_height + jade_docx_editor::render_host::PAGE_GAP_PX
     }
 
-    /// The document coordinate of a point on `page_index`.
+    /// The box of page `page_index` as it was laid out: a section turned
+    /// landscape, or on other paper, has pages of its own size.
+    pub fn page_box(&self, page_index: usize) -> (f64, f64) {
+        self.renderer.page_box(page_index)
+    }
+
+    /// The document coordinate of a point on `page_index`: the pages before
+    /// it count each at its own height.
     pub fn document_y(&self, page_index: usize, y_on_page: f64) -> f64 {
-        y_on_page + page_index as f64 * self.page_pitch()
+        y_on_page + self.renderer.page_top_y(page_index)
     }
 
     /// Which page a document coordinate falls on, and where on it.
     pub fn page_and_offset(&self, document_y: f64) -> (usize, f64) {
-        let page = (document_y / self.page_pitch()).floor().max(0.0) as usize;
-        (page, document_y - page as f64 * self.page_pitch())
+        let page = self.renderer.page_for_y(document_y.max(0.0));
+        (page, document_y - self.renderer.page_top_y(page))
     }
 
-    /// The page box the document asks for, found by laying it out once.
-    ///
-    /// Costs a render, which is why it happens only at open. The page size is
-    /// only known after layout has read the section properties, and everything
-    /// that maps between screen and document depends on it.
-    fn layout_page_size_of(
-        word_document: &WordDocument,
-        options: &Options,
-        faces: &[FontFace],
-        fallback_width: f64,
-        fallback_height: f64,
-    ) -> Result<(f64, f64), String> {
-        let mut host = SkiaRenderHost::new(fallback_width, fallback_height)
-            .ok_or_else(|| "could not allocate the probe surface".to_string())?;
-        register_faces(&mut host, faces)?;
-        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
-            .map_err(|_| "renderer setup failed".to_string())?;
-        register_math_faces(&mut renderer, &math_faces_of(faces, word_document));
-        renderer.sync_word_document(word_document);
-        let document = word_document
-            .document
-            .as_ref()
-            .ok_or_else(|| "no main document part".to_string())?
-            .clone();
-        renderer
-            .render_with_numbering(
-                &document,
-                options,
-                word_document.numbering_part.as_ref(),
-                word_document.header_lines.as_deref(),
-                word_document.footer_lines.as_deref(),
-                Some(&word_document.comments),
-            )
-            .map_err(|_| "probe render failed".to_string())?;
-        if let Some(error) = renderer.take_render_error() {
-            return Err(error);
-        }
-        let (width, height) = renderer.layout_page_size();
-        Ok(if width > 1.0 && height > 1.0 {
-            (width, height)
-        } else {
-            (fallback_width, fallback_height)
-        })
+    /// The page box layout ends on: the last section's, resolved as the
+    /// renderer resolves it (the section's own page settings, then the
+    /// document default section's, then the document's), folded for two
+    /// pages per sheet or a booklet. `None` when the properties give no
+    /// usable box; [`Self::follow_page_box`] still catches any box layout
+    /// ends on that this did not predict.
+    fn layout_page_size_of(document: &jade_docx_reader::Document) -> Option<(f64, f64)> {
+        use jade_docx_layout::section_transition::{
+            folded_page_size, DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
+        };
+        let settings = document
+            .sections
+            .last()
+            .and_then(|section| section.properties.as_ref())
+            .and_then(|properties| properties.page_settings.as_ref())
+            .or_else(|| {
+                document
+                    .default_section
+                    .as_ref()
+                    .and_then(|properties| properties.page_settings.as_ref())
+            })
+            .or(document.page_settings.as_ref());
+        let (width_pt, height_pt) = folded_page_size(
+            settings
+                .and_then(|settings| settings.width)
+                .unwrap_or(DEFAULT_PAGE_WIDTH_PT),
+            settings
+                .and_then(|settings| settings.height)
+                .unwrap_or(DEFAULT_PAGE_HEIGHT_PT),
+            document.print_two_on_one,
+            document.book_fold_printing,
+        );
+        let to_px = |points: f32| f64::from(points) * 96.0 / 72.0;
+        let (width, height) = (to_px(width_pt), to_px(height_pt));
+        (width > 1.0 && height > 1.0).then_some((width, height))
     }
 
     pub fn page_count(&self) -> usize {
@@ -2538,6 +3226,19 @@ impl NativeDocument {
         )
     }
 
+    /// Where the paragraph a split of `paragraph` made is: the next one of
+    /// its story, past the paragraphs of the notes it references (they
+    /// follow their reference), as `InsertParagraphBreak` puts the caret.
+    pub fn paragraph_after_split(&self, paragraph: usize) -> usize {
+        let document = &self.word_document;
+        if !document.is_body_paragraph_surface(paragraph) {
+            return paragraph + 1;
+        }
+        (paragraph + 1..document.paragraph_count())
+            .find(|&index| document.is_body_paragraph_surface(index))
+            .unwrap_or(paragraph + 1)
+    }
+
     /// The plain text of one paragraph.
     ///
     /// An IME works over a run of text with offsets into it, and a paragraph is
@@ -2566,10 +3267,27 @@ impl NativeDocument {
             })
     }
 
+    /// One paragraph's text in the caret's offsets: an inline picture, text
+    /// box or equation is one object character (U+FFFC), as Word counts it,
+    /// so the caret steps over it in one.
+    pub fn caret_text(&self, paragraph: usize) -> Option<String> {
+        self.word_document
+            .paragraph(paragraph)
+            .map(|_| self.word_document.rendered_paragraph_text(paragraph))
+    }
+
     // ---- for a shell's own commands ------------------------------------------
 
     /// The document model, for reading what a command needs to address —
     /// styles, numbering, table dimensions.
+    ///
+    /// Until the round-trip tree is built (the first edit or
+    /// [`Self::ensure_roundtrip_xml`]), readers backed by the XML — content
+    /// controls, legacy form fields, fields, tables of contents,
+    /// cross-reference targets, revisions, headings collapsed by default,
+    /// editable ranges, alt text, rendered paragraph lengths, the XML half of
+    /// paragraph and table formats — are empty or wrong. Callers that read
+    /// those call [`Self::ensure_roundtrip_xml`] first.
     pub fn word_document(&self) -> &WordDocument {
         &self.word_document
     }
@@ -2588,6 +3306,16 @@ impl NativeDocument {
         self.renderer
             .capture_full_layout_debug()
             .map_err(|_| "full layout capture failed".to_owned())
+    }
+
+    /// Capture painted repeated-table-header glyphs without changing ordinary
+    /// diagnostic capture or the rendered document.
+    pub fn capture_full_layout_debug_painted_table_headers(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, String> {
+        self.renderer
+            .capture_full_layout_debug_painted_table_headers()
+            .map_err(|_| "painted table header capture failed".to_owned())
     }
 
     /// Capture original table glyph origins even when painter clipping hides
@@ -2632,26 +3360,7 @@ impl NativeDocument {
         command: HeadlessCommand,
         keep_selection: bool,
     ) -> Result<(), String> {
-        let before = self.selection;
-        let recorded = self.executor.history_revision();
-        let after = self.edit_in_place(|this| {
-            apply_headless_commands_with_executor_to_document(
-                &mut this.word_document,
-                &mut this.executor,
-                this.selection.take(),
-                &HeadlessEditRequest {
-                    commands: vec![command],
-                },
-            )
-        });
-        let after = match after {
-            Ok(after) => after,
-            Err(err) => {
-                self.selection = before;
-                return Err(format!("edit failed: {err:?}"));
-            }
-        };
-        self.finish_recorded_edit(recorded, before, after, keep_selection)
+        self.apply_headless_edit(vec![command], keep_selection, false)
     }
 
     /// Runs `edit` on the document with the renderer's hold on it let go,
@@ -2664,12 +3373,79 @@ impl NativeDocument {
     /// also forgets the paragraph hashes the renderer keys by address, which
     /// an edit in place would otherwise leave stale; the copy forgot them too.
     fn edit_in_place<R>(&mut self, edit: impl FnOnce(&mut Self) -> R) -> R {
+        debug_assert!(
+            self.word_document.raw_document.is_some(),
+            "an edit ran before ensure_roundtrip_xml"
+        );
         self.renderer.drop_document_cache();
+        self.renderer.note_style_reference_edit();
         let result = edit(self);
         if let Some(document) = &self.word_document.document {
             self.renderer.restore_document_cache(Rc::clone(document));
         }
         result
+    }
+
+    /// Builds the round-trip XML tree that saving patches, which opening
+    /// leaves out, and repaints once so the layouts carry the node ids it
+    /// attaches. The first paint needs only the model, and the tree is a
+    /// second pass over `document.xml`; every edit and undo builds it first,
+    /// and a shell calls this in idle time after the first frame so the first
+    /// keystroke does not pay for it. Returns whether it did anything — built
+    /// the tree or laid the document out again — so a shell knows whether
+    /// the model's readers or the page images it holds may have changed. The
+    /// pixels do not: the pages are drawn again, none is left stale. Does
+    /// nothing once built; a tree that failed to parse fails again without
+    /// being parsed again.
+    ///
+    /// Until it runs, readers of [`Self::word_document`] backed by the tree
+    /// see nothing of it: content controls, legacy form fields, fields,
+    /// tables of contents, cross-reference targets, revisions, headings
+    /// collapsed by default, editable ranges, alt text, rendered paragraph
+    /// lengths, and the XML half of paragraph and table formats. A caller
+    /// that reads those, or reads anything the open set from them, calls
+    /// this first.
+    pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, String> {
+        let built = self.build_roundtrip_xml()?;
+        if !self.roundtrip_relayout_pending {
+            return Ok(built);
+        }
+        // Only node ids changed, so the pages left stale and those not are
+        // as they were: lay everything out, draw the window, mark nothing.
+        self.repaint_all_drawing(self.paint_window.clone(), false)?;
+        self.bounded_pass_since_full_layout = false;
+        Ok(true)
+    }
+
+    /// [`Self::ensure_roundtrip_xml`] without the repaint, for an edit that
+    /// repaints the whole document after it anyway.
+    fn build_roundtrip_xml(&mut self) -> Result<bool, String> {
+        if self.word_document.raw_document.is_some() {
+            return Ok(false);
+        }
+        if let Some(error) = &self.roundtrip_xml_error {
+            return Err(error.clone());
+        }
+        // Attaching node ids writes to the model; with the renderer still
+        // holding it, that would copy the whole document first.
+        self.renderer.drop_document_cache();
+        let built = self.word_document.ensure_roundtrip_xml();
+        if let Some(document) = &self.word_document.document {
+            self.renderer.restore_document_cache(Rc::clone(document));
+        }
+        match built {
+            Ok(true) => {
+                ROUNDTRIP_XML_BUILDS.with(|builds| builds.set(builds.get() + 1));
+                self.roundtrip_relayout_pending = true;
+                Ok(true)
+            }
+            Ok(false) => Ok(false),
+            Err(error) => {
+                let error = format!("round-trip XML failed: {error}");
+                self.roundtrip_xml_error = Some(error.clone());
+                Err(error)
+            }
+        }
     }
 
     /// [`Self::apply_command`] for several commands that are one action — a
@@ -2682,19 +3458,82 @@ impl NativeDocument {
         commands: Vec<HeadlessCommand>,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.apply_headless_edit(commands, keep_selection, true)
+    }
+
+    fn apply_headless_edit(
+        &mut self,
+        commands: Vec<HeadlessCommand>,
+        keep_selection: bool,
+        grouped: bool,
+    ) -> Result<(), String> {
         if commands.is_empty() {
             return Ok(());
         }
+        self.build_roundtrip_xml()?;
         let before = self.selection;
         let recorded = self.executor.history_revision();
-        self.executor.begin_group();
+        let reuse_first_layout = self.can_reuse_table_layout();
+        if grouped {
+            self.executor.begin_group();
+        }
         let after = self.edit_in_place(|this| {
-            let result = apply_headless_commands_with_executor_to_document(
+            let mut before_insertion = None;
+            let mut measure = |document: &WordDocument, index, table_order, stage| {
+                if stage == ResizeMeasurement::BeforeInsertion
+                    && !document.document.as_ref().is_some_and(|document| {
+                        document
+                            .east_asian_line_breaking
+                            .compatibility_mode
+                            .is_some_and(|mode| mode >= 15)
+                    })
+                {
+                    return Ok(None);
+                }
+                let Some(id) = document
+                    .table_by_order(table_order)
+                    .and_then(|table| table.node_id)
+                else {
+                    return Ok(None);
+                };
+                let geometry = if index == 0 && reuse_first_layout {
+                    this.renderer.nested_column_resize_geometry_for_node(id)
+                } else {
+                    if !Self::has_windows_nested_body_tables(document) {
+                        return Ok(None);
+                    }
+                    Self::measure_tables(
+                        document,
+                        (this.page_width, this.page_height),
+                        &this.fonts,
+                        &this.math_faces,
+                        this.field_datetime,
+                        &this.options,
+                    )
+                    .map_err(CommandError::Custom)?
+                    .nested_column_resize_geometry_for_node(id)
+                };
+                if stage == ResizeMeasurement::BeforeInsertion {
+                    before_insertion = geometry.map(|geometry| (id, geometry));
+                    return Ok(None);
+                }
+                let previous = before_insertion.take().filter(|(node, _)| *node == id);
+                Ok(geometry.map(|geometry| {
+                    previous
+                        .and_then(|(_, previous)| geometry.after_text_insertion(&previous))
+                        .map_or(geometry, Rc::new)
+                }))
+            };
+            let result = apply_headless_commands_with_resize_measurement(
                 &mut this.word_document,
                 &mut this.executor,
                 this.selection.take(),
                 &HeadlessEditRequest { commands },
+                &mut measure,
             );
+            if !grouped {
+                return result;
+            }
             match result {
                 Ok(after) => {
                     this.executor.end_group();
@@ -2712,7 +3551,9 @@ impl NativeDocument {
             Ok(after) => after,
             Err(err) => {
                 self.selection = before;
-                self.repaint_all()?;
+                if grouped {
+                    self.repaint_all()?;
+                }
                 return Err(format!("edit failed: {err:?}"));
             }
         };
@@ -2727,6 +3568,7 @@ impl NativeDocument {
         command: Box<dyn Command>,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let mut selection = self.selection;
@@ -2787,11 +3629,18 @@ impl NativeDocument {
         visible_end_page_1idx: usize,
         executor_steps: usize,
     ) -> Result<Duration, String> {
+        self.ensure_roundtrip_xml()?;
         // IME updates replace the previous marked text in the same paragraph.
         // Capture the same reuse candidates as typing; the recorded command's
         // footprint below must still prove that no other paragraph/part changed.
         let local_text_edit = match &command {
             HeadlessCommand::InsertText { .. } => true,
+            // Backspace and Delete within the paragraph; one that joins two
+            // paragraphs fails the footprint check below.
+            HeadlessCommand::DeleteText {
+                paragraph: deleted_in,
+                ..
+            } => *deleted_in == paragraph,
             HeadlessCommand::ReplaceRange {
                 start_paragraph,
                 end_paragraph,
@@ -2802,7 +3651,11 @@ impl NativeDocument {
         let old_height = local_text_edit
             .then(|| self.renderer.cached_paragraph_height(paragraph))
             .flatten();
-        let text_edit_cache = local_text_edit.then(|| self.renderer.local_text_edit_cache());
+        let extent_before = self.paragraph_extent(paragraph);
+        let text_edit_cache = local_text_edit.then(|| {
+            self.renderer
+                .local_text_edit_cache_for_paragraph(&self.word_document, paragraph)
+        });
         let recorded = self.executor.history_revision();
         let before = self.selection;
         let group_commands = executor_steps > 1;
@@ -2876,18 +3729,20 @@ impl NativeDocument {
         // Use the same geometry-checked reuse as browser typing. The recorded
         // command must prove it only touched this paragraph: InsertText can
         // instead invoke a content-control or form-field action.
-        if executor_steps == 1
+        let single_paragraph_edit = executor_steps == 1
             && self.executor.history_revision() != recorded
             && self.executor.next_undo_render_footprint()
-                == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph })
-        {
+                == Some(HistoryRenderFootprint::SingleParagraph { index: paragraph });
+        if single_paragraph_edit {
             // Native pages retain their pixels between edits. Let the renderer
             // redraw only this paragraph's band when its geometry is stable;
             // unsupported layouts and height changes fall back to a full page.
-            // The incremental hyperlink registry retains prefix regions while
-            // native replay may visit them again. Keep the full-page path for
-            // linked documents until that registry supports retained bands.
-            let band_safe = local_text_edit && self.renderer.hyperlink_regions().is_empty();
+            // Hyperlink registration is idempotent against the regions the
+            // render retained for paragraphs before the edit, so replaying them
+            // adds nothing, and the edited paragraph's regions were dropped by
+            // the `dirty_from` retain and register afresh. Linked documents can
+            // take the band too.
+            let band_safe = local_text_edit;
             self.renderer.set_band_redraw_enabled(band_safe);
             if let Some(cache) = text_edit_cache {
                 self.renderer
@@ -2898,15 +3753,38 @@ impl NativeDocument {
                     .prepare_completed_pagination_edit(paragraph, height);
             }
         }
+        // The caller's bound, raised to the last page the edited paragraph
+        // reached: the lines it carries onto the next page reflow too, and
+        // are laid out and drawn with the rest of it.
+        let visible_end_page_1idx = match extent_before.filter(|_| single_paragraph_edit) {
+            Some(extent) => visible_end_page_1idx
+                .max(self.renderer.page_for_y((extent.bottom - 0.5).max(0.0)) + 1),
+            None => visible_end_page_1idx,
+        };
         // Bounded to what the caller can see, so the pages it stops at are not
         // the document's page count.
         self.pass_covers_whole_document
             .set(visible_end_page_1idx >= self.page_count());
+        self.bounded_pass_since_full_layout = true;
+        let bounded = visible_end_page_1idx < self.page_count();
+        // A pass that stops at its bound drops the line registry, the cells
+        // and the regions of the paragraphs after it; they are put back if
+        // the layout after the edit turns out to stand.
+        if single_paragraph_edit && bounded {
+            self.renderer.set_aside_edit_downstream(paragraph);
+        }
         // The sequence lives on the renderer, so this shell and the browser one
         // cannot drift apart on it. Reproducing it here is what produced three
         // repaints that ran and drew nothing.
         self.renderer
             .prepare_incremental_repaint(paragraph, visible_end_page_1idx);
+        // The walk stops once it has crossed the bound, after laying out the
+        // first lines of the next page; drawn, they would leave that page
+        // cleared but for them. It is not drawn, and keeps what it showed.
+        if bounded {
+            self.renderer
+                .set_visible_page_range(Some(1..=visible_end_page_1idx.max(1)));
+        }
         // The other parts go with the body. Passing `None` for them renders a
         // document with no headers, no footers and no list numbering, which
         // looks like a layout difference rather than parts left behind.
@@ -2916,8 +3794,12 @@ impl NativeDocument {
             self.word_document.numbering_part.as_ref(),
             self.word_document.header_lines.as_deref(),
             self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
             visible_end_page_1idx,
         );
+        if bounded {
+            self.renderer.clear_visible_page_range();
+        }
         self.renderer.set_band_redraw_enabled(false);
         // Whatever the pass was, the next one is a whole-document render until
         // something says otherwise.
@@ -2926,6 +3808,40 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // The layout after the edit stands when the renderer proved the
+        // pagination unchanged, or when the edited paragraph's lines begin and
+        // end where they did and every paragraph after it that the pass laid
+        // out again kept its lines.
+        // A repeated table header row or a STYLEREF shows the edited text on
+        // other pages too, which neither lines staying put nor a proven
+        // pagination vouch for.
+        let shown_elsewhere =
+            single_paragraph_edit && self.renderer.paragraph_text_shows_elsewhere(paragraph);
+        let downstream_stood = self.renderer.take_edit_downstream().is_some_and(|saved| {
+            let stood = extent_before.is_some()
+                && !shown_elsewhere
+                && self.paragraph_extent(paragraph) == extent_before
+                && self.renderer.edit_downstream_kept_its_lines(&saved);
+            if stood {
+                self.renderer.restore_edit_downstream(saved);
+            }
+            stood
+        });
+        if shown_elsewhere {
+            // A STYLEREF also shows the text on the paragraph's own page, or
+            // on the pages before it, in a header the pass did not draw again.
+            let count = self.page_count();
+            let from = self
+                .renderer
+                .first_page_showing_style_ref_of(paragraph)
+                .map_or(visible_end_page_1idx, |page| {
+                    page.min(visible_end_page_1idx)
+                });
+            self.stale_pages.extend(from.min(count)..count);
+        } else {
+            self.mark_pages_past_bound_stale(visible_end_page_1idx, downstream_stood);
+        }
+        self.mark_wrong_page_totals_stale();
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
@@ -2948,5 +3864,42 @@ fn normalize_css_color(color: &str) -> String {
         format!("#{trimmed}")
     } else {
         trimmed.to_string()
+    }
+}
+
+// Original Windows Word PDF paper uses the same 600-dpi print grid as its
+// vector font realization. Recover authored integer twips before rounding so
+// CSS-point floating arithmetic cannot flip exact half-device-pixel cases.
+fn windows_word_pdf_paper_size(logical: (f64, f64)) -> (f64, f64) {
+    let extent = |points: f64| {
+        let twips = (points * 20.0).round();
+        let pixels = ((twips * 5.0 + 6.0) / 12.0).floor();
+        if pixels.is_finite() && pixels >= 1.0 {
+            pixels * 0.12
+        } else {
+            points
+        }
+    };
+    (extent(logical.0), extent(logical.1))
+}
+
+#[cfg(test)]
+mod windows_pdf_paper_tests {
+    use super::windows_word_pdf_paper_size;
+
+    #[test]
+    fn actual_word_paper_bounds_keep_both_half_pixel_boundaries() {
+        // Word 16.0.19127.20936 original PDF media boxes, including ties.
+        for (logical, expected) in [
+            ((595.1, 841.9), (595.08, 841.92)),
+            ((595.3, 841.9), (595.32, 841.92)),
+            ((595.5, 841.9), (595.56, 841.92)),
+            ((595.3, (16842.0 / 15.0) * 0.75), (595.32, 842.16)),
+            ((1584.0, 841.9), (1584.0, 841.92)),
+        ] {
+            let actual = windows_word_pdf_paper_size(logical);
+            assert!((actual.0 - expected.0).abs() < 1e-9);
+            assert!((actual.1 - expected.1).abs() < 1e-9);
+        }
     }
 }

@@ -1,0 +1,718 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T072846967Z-c342657f",
+  "captured_at_utc": "2026-11-19T07:28:46.9790969Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744.docx",
+      "sha256": "ece7d075b43bc794aa7e5711142f55a03900d69207258191560e361f0e5536f3",
+      "pdf": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744.pdf",
+      "pdf_sha256": "96fcb12c851addf97194ec3c6831507815e8a812f019d3b23ca65092b95f3fde",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744.xps",
+      "xps_sha256": "281ef4f45851e1b5d0c03eaef7a75876c28fdd84e3e25fa4a4a58bc300659f48",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744.page-001.emf",
+          "sha256": "b8af794a8912e48e40d3ed648123f968c9598f366ceec75fe97a5a631d811ee1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744.docx",
+      "sha256": "a09217f82e6146644239ee12dfec264b534eb37d3cc6fff69b9d7c23b10e9097",
+      "pdf": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744.pdf",
+      "pdf_sha256": "f9ca80dbc189e35ac2c3a2082cbb781a1eefcbcf82d3d3c4eb2bf830d93af14b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744.xps",
+      "xps_sha256": "7224cb42363458a10374510588ac3dc2250343b3f6790fd57b3d64228a0fdb19",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744.page-001.emf",
+          "sha256": "dc4d9fe29759baebce1b371084b569e84b9687cb019f6f5b0971f0a4884b9cff",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649.docx",
+      "sha256": "544bda393bc874c50397f3d1c07edf8a54731e1ebe39864768d95549ade986e9",
+      "pdf": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649.pdf",
+      "pdf_sha256": "b54731d63cf1d5db373f60d54701299808593d7abb56c579ed53dcf1d5f00b58",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649.xps",
+      "xps_sha256": "f4f0ceffa77ab82fa92f308cb894302b51f7cbaa2e021cc77c485c3a77edff0e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649.page-001.emf",
+          "sha256": "6f255bbf3584c82ae55c9a9cbb4819ca04a61a0d8012f1e6fe0436f3e5da4cd7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649.docx",
+      "sha256": "7e104d0078ac95d84efcf35d87cdf0b200972f47dddf0b6fc906ed9140b3219c",
+      "pdf": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649.pdf",
+      "pdf_sha256": "0f312e32ef03ce5187ac91358f684007e61e0bc407e840e546b0483db9c89786",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649.xps",
+      "xps_sha256": "8755f177163ebcc6355c06a13622ec573b3df19d3e16b096cd7a2041521e2321",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649.page-001.emf",
+          "sha256": "9510c6cc95ded8ccfd46f9c4966ea7c2e75f05c5280d50553683253947d3cdd7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744.docx",
+      "sha256": "d304d6488d359befa2027ad5a96b878bf1c126ed175373294780c112469ab132",
+      "pdf": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744.pdf",
+      "pdf_sha256": "885e92c4f2b24b818e7eeb58c89d14139f42157f4739f429dad3e0bfee386ecf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744.xps",
+      "xps_sha256": "a9d208f09b9a398c8ef98bda71f0a97cc98e4e3e8093cb0ead044ab135791641",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744.page-001.emf",
+          "sha256": "3239950f0fd9f7b0d6bbab13d664390535fb615ae0431127f531e1ba38120d87",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744.docx",
+      "sha256": "ebc75ce2d74e5947cdd38a6ad42cc0b494c3fae4a3e71b8da3ac172f8e166848",
+      "pdf": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744.pdf",
+      "pdf_sha256": "6afa5f352e0c545c0ad9db1ec18448a38b466acaba095f02edc434021e6ce06f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744.xps",
+      "xps_sha256": "e6a3651e9ac1004c5c25fca25682db37a8a2e0694966af9cef184a8d279093a5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744.page-001.emf",
+          "sha256": "dc4d9fe29759baebce1b371084b569e84b9687cb019f6f5b0971f0a4884b9cff",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649.docx",
+      "sha256": "bf28c9d2a83a43699297e0c496c597570bcce59aa827a3855b56a26516d20419",
+      "pdf": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649.pdf",
+      "pdf_sha256": "f2f50ade62834bec0d7d9b4eed56a011058ca39ae8cfc3d06710c15687ef26a5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649.xps",
+      "xps_sha256": "33aa84792ea700ba3dbb534d4309583a4f251d56def96391dbfa93d154670856",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649.page-001.emf",
+          "sha256": "b94bd387f6fbdbae65b51b7520c981138db110500b82fe74f431d9315558f904",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649.docx",
+      "sha256": "c709a17e7a851c13a36b26bddf5370f3db12f0aee5bdf033fbd052fc672224d9",
+      "pdf": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649.pdf",
+      "pdf_sha256": "325e2e6eb659e22590ba613d1d699555c34f310b642a347b9f21bd2efd507d48",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649.xps",
+      "xps_sha256": "7828c4d610d01604aab0f91f25f55c3ce3a2508c04e3e15f036942174245481f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649.page-001.emf",
+          "sha256": "9510c6cc95ded8ccfd46f9c4966ea7c2e75f05c5280d50553683253947d3cdd7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772.docx",
+      "sha256": "762ed18dec665f5bece618ff0f1ea47791b632b5a1ff2117938f350dc2a3b1b6",
+      "pdf": "word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772.pdf",
+      "pdf_sha256": "4dcaddf69aa0dc6727c97c394d2ae841c694f8c16e11bab472c7779ad0315610",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772.xps",
+      "xps_sha256": "40a908dd7c8066020cf19bb42aba85d4cc1121305536255336e30c1f2dcd3cb5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772.page-001.emf",
+          "sha256": "5ae287c02531e7efc5d9946351c78c5a323dd6d4753ff9c86bd248424d444af7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772.docx",
+      "sha256": "57f496443e8d769ad26ef1ab79b7b8e8ae903102c6e503d80a69bd38078da037",
+      "pdf": "word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772.pdf",
+      "pdf_sha256": "1338953b62412fdf5de86e57876e04867961b5fe2583afee6f6b0cf24972fe7d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772.xps",
+      "xps_sha256": "152f75eaafd6d811c035ef2f5f77e61ccadd5555e575d5cf12743d6cd1966966",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772.page-001.emf",
+          "sha256": "93f79a031e71978f78a5771546fb119c8f2da9d6ab4f90111a42f6acf4013098",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765.docx",
+      "sha256": "096d91fc5e51d6b007fd1fef2dc86d7a35896a02ea89f64f2bf1ff399a85b052",
+      "pdf": "word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765.pdf",
+      "pdf_sha256": "75bf8464632c9bb62e7647a19cf9ddd2b6b8f515914f7d31e3b10b24a80f189c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765.xps",
+      "xps_sha256": "3fa2d358e77063d78e5b98506813bb1a7dbbbef181e11f17704875992dda8d69",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765.page-001.emf",
+          "sha256": "f50ecdcaafba92529a0be136e60eeccf4690d85f508192774148539ab5e3491d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765.docx",
+      "sha256": "fb8af12323553df18cac5c83710b53d7354e7fda4901ed1b7bf34ce78b6a9c16",
+      "pdf": "word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765.pdf",
+      "pdf_sha256": "693cac437b7d73aae487d7e450a4f568036771ca36cbaf001a8041d29389ed12",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765.xps",
+      "xps_sha256": "9315ce644bab44dce7cefa1fc27d5c339166d78a11ae0cb6d4aeddb1c1b98259",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765.page-001.emf",
+          "sha256": "f49943184fb98b1ee5d9558157217e2800897fc02c5c3738be27ba5b26684ae0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772.docx",
+      "sha256": "8c26c59d42dd63d5b1470c92f37ca58ea41515b8c3bc3a9463ee21bd2ecd0af8",
+      "pdf": "word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772.pdf",
+      "pdf_sha256": "8f76e46e1bb75f8ddd12edaac1adbb392b9bbe9ca39780240ac42bd18bf73a64",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772.xps",
+      "xps_sha256": "bb872b0d7e599cc875696b434a57f81977b0471a94762ff4a0e9f3946aaedb7e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772.page-001.emf",
+          "sha256": "764874c83bf40f2aaac073bd7b075c29e31a7def677ce6bf8bb2fc96c5de3bf3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772.docx",
+      "sha256": "3c6a771cb5748af7660b28e386e9390b9fcab8a9f2f1ed74ce12b225d3ed651b",
+      "pdf": "word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772.pdf",
+      "pdf_sha256": "597434b87451f5a25565dc852141e6503ebc158d5d5cca0658fcab4cf97b1ffb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772.xps",
+      "xps_sha256": "e017a6fb7b577e8737933acb231dc5d02ead288bfdae75195a5d6591eaa42daa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772.page-001.emf",
+          "sha256": "1ad529062aa62a392bc1c1e286e5979bc26e759bb464867abf87b29240753497",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765.docx",
+      "sha256": "61dcce0ffa46ca5b84fe6474ae439ac487036a1ca40bfee96c8bd19004daccda",
+      "pdf": "word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765.pdf",
+      "pdf_sha256": "48c6e59bbc9e58bdbf984dd814d76676205c1975756b7f8830e343880b48d6c2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765.xps",
+      "xps_sha256": "0be853561824421729ca337bf586f31269099fc75c3111c6dea2b05ad7b60e34",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765.page-001.emf",
+          "sha256": "30dda4030ac38f5066b42bdbb0ab6156d6a3876dcce062958f1415fed7216289",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765.docx",
+      "sha256": "c6c47594547aaa41b26ed85c40db4470a405c7db349e19cba1b1632f4ac1a1d8",
+      "pdf": "word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765.pdf",
+      "pdf_sha256": "f65ae25981de68ff367acc0766da4ffa7e7566f0d3e9799cd9555c524efc08bf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765.xps",
+      "xps_sha256": "0bfda7a5f5efb3328879ecdc184414c326379bcd43509ef35b3ff03f2680d161",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765.page-001.emf",
+          "sha256": "f49943184fb98b1ee5d9558157217e2800897fc02c5c3738be27ba5b26684ae0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632.docx",
+      "sha256": "d6b0c08257c029d6f65dbfac330fd89d16c48371b60942485fd45c2bfedf0488",
+      "pdf": "word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632.pdf",
+      "pdf_sha256": "5e6e920c1ca78a1e54c76419aa02d72494b6b8a30585e01018465f3a3eebd80a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632.xps",
+      "xps_sha256": "05623a15b5343977952fd78f8d083613dbd474f04955465a1d8b9fb9d99c00a9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632.page-001.emf",
+          "sha256": "6a15b1680913f085612f9dba94ebda5d7fee072ccb41da7ae5db7816742e1b22",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632.docx",
+      "sha256": "4e9309fa5b08e3abda08f6d6e021f76b4b18a6f89ced20a37955493d215af280",
+      "pdf": "word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632.pdf",
+      "pdf_sha256": "3bfbdb707c500767b92517d5a763ab38dac1bccae92b0159c45a1d38ef7e94a6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632.xps",
+      "xps_sha256": "3758e88cd430ce63930fb694d7eaad04ae4106598f8270db4bfeb5280f774b76",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632.page-001.emf",
+          "sha256": "a2518107578102a805fc6b389caa9895b503bc26524dafa76e7101eb0a0f2eeb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720.docx",
+      "sha256": "20ca29448e94435ca588ad16696fec4419c32d89f8642b3328719c35566b5539",
+      "pdf": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720.pdf",
+      "pdf_sha256": "11aa4cf30f0f6593d76a1457385708b9aae59fecd11d3a086c176206e1b0d221",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720.xps",
+      "xps_sha256": "739baa63e336900860616f6a5ff3f56d573e0ce0c4ec3a358ad7225f0ea1e4e9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720.page-001.emf",
+          "sha256": "da532a8127960fb7047014018908ac36a728653bb4e1daa17d137020370a5a96",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720.docx",
+      "sha256": "672208d195f52d75126cbfab46fd01bccd8b80020e32c3d31f6d383da4e3b264",
+      "pdf": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720.pdf",
+      "pdf_sha256": "470812c547cb829ea7e54d18fe8f1ace6c3a9e0919c64d99b55f7b0f362f1567",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720.xps",
+      "xps_sha256": "6f3112a88fd4fad72eba5feee0b4739fb22fe94fc32040e964e350247904441b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720.page-001.emf",
+          "sha256": "acb02429a1f0cc9579bd8866b3d21217f80053de1979e27ea26de730285e820f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632.docx",
+      "sha256": "a92c1f8b5424b9436e313982f46c336dfb2aa41c6875ba53af12182f2f799e07",
+      "pdf": "word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632.pdf",
+      "pdf_sha256": "fe72dc2ec8f42de394a1190c0afabfa83d202f934f91dd3576a013e497742ff2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632.xps",
+      "xps_sha256": "638a4736f541d013983b3c02a9450ee9dd873e1a9e9993d7186dfcfd625f5423",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632.page-001.emf",
+          "sha256": "6a15b1680913f085612f9dba94ebda5d7fee072ccb41da7ae5db7816742e1b22",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632.docx",
+      "sha256": "4c7668720f3047ac960aca4ca7418b53fa8789ba7e9d039119d89816a523ee2a",
+      "pdf": "word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632.pdf",
+      "pdf_sha256": "ba73087ec5e4619d3bec5ce5457cb55334ea3ee0c547f498074e8cba549b09f9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632.xps",
+      "xps_sha256": "43665c0a613090ef50bf02d0907a41eb46e4588b4ef1937cb0513668eb7e8528",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632.page-001.emf",
+          "sha256": "a2518107578102a805fc6b389caa9895b503bc26524dafa76e7101eb0a0f2eeb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720.docx",
+      "sha256": "a247ff90f808e1a34650cba2ea8e8621242f4f934ba6f082d1a5924e5aa53964",
+      "pdf": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720.pdf",
+      "pdf_sha256": "ebecd0495e0830c125f9448ee880aad77e2e50ad74bf4b92f8e1b8dddffbff40",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720.xps",
+      "xps_sha256": "d64b031e435ae46afe9260a026f53ecaa28075ae34dea4d399957dd6ac72c877",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720.page-001.emf",
+          "sha256": "595dbef8836e4db5301838115cd0647e1174bee846176e4cf79d0289e8ac5716",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720",
+      "source": "tmp\\w19-tight-face-inputs\\word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720.docx",
+      "sha256": "a078cdda1a667a1cfc7cc28c74b301fe1bcef4861d16e0f4dfae055ee3a0db4b",
+      "pdf": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720.pdf",
+      "pdf_sha256": "523eea004581f33b458ad36c4ce005d6755d4953f45a80f1adefd1418c3c7257",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720.xps",
+      "xps_sha256": "4a4cc8813ae73054c5cd23134509c8bd77aff0dadb13dde5c3cf4e52e64696a4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720.page-001.emf",
+          "sha256": "acb02429a1f0cc9579bd8866b3d21217f80053de1979e27ea26de730285e820f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

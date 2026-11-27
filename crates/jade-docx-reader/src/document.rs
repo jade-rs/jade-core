@@ -4,7 +4,7 @@ use crate::numbering::{
     to_letter, to_roman,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 mod drawing;
@@ -27,6 +27,9 @@ pub use table_conditional::{
     TableStyleConditionalFormat, TableStyleRegionEdges,
 };
 
+mod run_text_controls;
+pub use run_text_controls::RunTextControls;
+
 /// Top-level representation of a DOCX document after parsing.
 ///
 /// The structure mirrors the parts that the renderer consumes: the document
@@ -48,6 +51,13 @@ pub struct Document {
     pub footnotes: BTreeMap<String, Note>,
     #[serde(default)]
     pub endnotes: BTreeMap<String, Note>,
+    /// Notes whose reference is a custom mark (`w:customMarkFollows`): the
+    /// text after the reference stands in for the number, and the note takes
+    /// no number of the sequence.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub custom_mark_footnotes: BTreeSet<String>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub custom_mark_endnotes: BTreeSet<String>,
     /// Document-wide note numbering defaults from `settings.xml`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footnote_properties: Option<NoteNumbering>,
@@ -277,6 +287,19 @@ impl Default for TocOptions {
 }
 
 impl TocOptions {
+    /// 目次 from the headings with outline levels `min` to `max`, as the
+    /// ribbon's button and `HeadlessCommand::InsertTableOfContents` build
+    /// it: linked entries, page numbers shown, applied outline levels too.
+    pub fn headings(min: u8, max: u8) -> Self {
+        Self {
+            outline_min: min,
+            outline_max: max,
+            hyperlinks: true,
+            use_applied_outline_levels: true,
+            ..Self::default()
+        }
+    }
+
     pub fn hides_page_number_at_level(&self, level: u8) -> bool {
         self.hide_page_numbers
             || self
@@ -2204,6 +2227,11 @@ pub enum NoteSeparatorKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Run {
     pub text: String,
+    /// Source-form annotations for controls whose Unicode text is ambiguous.
+    /// Byte offsets refer to `text`; ordinary text and optional hyphens need
+    /// no allocation. Keep these with text when editing or splitting a run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_controls: Option<Box<RunTextControls>>,
     pub properties: Option<RunProperties>,
     pub image: Option<RunImage>,
     pub text_box: Option<RunTextBox>,
@@ -2308,7 +2336,7 @@ pub const COLUMN_BREAK_CHAR: char = '\u{000E}';
 pub const COLUMN_BREAK_STR: &str = "\u{000E}";
 
 /// Metadata describing a hyperlink applied to a run.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct RunHyperlink {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2601,11 +2629,16 @@ pub enum RunFieldKind {
     /// `name` is the bookmark target; the renderer resolves it to a page number
     /// using the document's bookmark table and the laid-out page positions.
     /// `hyperlink` retains Word's `\h` switch so the result remains an
-    /// interactive jump to the bookmark.
+    /// interactive jump to the bookmark. `relative_position` is the `\p`
+    /// switch: Word then shows relative text ("above", "below", "on page
+    /// N") in the document's language, so the renderer keeps the saved
+    /// result instead of a page number.
     PageRef {
         name: String,
         #[serde(default)]
         hyperlink: bool,
+        #[serde(default)]
+        relative_position: bool,
     },
     /// Number of a bookmarked footnote/endnote reference (`NOTEREF`).
     /// Relative-position results retain Word's saved, localized text.
@@ -4269,8 +4302,9 @@ mod tests {
         // (`RunImage::signature_line`). 8 more: the underline's boxed theme
         // reference (`RunProperties::underline_theme_color`). 16 more: shading
         // foreground/background boxed theme references. 8 more: the border's
-        // boxed theme reference.
-        assert_eq!(std::mem::size_of::<Run>(), 3192);
+        // boxed theme reference. 8 more: optional, boxed source-control
+        // annotations; their offset vectors are not stored inline in every run.
+        assert_eq!(std::mem::size_of::<Run>(), 3200);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -5172,7 +5206,7 @@ pub enum FrameAlign {
 }
 
 /// Paragraph-level properties that influence layout and alignment.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ParagraphProperties {
     /// The paragraph's `w14:paraId` attribute (a stable, document-unique
     /// identifier on `<w:p>`), surfaced here as a read-side convenience so a
@@ -5381,6 +5415,14 @@ pub struct PageBorders {
     /// the text margin). Defaults to `text` semantics when absent.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset_from: Option<String>,
+    /// `w:display` — `allPages` (the default), `firstPage` (only the
+    /// section's first page) or `notFirstPage` (every page but the first).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<String>,
+    /// `w:zOrder` — `front` (the default: in front of text) or `back`
+    /// (behind text).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub z_order: Option<String>,
 }
 
 impl PageBorders {
@@ -5933,7 +5975,7 @@ pub struct TabStop {
     pub leader: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct EastAsianLineBreakingSettings {
     pub use_east_asian_layout: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -5980,7 +6022,7 @@ pub struct EastAsianLineBreakingSettings {
 }
 
 /// Numbering metadata that associates a paragraph with a numbering definition.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Numbering {
     pub id: Option<String>,
     pub level: Option<u32>,
@@ -6404,6 +6446,10 @@ pub struct RunProperties {
     /// read.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_effects: Option<Box<RunTextEffects>>,
+    /// Layout-only flag on a derived style slice for authored literal U+00AD.
+    /// Source identity lives on `Run::text_controls`, not inherited formatting.
+    #[serde(skip)]
+    pub literal_soft_hyphen: bool,
     /// Unmodeled `w:rPr` children preserved verbatim (see [`PreservedRunProps`]).
     /// Not serialized: this is an in-memory preservation bridge, reconstructed at
     /// load and consulted only by the export writer.
@@ -6492,7 +6538,8 @@ impl RunProperties {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.preserved_rpr.0.is_empty()
+        !self.literal_soft_hyphen
+            && self.preserved_rpr.0.is_empty()
             && self.style.is_none()
             && self.bold.is_none()
             && self.italic.is_none()
@@ -6989,7 +7036,7 @@ pub struct Spacing {
 }
 
 /// Page size and margin information derived from the section properties.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct PageSettings {
     pub width: Option<f32>,
     pub height: Option<f32>,
@@ -7049,7 +7096,7 @@ impl SectionProperties {
 }
 
 /// Section-level properties that may affect page layout or header/footer links.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct SectionProperties {
     pub page_settings: Option<PageSettings>,
     pub header_reference: Option<String>,
@@ -7227,7 +7274,7 @@ pub struct SectionRange {
 }
 
 /// Column layout settings derived from `<w:cols>`.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct SectionColumns {
     /// Number of columns defined by the section (Word defaults to 1).
     pub count: Option<u32>,
@@ -7242,7 +7289,7 @@ pub struct SectionColumns {
 }
 
 /// Individual column overrides when a section specifies custom widths.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ColumnDefinition {
     /// Column width in points when specified.
     pub width: Option<f32>,
@@ -7251,7 +7298,7 @@ pub struct ColumnDefinition {
 }
 
 /// Simplified representation of the WordprocessingML `w:docGrid` element.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct DocGrid {
     /// Grid behaviour (`default`, `lines`, `linesAndChars`, `snapToChars`, ...).
     pub grid_type: Option<String>,

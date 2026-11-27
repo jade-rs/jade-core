@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T022147047Z-bc90d437",
+  "captured_at_utc": "2026-11-17T02:21:47.0503283Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-float-lookahead-sides-compat14",
+      "source": "w17-h-float-lookahead-controls-input-snapshots\\word-windows-float-lookahead-sides-compat14.docx",
+      "sha256": "ae4a1448d66fbc8329aaf93ed51e350c7c9a734444aecef4d376b44708960b71",
+      "pdf": "word-windows-float-lookahead-sides-compat14.pdf",
+      "pdf_sha256": "e24bdc2137a89d5f55a9b36c882ba1e0067d9f7a08944b315e80d991eba2a7ce",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-float-lookahead-sides-compat14.page-001.emf",
+          "sha256": "afe32f3c8857d4e84b67d34f37f9a920d532b9a5e410fed19af8e65fd787e869",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-float-lookahead-sides-compat14.page-002.emf",
+          "sha256": "c7c916857fa87c09601e2231ff99acb106af7e6559d6d1136a9a32afbfd29cc9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-float-lookahead-sides-compat14.page-003.emf",
+          "sha256": "29f513553970b7601353ad3720ce9172cd7c37d3e9405cf34fb4dd865dc53e85",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
