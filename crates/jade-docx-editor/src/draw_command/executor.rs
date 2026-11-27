@@ -1654,6 +1654,10 @@ pub(crate) fn try_fill_featured_text<P: Painter>(
     {
         return Ok(false);
     }
+    // Short spans fit inline. Longer spans share a buffer that only allocates
+    // when a span exceeds its capacity.
+    let mut inline_clusters = [(0, 0.0); 16];
+    let mut overflow_clusters = Vec::new();
     let mut index = 0;
     while index < characters.len() {
         let first = &characters[index];
@@ -1686,14 +1690,23 @@ pub(crate) fn try_fill_featured_text<P: Painter>(
             let stop = if rtl { first.end } else { last.end };
             match text.get(start..stop) {
                 Some(stretch) => {
-                    let mut clusters: Vec<_> = group
+                    let positions = group
                         .iter()
-                        .map(|character| (character.start - start, x + character.x_offset))
-                        .collect();
+                        .map(|character| (character.start - start, x + character.x_offset));
+                    let clusters = if let Some(inline) = inline_clusters.get_mut(..group.len()) {
+                        for (cluster, position) in inline.iter_mut().zip(positions) {
+                            *cluster = position;
+                        }
+                        inline
+                    } else {
+                        overflow_clusters.clear();
+                        overflow_clusters.extend(positions);
+                        overflow_clusters.as_mut_slice()
+                    };
                     if rtl {
                         clusters.reverse();
                     }
-                    if context.try_fill_shaped_text(stretch, &clusters, y)? {
+                    if context.try_fill_shaped_text(stretch, clusters, y)? {
                         true
                     } else if arabic {
                         // A platform canvas shapes the complete span itself.
@@ -2537,6 +2550,50 @@ mod discretionary_hyphen_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn positioned_arabic_keeps_source_byte_order_and_visual_x_coordinates() {
+        use jade_painter::recording::{Op, RecordingPainter};
+
+        for text in ["سلام".to_string(), "سلسلة".repeat(8)] {
+            let length = text.chars().count();
+            let characters: Vec<_> = text
+                .char_indices()
+                .rev()
+                .enumerate()
+                .map(|(visual_index, (start, character))| PlacedCharacter {
+                    start,
+                    end: start + character.len_utf8(),
+                    font: "ot:liga 16px Arabic",
+                    x_offset: visual_index as f64 * 7.0,
+                })
+                .collect();
+            let expected: Vec<_> = text
+                .char_indices()
+                .enumerate()
+                .map(|(index, (start, _))| (start, 25.0 + (length - index - 1) as f64 * 7.0))
+                .collect();
+            let painter = RecordingPainter::new();
+            assert!(try_fill_featured_text(
+                &painter,
+                &text,
+                25.0,
+                32.0,
+                &characters,
+                &mut |painter, font| {
+                    painter.set_font(font);
+                }
+            )
+            .unwrap());
+            assert_eq!(
+                painter.ops(),
+                [
+                    Op::SetFont("ot:liga 16px Arabic".into()),
+                    Op::FillShapedText(text, expected, 32.0),
+                ]
+            );
+        }
+    }
 
     #[test]
     fn test_classify_script_latin() {
