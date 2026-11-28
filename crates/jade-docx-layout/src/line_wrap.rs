@@ -9439,10 +9439,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 // line and incorrectly starts the remainder at the left edge.
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
                 let tab_base = paragraph_style.line_base_x(base_x, lines.len());
+                let restricted_by_float = (tab_base - base_x).abs() > f64::EPSILON
+                    || paragraph_style.line_base_width(base_available, lines.len())
+                        < base_available - f64::EPSILON;
                 // On a legacy float line, a later tab can extend the line to an
                 // authored stop or continue from an authored stop past the frame.
                 let continues_past_float = legacy_float_tabs
-                    && (tab_base - base_x).abs() > f64::EPSILON
+                    && restricted_by_float
                     && !current_line_tab_stops.is_empty()
                     && (paragraph_style.is_authored_tab_target(tab_base, target_x)
                         && target_x > line_origin + effective_available
