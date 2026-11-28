@@ -19,6 +19,9 @@ from generate_windows_floating_tab_stop_cases import (
 from generate_windows_floating_multi_tab_cases import (
     PREFIX as FLOATING_MULTI_TAB_PREFIX, cases as floating_multi_tab_cases,
 )
+from generate_windows_right_float_tab_cases import (
+    PREFIX as RIGHT_FLOAT_TAB_PREFIX, cases as right_float_tab_cases,
+)
 from generate_windows_floating_line_ending_cases import (
     PREFIX as FLOATING_LINE_ENDING_PREFIX, cases as floating_line_ending_cases,
 )
@@ -456,6 +459,8 @@ CAPTURES = (
      FLOATING_TAB_STOP_PREFIX, floating_tab_stop_cases, ('--unclipped-tables',)),
     ('floating-table-multi-tabs', '0f95c547e52025a451f5a7ae4c0f4f8d830427ffa7ce1286177bf3c6fcec826d',
      FLOATING_MULTI_TAB_PREFIX, floating_multi_tab_cases, ('--unclipped-tables', '--without-page-image')),
+    ('floating-table-right-tabs', '2206089dcf79b21107d9e18aeaf97746fe2c41065d933359303da9c393f89734',
+     RIGHT_FLOAT_TAB_PREFIX, right_float_tab_cases, ('--unclipped-tables', '--without-page-image')),
 )
 
 
@@ -497,6 +502,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'floating-table-line-endings',
         'floating-table-authored-tabs',
         'floating-table-multi-tabs',
+        'floating-table-right-tabs',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
