@@ -682,8 +682,11 @@ impl ParagraphStyle {
     }
 
     fn uses_legacy_windows_float_tab_grid(&self) -> bool {
-        !self.float_line_segments.is_empty()
-            && self.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        !self.float_line_segments.is_empty() && self.uses_legacy_windows_tab_stops()
+    }
+
+    fn uses_legacy_windows_tab_stops(&self) -> bool {
+        self.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
             && matches!(self.east_asian_rules.compatibility_mode, Some(12 | 14))
             && !self.bidi
             && self
@@ -5058,9 +5061,9 @@ impl WrappedLine {
         })
     }
 
-    /// Extra text extent requested by an authored tab beyond the float frame.
-    pub fn authored_float_tab_overhang_px(&self, origin: f64, available: f64) -> f64 {
-        (float_tab_fit_width(&self.tab_stops, origin, available) - available).max(0.0)
+    /// Extra text extent requested by an authored tab beyond the line frame.
+    pub fn authored_tab_overhang_px(&self, origin: f64, available: f64) -> f64 {
+        (legacy_tab_fit_width(&self.tab_stops, origin, available) - available).max(0.0)
     }
 
     /// Word's tab positions stay fixed when wrap repair prepends part of a word.
@@ -5088,8 +5091,10 @@ impl WrappedLine {
                     let cursor = origin + width;
                     let (target, alignment, leader) =
                         find_next_tab_stop(paragraph, tab_base, cursor, &paragraph.tab_stops);
-                    let (segment_width, decimal_prefix_width) =
-                        tab.float_metrics.as_deref().map_or((0.0, None), |metrics| {
+                    let (segment_width, decimal_prefix_width) = tab
+                        .legacy_metrics
+                        .as_deref()
+                        .map_or((0.0, None), |metrics| {
                             (metrics.width, metrics.decimal_prefix)
                         });
                     let target_width = tab_segment_start_width(
@@ -5114,7 +5119,7 @@ impl WrappedLine {
                     tab.end_x = cursor + advance;
                     tab.legacy_authored = paragraph.is_authored_tab_target(tab_base, target);
                     cluster.width = advance;
-                    if let Some(metrics) = tab.float_metrics.as_deref() {
+                    if let Some(metrics) = tab.legacy_metrics.as_deref() {
                         if let Some(segment) = measure_tab_leader(
                             ctx,
                             paragraph,
@@ -7051,12 +7056,12 @@ pub struct TabStopSegment {
     /// Width the tab gave up to a final comma or full stop that would end
     /// past the edge (`shrink_tab_for_final_mark`).
     pub closed_for_final_mark: f64,
-    float_metrics: Option<Rc<FloatTabMetrics>>,
+    legacy_metrics: Option<Rc<LegacyTabMetrics>>,
     legacy_authored: bool,
 }
 
 #[derive(Clone, Debug)]
-struct FloatTabMetrics {
+struct LegacyTabMetrics {
     width: f64,
     decimal_prefix: Option<f64>,
     style: Rc<ResolvedRunStyle>,
@@ -9385,6 +9390,16 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         == crate::line_metrics::WordLayoutPlatform::Mac
                     && positional.is_none();
                 let legacy_float_tabs = paragraph_style.uses_legacy_windows_float_tab_grid();
+                let legacy_tabs = paragraph_style.uses_legacy_windows_tab_stops();
+                let windows_authored_tabs = paragraph_style.word_platform
+                    == crate::line_metrics::WordLayoutPlatform::Windows
+                    && matches!(
+                        paragraph_style.east_asian_rules.compatibility_mode,
+                        Some(12 | 14 | 15)
+                    )
+                    && !paragraph_style.bidi
+                    && positional.is_none()
+                    && !paragraph_style.tab_stops.is_empty();
                 let tab_target =
                     |cursor_x: f64, line_origin: f64, line_index: usize| match &positional {
                         Some(stop) => {
@@ -9439,20 +9454,34 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 // line and incorrectly starts the remainder at the left edge.
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
                 let tab_base = paragraph_style.line_base_x(base_x, lines.len());
-                // On a legacy float line, a later tab can extend the line to an
-                // authored stop or continue from an authored stop past the frame.
-                let continues_past_float = legacy_float_tabs
-                    && (tab_base - base_x).abs() > f64::EPSILON
-                    && !current_line_tab_stops.is_empty()
-                    && (paragraph_style.is_authored_tab_target(tab_base, target_x)
-                        && target_x > line_origin + effective_available
-                        || float_tab_fit_width(
+                let restricted_by_float = (tab_base - base_x).abs() > f64::EPSILON
+                    || paragraph_style.line_base_width(base_available, lines.len())
+                        < base_available - f64::EPSILON;
+                let authored_stop = windows_authored_tabs
+                    && paragraph_style.is_authored_tab_target(tab_base, target_x);
+                let beyond_frame = target_x > line_origin + effective_available;
+                // Legacy Word retains text at a stop beyond the frame. Beside
+                // a float, the first tab can still move with its preceding text.
+                let continues_past_frame = legacy_tabs
+                    && (authored_stop
+                        && beyond_frame
+                        && (!restricted_by_float || !current_line_tab_stops.is_empty())
+                        || legacy_tab_fit_width(
                             &current_line_tab_stops,
                             line_origin,
                             effective_available,
                         ) > effective_available);
+                // At the normal right edge, a tab can consume its own line
+                // even when only part of the following text fits there.
+                let move_tab_to_own_line = windows_authored_tabs
+                    && !restricted_by_float
+                    && (authored_stop && alignment == TabAlignment::Left
+                        || current_line_tab_stops.last().is_some_and(|tab| {
+                            tab.end_offset == grapheme_start_abs
+                                && paragraph_style.is_authored_tab_target(tab_base, tab.end_x)
+                        }));
                 if current_width > 0.0
-                    && !continues_past_float
+                    && !continues_past_frame
                     && desired_width + segment_width > effective_available + WRAP_FIT_TOLERANCE_PX
                 {
                     let next_line_index = lines.len() + 1;
@@ -9484,6 +9513,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     if next_desired_width + segment_width
                         <= next_effective_available + WRAP_FIT_TOLERANCE_PX
                         || at_float_edge
+                        || move_tab_to_own_line
                     {
                         lines.push(WrappedLine {
                             segments: std::mem::take(&mut current_line),
@@ -9497,6 +9527,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         });
                         current_width = 0.0;
                         previous_width = 0.0;
+                        pending_leading_width = 0.0;
                         current_available = next_available;
                         current_line_indent = next_line_indent;
                         line_origin = next_line_origin;
@@ -9526,16 +9557,17 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     start_x: gap_start,
                     end_x: gap_start + gap_width,
                     closed_for_final_mark: 0.0,
-                    float_metrics: (legacy_float_tabs && !paragraph_style.tab_stops.is_empty())
-                        .then(|| {
-                            Rc::new(FloatTabMetrics {
+                    legacy_metrics: (legacy_tabs && !paragraph_style.tab_stops.is_empty()).then(
+                        || {
+                            Rc::new(LegacyTabMetrics {
                                 width: segment_width,
                                 decimal_prefix: decimal_prefix_width,
                                 style: style.clone(),
                                 properties: run_style.properties.clone(),
                             })
-                        }),
-                    legacy_authored: legacy_float_tabs
+                        },
+                    ),
+                    legacy_authored: legacy_tabs
                         && paragraph_style.is_authored_tab_target(
                             paragraph_style.line_base_x(base_x, lines.len()),
                             target_x,
@@ -9709,7 +9741,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     ctx.measure_trailing_overhang(grapheme, font_desc)? * text_scale_x
                 };
                 let effective_available = (current_available - WRAP_SAFETY_PX).max(1.0);
-                let effective_available = float_tab_fit_width(
+                let effective_available = legacy_tab_fit_width(
                     &current_line_tab_stops,
                     paragraph_style.line_base_x(base_x, lines.len()) + current_line_indent,
                     effective_available,
@@ -11387,18 +11419,21 @@ fn measure_tab_leader<C: LineWrapContext>(
     }))
 }
 
-/// Word keeps later tabs and their text on the line after a stop beyond the float frame.
-fn float_tab_fit_width(tabs: &[TabStopSegment], origin: f64, available: f64) -> f64 {
+/// Word keeps later tabs and their text on the line after a stop beyond the frame.
+fn legacy_tab_fit_width(tabs: &[TabStopSegment], origin: f64, available: f64) -> f64 {
+    let Some((last, metrics)) = tabs.last().and_then(|last| {
+        last.legacy_metrics
+            .as_deref()
+            .map(|metrics| (last, metrics))
+    }) else {
+        return available;
+    };
     if tabs
         .iter()
+        .rev()
         .any(|tab| tab.legacy_authored && tab.end_x > origin + available)
     {
-        if let Some((last, metrics)) = tabs
-            .last()
-            .and_then(|last| last.float_metrics.as_deref().map(|metrics| (last, metrics)))
-        {
-            return available.max(last.end_x - origin + metrics.width);
-        }
+        return available.max(last.end_x - origin + metrics.width);
     }
     available
 }
@@ -11903,7 +11938,7 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
             column.start,
             line_index,
         )?;
-        let effective_available = float_tab_fit_width(
+        let effective_available = legacy_tab_fit_width(
             &lines[line_index].tab_stops,
             paragraph_style.line_base_x(column.start, line_index)
                 + paragraph_style.line_indent(line_index),

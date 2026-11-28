@@ -221,6 +221,16 @@ pub trait Painter {
         self.fill_text(text, x, y)
     }
 
+    /// Whether this target can draw legacy text effects using filled contours.
+    fn supports_text_decoration_paths(&self) -> bool {
+        false
+    }
+
+    /// Paints a decorative layer as a filled contour on supporting targets.
+    fn fill_text_decoration_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        self.fill_text_decoration(text, x, y)
+    }
+
     /// Strokes scalable font contours with the requested joins when available.
     /// Backends without contour strokes fall back to their normal text stroke.
     fn stroke_text_as_path(
