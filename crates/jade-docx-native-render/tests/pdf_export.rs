@@ -1,7 +1,7 @@
 //! PDF export must consume the editor renderer, including the live edits.
 mod common;
 
-use lopdf::Document;
+use lopdf::{Document, Object};
 
 fn assert_embedded_editor_pixels(
     pdf: &Document,
@@ -697,6 +697,76 @@ fn pdf_paints_isolated_legacy_character_effects_without_images() {
         }
     }
     set_word_layout_platform(previous);
+}
+
+#[test]
+fn mac_word_outline_uses_the_same_thin_stroke_at_different_sizes() {
+    use jade_docx_layout::line_metrics::{
+        set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+    };
+    let bytes = rewrite_document_xml(|_| {
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:body>
+        <w:p><w:r><w:rPr><w:outline/><w:sz w:val="16"/></w:rPr><w:t>A</w:t></w:r></w:p>
+        <w:p><w:r><w:rPr><w:outline/><w:sz w:val="72"/></w:rPr><w:t>V</w:t></w:r></w:p>
+        </w:body></w:document>"#
+            .to_string()
+    });
+    let previous = word_layout_platform();
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let pdf = common::open_bytes(&bytes)
+        .export_pdf_with_options(jade_docx_native_render::PdfExportOptions {
+            rendering: jade_docx_native_render::PdfRenderingMode::Vector,
+            ..Default::default()
+        })
+        .unwrap();
+    set_word_layout_platform(previous);
+
+    let pdf = Document::load_mem(&pdf).unwrap();
+    let page = pdf.get_pages()[&1];
+    let (resources, _) = pdf.get_page_resources(page).unwrap();
+    let graphics_states = resources
+        .unwrap()
+        .get(b"ExtGState")
+        .and_then(Object::as_dict)
+        .unwrap();
+    let content = lopdf::content::Content::decode(&pdf.get_page_content(page).unwrap()).unwrap();
+    let (mut width, mut join) = (1.0, 0);
+    let mut stack = Vec::new();
+    let mut strokes = Vec::new();
+    for op in content.operations {
+        match op.operator.as_str() {
+            "q" => stack.push((width, join)),
+            "Q" => (width, join) = stack.pop().unwrap(),
+            "w" => width = op.operands[0].as_float().unwrap(),
+            "j" => join = op.operands[0].as_i64().unwrap(),
+            "gs" => {
+                let name = op.operands[0].as_name().unwrap();
+                let state = graphics_states
+                    .get_deref(name, &pdf)
+                    .unwrap()
+                    .as_dict()
+                    .unwrap();
+                if let Ok(value) = state.get(b"LW") {
+                    width = value.as_float().unwrap();
+                }
+                if let Ok(value) = state.get(b"LJ") {
+                    join = value.as_i64().unwrap();
+                }
+            }
+            "S" => strokes.push((width, join)),
+            _ => {}
+        }
+    }
+    assert_eq!(strokes.len(), 2, "{strokes:?}");
+    for (width, join) in strokes {
+        // Skia emits CSS pixels under the page's 72/96 transform.
+        assert!((width * 0.75 - 0.24).abs() < 0.00001, "{width}");
+        assert_eq!(join, 0);
+    }
+    let text = pdf.extract_text(&[1]).unwrap().replace(['\n', ' '], "");
+    assert_eq!(text, "AV");
 }
 
 #[test]

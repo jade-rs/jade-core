@@ -118,6 +118,40 @@ fn a_custom_math_face_survives_page_rebuild_and_pdf_export() {
     assert_math_face(&reopened);
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn a_math_collection_face_exports_searchable_equations() {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    use jade_docx_native_render::{FontFace, NativeDocument, PdfExportOptions, PdfRenderingMode};
+
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let bytes = docx_with_math_font(
+        r#"<w:p><m:oMath><m:r><m:rPr><m:sty m:val="p"/></m:rPr><m:t>x</m:t></m:r></m:oMath></w:p>"#,
+        Some("Host Math"),
+    );
+    let document = NativeDocument::open_with_font_faces(
+        &bytes,
+        common::PAGE_WIDTH_PX,
+        common::PAGE_HEIGHT_PX,
+        &[FontFace {
+            family: "Host Math".into(),
+            weight: 400,
+            italic: false,
+            path: common::repo_path("crates/jade-docx-layout/tests/fixtures/math-font.ttc"),
+            index: 1,
+        }],
+    )
+    .unwrap();
+    let bytes = document
+        .export_pdf_with_options(PdfExportOptions {
+            rendering: PdfRenderingMode::Vector,
+            ..Default::default()
+        })
+        .unwrap();
+    let pdf = lopdf::Document::load_mem(&bytes).unwrap();
+    assert_eq!(pdf.extract_text(&[1]).unwrap().trim(), "x");
+}
+
 #[test]
 fn an_inline_equation_is_an_object_in_its_line_and_typing_after_it_works() {
     let body = format!(

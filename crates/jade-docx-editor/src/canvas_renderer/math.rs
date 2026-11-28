@@ -437,9 +437,10 @@ impl OwnedMathPlan {
                             .set_fill_style_str(&owned_math_color(&glyph.color, automatic_color));
                         last_color = Some(glyph.color.as_str());
                     }
-                    if jade_docx_layout::line_metrics::word_layout_platform()
-                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-                        && painter.supports_font_glyphs()
+                    if let Some(program) = prepared
+                        .font_program
+                        .as_ref()
+                        .filter(|_| painter.supports_font_glyphs())
                     {
                         let font = (glyph.family.as_str(), glyph.size_px);
                         if last_font != Some(font) {
@@ -451,22 +452,20 @@ impl OwnedMathPlan {
                             }));
                             last_font = Some(font);
                         }
-                        if let Some(program) = &prepared.font_program {
-                            if painter.try_fill_font_glyph(
-                                glyph
-                                    .rendered_text
-                                    .unwrap_or_else(|| &self.text[glyph.text_range.clone()]),
-                                program,
-                                prepared.geometry.glyph_id,
-                                word_windows_math_print_scale(
-                                    prepared.scale,
-                                    glyph.size_px,
-                                    &glyph.family,
-                                ),
-                                (x + glyph.x, baseline + glyph.baseline),
-                            )? {
-                                continue;
-                            }
+                        if painter.try_fill_font_glyph(
+                            glyph
+                                .rendered_text
+                                .unwrap_or_else(|| &self.text[glyph.text_range.clone()]),
+                            program,
+                            prepared.geometry.glyph_id,
+                            word_windows_math_print_scale(
+                                prepared.scale,
+                                glyph.size_px,
+                                &glyph.family,
+                            ),
+                            (x + glyph.x, baseline + glyph.baseline),
+                        )? {
+                            continue;
                         }
                     }
                     paint_math_outline(painter, prepared, x + glyph.x, baseline + glyph.baseline);
@@ -601,29 +600,28 @@ pub fn paint_boxed_math<P: Painter>(
                     painter.set_fill_style_str(&styled_color(glyph.style.color));
                     last_color = Some(glyph.style.color);
                 }
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-                    && painter.supports_font_glyphs()
+                if let Some(program) = prepared
+                    .font_program
+                    .as_ref()
+                    .filter(|_| painter.supports_font_glyphs())
                 {
                     let font = (glyph.style.family, glyph.style.size_px);
                     if last_font != Some(font) {
                         painter.set_font(&styled_font(glyph.style));
                         last_font = Some(font);
                     }
-                    if let Some(program) = &prepared.font_program {
-                        if painter.try_fill_font_glyph(
-                            glyph.display_text(&plan.text),
-                            program,
-                            prepared.geometry.glyph_id,
-                            word_windows_math_print_scale(
-                                prepared.scale,
-                                glyph.style.size_px,
-                                glyph.style.family,
-                            ),
-                            (x + glyph.x, baseline + glyph.baseline),
-                        )? {
-                            continue;
-                        }
+                    if painter.try_fill_font_glyph(
+                        glyph.display_text(&plan.text),
+                        program,
+                        prepared.geometry.glyph_id,
+                        word_windows_math_print_scale(
+                            prepared.scale,
+                            glyph.style.size_px,
+                            glyph.style.family,
+                        ),
+                        (x + glyph.x, baseline + glyph.baseline),
+                    )? {
+                        continue;
                     }
                 }
                 paint_math_outline(painter, prepared, x + glyph.x, baseline + glyph.baseline);
