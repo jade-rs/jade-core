@@ -130,6 +130,7 @@ struct StyleState {
     blur_filter: f32,
     stroke_text_paths: bool,
     decorative_text: bool,
+    decorative_text_path: bool,
     /// What the `y` given to `fill_text` means, as canvas's `textBaseline`.
     /// Skia always draws from the alphabetic baseline, so this decides how far
     /// the `y` has to be moved before the glyphs land where the caller meant.
@@ -198,6 +199,7 @@ impl Default for StyleState {
             blur_filter: 0.0,
             stroke_text_paths: false,
             decorative_text: false,
+            decorative_text_path: false,
             text_baseline: TextBaseline::Alphabetic,
         }
     }
@@ -951,10 +953,13 @@ impl SkiaPainter {
         };
         let editor_scale = recording_scale.flatten();
         let vector_pdf = recording_scale == Some(None);
-        let decorative = recording_scale.is_some() && self.shared.style.borrow().decorative_text;
-        let stroke_contours = paint.style() == skia_safe::paint::Style::Stroke
-            && self.shared.style.borrow().stroke_text_paths;
-        let contour_path = if stroke_contours || (vector_pdf && decorative) {
+        let style = self.shared.style.borrow();
+        let decorative = recording_scale.is_some() && style.decorative_text;
+        let decorative_contours = vector_pdf && style.decorative_text_path;
+        let stroke_contours =
+            paint.style() == skia_safe::paint::Style::Stroke && style.stroke_text_paths;
+        drop(style);
+        let contour_path = if stroke_contours || decorative_contours {
             let mut widths = vec![0.0; glyphs.len()];
             font.get_widths(glyphs, &mut widths);
             let mut path = Path::new();
@@ -1122,6 +1127,20 @@ impl SkiaPainter {
             canvas.draw_path(&path, paint);
             canvas.restore();
         });
+    }
+
+    /// Draw a decorative layer without adding it to the searchable fallback.
+    fn fill_decoration(&self, text: &str, x: f64, y: f64, path: bool) -> Result<(), Infallible> {
+        let saved = {
+            let mut style = self.shared.style.borrow_mut();
+            let saved = (style.decorative_text, style.decorative_text_path);
+            (style.decorative_text, style.decorative_text_path) = (true, path);
+            saved
+        };
+        let result = self.fill_text(text, x, y);
+        let mut style = self.shared.style.borrow_mut();
+        (style.decorative_text, style.decorative_text_path) = saved;
+        result
     }
 
     fn record_pdf_text(
@@ -2362,11 +2381,21 @@ impl Painter for SkiaPainter {
     }
 
     fn fill_text_decoration(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
-        let previous = self.shared.style.borrow().decorative_text;
-        self.shared.style.borrow_mut().decorative_text = true;
-        let result = self.fill_text(text, x, y);
-        self.shared.style.borrow_mut().decorative_text = previous;
-        result
+        self.fill_decoration(text, x, y, false)
+    }
+
+    fn supports_text_decoration_paths(&self) -> bool {
+        matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                ..
+            }
+        )
+    }
+
+    fn fill_text_decoration_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        self.fill_decoration(text, x, y, true)
     }
 
     fn measure_windows_pdf_ascii_widths(

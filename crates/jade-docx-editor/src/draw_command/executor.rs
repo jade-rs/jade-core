@@ -1280,8 +1280,12 @@ fn try_draw_legacy_effect<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<bool, P::Error> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+
+    let mac = word_layout_platform() == WordLayoutPlatform::Mac;
     let effects = u8::from(style.shadow) + u8::from(style.emboss) + u8::from(style.imprint);
     if effects != 1
+        || (mac && !context.supports_text_decoration_paths())
         || style.outline
         || style.effects.is_some()
         || (style.text_scale_x - 1.0).abs() > f64::EPSILON
@@ -1296,6 +1300,13 @@ fn try_draw_legacy_effect<P: Painter>(
     let black: Rc<str> = Rc::from("#000000");
     let depth = jade_docx_layout::units::points_to_px(0.96);
     let shadow_offset = jade_docx_layout::units::points_to_px(style.font_size_pt / 24.0);
+    let decorate = |text, x, y| {
+        if mac {
+            context.fill_text_decoration_path(text, x, y)
+        } else {
+            context.fill_text_decoration(text, x, y)
+        }
+    };
     for glyph in glyphs {
         let (Some(font), Some(value)) = (fonts.get(glyph.font_index as usize), glyph.text(text))
         else {
@@ -1305,21 +1316,21 @@ fn try_draw_legacy_effect<P: Painter>(
         let gx = x + glyph.x_offset;
         if style.emboss {
             font_state.set_fill_style_rc_if_changed(context, &gray);
-            context.fill_text_decoration(value, gx, y)?;
+            decorate(value, gx, y)?;
             font_state.set_fill_style_rc_if_changed(context, &black);
-            context.fill_text_decoration(value, gx - 2.0 * depth, y - 2.0 * depth)?;
+            decorate(value, gx - 2.0 * depth, y - 2.0 * depth)?;
             font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
             context.fill_text(value, gx - depth, y - depth)?;
         } else if style.imprint {
             font_state.set_fill_style_rc_if_changed(context, &black);
-            context.fill_text_decoration(value, gx + 2.0 * depth, y + 2.0 * depth)?;
+            decorate(value, gx + 2.0 * depth, y + 2.0 * depth)?;
             font_state.set_fill_style_rc_if_changed(context, &gray);
-            context.fill_text_decoration(value, gx, y)?;
+            decorate(value, gx, y)?;
             font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
             context.fill_text(value, gx + depth, y + depth)?;
         } else {
             font_state.set_fill_style_rc_if_changed(context, &gray);
-            context.fill_text_decoration(value, gx + shadow_offset, y + shadow_offset)?;
+            decorate(value, gx + shadow_offset, y + shadow_offset)?;
             font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
             context.fill_text(value, gx, y)?;
         }
