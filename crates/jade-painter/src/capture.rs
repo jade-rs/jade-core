@@ -52,6 +52,7 @@ pub enum PaintOp {
     StrokeText(Rc<str>, f64, f64),
     StrokeTextAsPath(Rc<str>, f64, f64),
     FillTextDecoration(Rc<str>, f64, f64),
+    FillTextDecorationPath(Rc<str>, f64, f64),
     FillRect(f64, f64, f64, f64),
     HorizontalGradientRect(ImageRect, [u8; 4], [u8; 4]),
     ClearRect(f64, f64, f64, f64),
@@ -181,6 +182,9 @@ pub fn replay<P: Painter>(
             PaintOp::StrokeTextAsPath(text, x, y) => painter.stroke_text_as_path(text, *x, *y)?,
             PaintOp::FillTextDecoration(text, x, y) => {
                 painter.fill_text_decoration(text, *x, *y)?
+            }
+            PaintOp::FillTextDecorationPath(text, x, y) => {
+                painter.fill_text_decoration_path(text, *x, *y)?
             }
             PaintOp::FillRect(x, y, w, h) => painter.fill_rect(*x, *y, *w, *h),
             PaintOp::HorizontalGradientRect(rect, start, end) => {
@@ -456,6 +460,18 @@ impl<P: Painter> Painter for RoutedPainter<P> {
             Ok(())
         } else {
             self.inner.fill_text_decoration(text, x, y)
+        }
+    }
+
+    fn supports_text_decoration_paths(&self) -> bool {
+        self.inner.supports_text_decoration_paths()
+    }
+
+    fn fill_text_decoration_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        if self.record(|| PaintOp::FillTextDecorationPath(Rc::from(text), x, y)) {
+            Ok(())
+        } else {
+            self.inner.fill_text_decoration_path(text, x, y)
         }
     }
 
