@@ -1106,6 +1106,17 @@ impl SkiaPainter {
                         .translate((-bounds.left as f32, -bounds.top as f32));
                     sampled.canvas().concat(&matrix);
                     sampled.canvas().draw_text_blob(&blob, (x, y), paint);
+                    // A stroked space can have padded bounds but no paint.
+                    // Its searchable advance was recorded above.
+                    if text.chars().all(char::is_whitespace)
+                        && sampled.peek_pixels().is_some_and(|pixels| {
+                            pixels
+                                .bytes()
+                                .is_some_and(|bytes| bytes.iter().all(|&byte| byte == 0))
+                        })
+                    {
+                        return;
+                    }
                     let image = sampled.image_snapshot();
                     canvas.save();
                     canvas.reset_matrix();
