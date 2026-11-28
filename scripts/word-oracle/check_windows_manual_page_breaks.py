@@ -22,6 +22,10 @@ from generate_windows_floating_multi_tab_cases import (
 from generate_windows_right_float_tab_cases import (
     PREFIX as RIGHT_FLOAT_TAB_PREFIX, cases as right_float_tab_cases,
 )
+from generate_windows_paragraph_edge_tab_cases import (
+    PREFIX as PARAGRAPH_EDGE_TAB_PREFIX, cases as paragraph_edge_tab_cases,
+    LATER_FLOAT_PREFIX as LATER_FLOAT_TAB_PREFIX, later_float_cases,
+)
 from generate_windows_floating_line_ending_cases import (
     PREFIX as FLOATING_LINE_ENDING_PREFIX, cases as floating_line_ending_cases,
 )
@@ -461,6 +465,10 @@ CAPTURES = (
      FLOATING_MULTI_TAB_PREFIX, floating_multi_tab_cases, ('--unclipped-tables', '--without-page-image')),
     ('floating-table-right-tabs', '2206089dcf79b21107d9e18aeaf97746fe2c41065d933359303da9c393f89734',
      RIGHT_FLOAT_TAB_PREFIX, right_float_tab_cases, ('--unclipped-tables', '--without-page-image')),
+    ('paragraph-edge-tabs', 'ae6a8a234313e8b6ddb903ad71a9633a9d4e5aa5aa7cc98efd5fc5c06e8081b0',
+     PARAGRAPH_EDGE_TAB_PREFIX, paragraph_edge_tab_cases, ('--unclipped-tables', '--without-page-image')),
+    ('floating-table-later-tabs', '32d6b62e910bdbf6772e0f5c338241aa902bc342b6e1c79fc29fa029e99f5940',
+     LATER_FLOAT_TAB_PREFIX, later_float_cases, ('--unclipped-tables', '--without-page-image')),
 )
 
 
@@ -503,6 +511,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'floating-table-authored-tabs',
         'floating-table-multi-tabs',
         'floating-table-right-tabs',
+        'paragraph-edge-tabs', 'floating-table-later-tabs',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
